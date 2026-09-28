@@ -255,17 +255,24 @@ def main() -> int:
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "data.json").write_text(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-    )
-    (OUT_DIR / "data.js").write_text(
-        "window.__DATA__ = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
-        encoding="utf-8",
-    )
+    blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    (OUT_DIR / "data.json").write_text(blob, encoding="utf-8")
+    embedded = "<script>window.__DATA__ = " + blob + ";</script>"
+
+    # 把資料內嵌進 HTML，讓 index.html 完全自包含（file:// 或任何靜態 hosting 都能直接開）
+    tpl = OUT_DIR / "template.html"
+    if tpl.exists():
+        html = tpl.read_text(encoding="utf-8")
+        if "<!--DATA-->" not in html:
+            print("template.html 缺少 <!--DATA--> 標記", file=__import__("sys").stderr)
+            return 1
+        (OUT_DIR / "index.html").write_text(
+            html.replace("<!--DATA-->", embedded), encoding="utf-8"
+        )
 
     print(f"[dashboard] {len(carparks)} carparks | {len(stamps)} snapshots | {len(dates)} day(s)")
     print(f"            overall occupancy {overall_rate}")
-    print(f"            -> {OUT_DIR / 'data.js'}")
+    print(f"            -> {OUT_DIR / 'index.html'} (self-contained)")
     return 0
 
 
