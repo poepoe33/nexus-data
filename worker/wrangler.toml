@@ -1,0 +1,26 @@
+# Cloudflare Worker：每 30 分鐘觸發 GitHub Actions
+#
+# 部署：
+#   wrangler secret put GH_TOKEN     # 貼上 PAT（只授權此 repo 的 Actions: Read and write）
+#   wrangler deploy
+#
+# 注意：crons 用 UTC。要對齊澳門時間 (UTC+8) 的 :00 / :30，
+# 直接寫 */30 即可（UTC 的 :00/:30 與澳門的 :00/:30 是同一時刻）。
+name = "nexus-data-cron"
+main = "dispatch-cron.js"
+compatibility_date = "2026-09-01"
+
+# 每 30 分鐘一次。刻意錯開 :00 與 :30（GitHub 的 :00 是負載最高點）。
+# 註：這裡是「觸發 GitHub」的時間，與 GitHub 內建 schedule 的 best-effort 無關，
+# 所以可以放心用 :07/:37 這種非整點。
+[triggers]
+crons = ["7,37 * * * *"]
+
+[vars]
+REPO = "poepoe33/nexus-data"
+WORKFLOW = "scrape.yml"
+REF = "main"
+# 想自訂對 GitHub 送的 User-Agent 就改這裡（cron-job.org 做不到這件事）
+USER_AGENT = "nexus-data-cron/1.0 (+https://github.com/poepoe33/nexus-data)"
+
+# GH_TOKEN 不要寫在這裡！用 `wrangler secret put GH_TOKEN` 設成 Secret。

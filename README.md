@@ -97,6 +97,8 @@ scripts/data_guard.py                資料守門員：偵測/修復 git 衝突�
 scripts/check_runs.py                診斷工具：數 schedule 觸發次數、列出每個 step
 scripts/watchdog.py                  本機補採（launchd / WorkBuddy 自動化用）
 scripts/dispatch.sh                  呼叫 workflow_dispatch（外部 cron 用）
+worker/dispatch-cron.js              Cloudflare Worker：每 30 分觸發（可自訂 User-Agent）
+worker/wrangler.toml                 Worker 設定（crons / vars）
 dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
 dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
 dashboard/data.json                  聚合結果（每次 snapshot 自動重建）
@@ -297,7 +299,7 @@ python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 |---|---|---|---|---|
 | 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已裝好，待雙擊啟用 |
 | 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 | ✅ 運作中 |
-| 3 | 外部 cron（cron-job.org）→ `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ✅ API 已驗證 HTTP 204 |
+| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ⚠️ API 已驗證 204，但 **cron-job.org 不能送 `User-Agent`**（會 403）→ 改用 `worker/` 的 Cloudflare Worker |
 | 4 | GitHub Actions `schedule` | 尚未生效 | GitHub 排程器 | ⏳ 註冊中 |
 
 第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
@@ -373,10 +375,62 @@ curl -X POST \
   -d '{"ref":"main"}'
 ```
 
-**成功 = HTTP 204，回應內容是空的。** 失敗會是 401（token 錯）、403（權限不足）、
-404（repo 或 workflow 檔名錯）。要看結果加 `-w "\nHTTP %{http_code}\n"`。
+**成功 = HTTP 204，回應內容是空的。** 要看結果加 `-w "\nHTTP %{http_code}\n"`。
 
-**cron-job.org 版（它吃欄位，不吃 curl）：**
+### 錯誤碼對照表（403 有兩種，成因完全不同）
+
+| 碼 | 意思 | 怎麼修 |
+|---|---|---|
+| **204** | 成功，body 是空的 | — |
+| **401** | token 沒帶 / 無效 / 過期 | 檢查 `Authorization: Bearer <PAT>` 有沒有送到 |
+| **403** + body 提到 `User-Agent` | **缺 User-Agent 標頭** | 見下方「403 的兩個成因」 |
+| **403** + body 提到 `Resource not accessible` | token 有效但**權限不足** | classic PAT 要勾 `workflow`；fine-grained PAT 要給 `Actions: Read and write` |
+| **404** | repo 或 workflow 檔名錯 | 確認 `poepoe33/nexus-data` 與 `scrape.yml` |
+| **422** | body 缺 `ref` 或 JSON 壞掉 | 要 `-d '{"ref":"main"}'` |
+
+### 403 的兩個成因（診斷關鍵：看 **response body**）
+
+GitHub 的 403 有兩種完全不同的原因，**光看狀態碼分不出來，要看 body**：
+
+**成因 A — 缺少 `User-Agent`（最常見）**
+
+GitHub REST API **強制**要求請求帶 `User-Agent`，缺少時回 403（不是 401）：
+
+```
+Request forbidden by administrative rules. Please make sure your request has a
+User-Agent header
+```
+
+實測（本 repo，2026-09-28）：
+
+| 送出的標頭 | 結果 |
+|---|---|
+| 有 `User-Agent` | **204** ✅ |
+| 沒有 `User-Agent` | **403** ← 就是這個 |
+| 完全沒帶 token | 401（所以不是 token 問題） |
+
+> ⚠️ **cron-job.org 使用者注意**：它的官方 FAQ 明講
+> 「the headers **"User-Agent"** and "Connection" are **not supported and will be
+> ignored**」—— 也就是**你沒辦法在 cron-job.org 上修這個問題**。
+> 如果你在 cron-job.org 的 Test run 看到 403，改用下面的 Cloudflare Worker，
+> 或任何能自訂標頭的服務。
+
+`curl` 預設會送 `User-Agent: curl/x.y.z`，所以本機測試不會踩到 —— 這正是
+「本機 curl 可以、cron 服務不行」的原因。
+
+**成因 B — token 權限不足**
+
+token 本身有效，但沒有觸發 workflow 的權限。body 會是：
+
+```
+Resource not accessible by personal access token
+```
+
+修法：
+- **classic PAT** → 要勾 **`workflow`** scope（`repo` 不夠）
+- **fine-grained PAT** → 該 repo 的 **Actions: Read and write**，其餘 No access
+
+### cron-job.org 版（欄位填法）
 
 1. 到 [cron-job.org](https://cron-job.org)（免費）註冊
 2. Create cronjob，填：
@@ -388,11 +442,35 @@ curl -X POST \
    | Request body | `{"ref":"main"}` |
    | Header 1 | `Authorization` = `Bearer <你的 PAT>` |
    | Header 2 | `Accept` = `application/vnd.github+json` |
-3. 存檔。之後每 30 分鐘 GitHub 就會收到一次觸發。
+   | Header 3 | `Content-Type` = `application/json` |
+3. 存檔 → 按 **Test run**，**成功要是 204**（不是 200）。
+4. 若得到 403，去看 job 的 **History → 該次執行 → response body**，
+   用上面的對照表判斷是成因 A 還是 B。
 
 ⚠️ 這個 PAT 會存在第三方伺服器上，所以**一定要用 fine-grained PAT**，
 只授權 `poepoe33/nexus-data` 這一個 repo、權限只給 **Actions: Read and write**，
 其他全部設 No access。被洩漏時傷害範圍就只限這個 repo。
 
-想在雲端保存 token 更安全的話，改用 Cloudflare Worker + Cron Trigger
-（免費方案支援每分鐘觸發，token 放 Worker Secret）。
+### 推薦：Cloudflare Worker + Cron Trigger（完全避開上述兩個坑）
+
+因為 cron-job.org 不能自訂 `User-Agent`，本 repo 附了一支 Worker
+（`worker/dispatch-cron.js` + `worker/wrangler.toml`）：
+
+```bash
+npm install -g wrangler
+wrangler login
+cd worker
+wrangler secret put GH_TOKEN    # 貼上 PAT，不會寫進檔案
+wrangler deploy
+```
+
+優點：
+- **完整標頭控制** → 可以正確送出 `User-Agent`，不會踩到成因 A
+- **免費方案支援每分鐘觸發**（cron 寫 `7,37 * * * *`，一樣錯開整點）
+- **token 放 Worker Secret**，不落地、不進 git
+- **不需要你的 Mac 開機**
+- 附 HTTP handler，部署後直接用瀏覽器打開 Worker 網址就能測（回傳 JSON）
+
+想更安全就把 token 存進 Cloudflare Secret（就是上面的 `wrangler secret put`），
+而不要用環境變數明文。
+
