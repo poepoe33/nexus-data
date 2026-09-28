@@ -15,6 +15,12 @@ on:
 
 permissions:
   contents: write
+  # 為什麼需要 pages / id-token：本 workflow 自己也要部署 Pages。
+  # 因為用 GITHUB_TOKEN 推的 commit **不會觸發其他 workflow**
+  # （GitHub 刻意防止遞迴），所以 pages.yml 永遠等不到這裡的 push，
+  # 儀表板就會停在舊資料。與其想辦法繞，不如自己部署。
+  pages: write
+  id-token: write
 
 concurrency:
   group: carpark-snapshot
@@ -101,3 +107,29 @@ jobs:
 
           echo "::error::push 失敗 3 次，放棄。資料沒有遺失，下一班會再採。"
           exit 1
+
+      # 一定要在 commit 之後才上傳 —— 這樣 artifact 裡的 dashboard/index.html
+      # 才是剛重建好的那一版。
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dashboard
+
+  # 部署獨立成一個 job：deploy-pages 需要 github-pages environment，
+  # 而 environment 是 job 層級的設定。
+  deploy:
+    needs: scrape
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    # 跟 pages.yml 用同一個 concurrency group，避免兩邊同時部署打架。
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

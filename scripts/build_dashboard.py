@@ -18,8 +18,19 @@ import json
 import statistics
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# Macao time. 一定要用固定時區，不能用 datetime.now()：
+# GitHub runner 的本地時區是 UTC，本機是 UTC+8，
+# 用 datetime.now() 會讓 generated_at 在兩種環境下差 8 小時，
+# 而前端是把它當「UTC+8」顯示的 → 會出現「資料是 8 小時前」的假象。
+try:
+    from zoneinfo import ZoneInfo
+
+    MACAO = ZoneInfo("Asia/Macau")
+except Exception:  # pragma: no cover
+    MACAO = timezone(timedelta(hours=8), "Macao")
 
 ROOT = Path(__file__).resolve().parent.parent
 HIST_DIR = ROOT / "data" / "history"
@@ -303,7 +314,7 @@ def main() -> int:
         modes[mid]["label"] = label
 
     payload = {
-        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "generated_at": datetime.now(MACAO).strftime("%Y-%m-%d %H:%M:%S"),
         "tz": "Asia/Macau (UTC+8)",
         "weekdays": WEEKDAYS,
         "mode_order": [m[0] for m in MODES],
