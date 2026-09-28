@@ -1,0 +1,54 @@
+name: carpark-reference
+
+# 每天抓一次每個停車場的「總車位數 / 地址 / 電話 / 收費」等靜態資料
+# 這些資料很少變動，所以不需要跟著 30 分鐘的快照跑（會多打 91 次請求）
+# 04:00 澳門時間 = 20:00 UTC（前一天）
+on:
+  schedule:
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: carpark-reference
+  cancel-in-progress: false
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Refresh carpark master data
+        run: python3 scripts/scrape.py reference --root . --delay 0.5
+
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git add -A data
+          if git diff --cached --quiet; then
+            echo "no data change, skip commit"
+            exit 0
+          fi
+          git commit -m "chore(data): refresh carpark master data $(date -u +'%Y-%m-%d')"
+          for i in 1 2 3; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            echo "push failed, retry $i"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            sleep 5
+          done

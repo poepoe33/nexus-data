@@ -1,0 +1,57 @@
+name: carpark-snapshot
+
+# 每 30 分鐘抓取一次澳門 DSAT 公共停車場實時剩餘車位
+# cron 使用 UTC；UTC 的 :00 / :30 對應澳門時間 (UTC+8) 的 08:00 / 08:30 ...
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: carpark-snapshot
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect snapshot
+        id: collect
+        run: python3 scripts/scrape.py snapshot --root .
+
+      - name: Compress finished daily files
+        run: python3 scripts/scrape.py housekeep --root .
+
+      - name: Commit and push
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git add -A data
+          if git diff --cached --quiet; then
+            echo "no data change, skip commit"
+            exit 0
+          fi
+          git commit -m "chore(data): carpark snapshot $(date -u +'%Y-%m-%dT%H:%MZ')"
+          for i in 1 2 3; do
+            git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            echo "push failed, retry $i"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            sleep 5
+          done
