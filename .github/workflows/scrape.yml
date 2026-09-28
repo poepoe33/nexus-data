@@ -36,6 +36,26 @@ jobs:
         with:
           python-version: "3.12"
 
+      # 一定要在「採集之前」先同步。這樣工作區是乾淨的，git 不需要 --autostash，
+      # 也就不會踩到 2026-09-28 那次事故：autostash 重新套用時衝突，
+      # 錯誤被 `|| true` 吞掉，衝突標記就被 commit 進資料檔。
+      - name: Sync with remote (clean tree)
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git rebase "origin/${GITHUB_REF_NAME}"
+
+      # 進來就先自我修復：如果上一次留下壞資料，不要讓它卡住整條流程。
+      - name: Guard data files (incoming)
+        run: |
+          if python3 scripts/data_guard.py --check; then
+            exit 0
+          fi
+          echo "::warning::來源資料含衝突標記，自動修復"
+          python3 scripts/data_guard.py --resolve
+
       - name: Collect snapshot
         id: collect
         run: python3 scripts/scrape.py snapshot --root .
@@ -46,21 +66,38 @@ jobs:
       - name: Rebuild dashboard data
         run: python3 scripts/build_dashboard.py
 
+      # 守門員：絕對不 commit 帶衝突標記的資料。偵測到就自動修復再重建。
+      - name: Guard data files (before commit)
+        run: |
+          if python3 scripts/data_guard.py --check; then
+            exit 0
+          fi
+          echo "::warning::偵測到衝突標記，自動修復後重建 dashboard"
+          python3 scripts/data_guard.py --resolve
+          python3 scripts/build_dashboard.py
+          python3 scripts/data_guard.py --check
+
       - name: Commit and push
         run: |
           set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
           git add -A data dashboard
           if git diff --cached --quiet; then
             echo "no data change, skip commit"
             exit 0
           fi
           git commit -m "chore(data): carpark snapshot $(date -u +'%Y-%m-%dT%H:%MZ')"
+
+          # 此時工作區是乾淨的（改動都已 commit），所以不需要 --autostash，
+          # 也就不會產生「Stashed changes」那種救不回來的衝突。
           for i in 1 2 3; do
-            git push origin "HEAD:${GITHUB_REF_NAME}" && break
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
             echo "push failed, retry $i"
-            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}" || { git rebase --abort; sleep 5; continue; }
             sleep 5
           done
+
+          echo "::error::push 失敗 3 次，放棄。資料沒有遺失，下一班會再採。"
+          exit 1

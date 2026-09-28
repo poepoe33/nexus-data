@@ -30,6 +30,43 @@ import scrape  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 STALE_MINUTES = 25
 BUILD = ROOT / "scripts" / "build_dashboard.py"
+GUARD = ROOT / "scripts" / "data_guard.py"
+
+
+def run_guard(mode: str) -> subprocess.CompletedProcess:
+    """呼叫資料守門員。mode = --check 或 --resolve。"""
+    return subprocess.run(
+        [sys.executable, str(GUARD), mode], cwd=ROOT,
+        capture_output=True, text=True, timeout=300,
+    )
+
+
+def ensure_clean_data(rebuild_dashboard: bool = True) -> bool:
+    """確認資料檔沒有 git 衝突標記；有就修復。
+
+    為什麼需要：這個 repo 有兩個寫入者（GitHub Actions + 本機），
+    同時跑的時候 `git pull --rebase --autostash` 可能在 autostash 重新套用時衝突，
+    舊版把錯誤吞掉後 `git add -A` 就把衝突標記 commit 進去了（2026-09-28 真實事故）。
+    回傳 True 代表最後是乾淨的。
+    """
+    r = run_guard("--check")
+    if r.returncode == 0:
+        return True
+
+    print("[watchdog] ⚠ 偵測到衝突標記，嘗試自動修復")
+    print(r.stderr.strip())
+    fix = run_guard("--resolve")
+    print(fix.stdout.strip() or fix.stderr.strip())
+    if fix.returncode != 0:
+        print("[watchdog] ✗ 自動修復失敗，中止以免 commit 壞資料", file=sys.stderr)
+        return False
+
+    if rebuild_dashboard:
+        b = subprocess.run([sys.executable, str(BUILD)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=300)
+        print(b.stdout.strip() or b.stderr.strip()[:300])
+
+    return run_guard("--check").returncode == 0
 
 
 def git(*args, check=True):
@@ -63,10 +100,16 @@ def push_with_retry(branch="main"):
         )
         if r.returncode == 0:
             return True
-        subprocess.run(
-            ["git", "pull", "--rebase", "--autostash", "origin", branch],
-            cwd=ROOT, capture_output=True, text=True, timeout=180,
-        )
+        # 不用 --autostash：改動都已 commit，工作區是乾淨的。
+        # 用 autostash 的話，重新套用時衝突會產生「Stashed changes」標記，
+        # 而且那種衝突不屬於 rebase，--abort 救不回來（2026-09-28 事故）。
+        subprocess.run(["git", "fetch", "origin", branch],
+                       cwd=ROOT, capture_output=True, text=True, timeout=180)
+        rb = subprocess.run(["git", "rebase", f"origin/{branch}"],
+                            cwd=ROOT, capture_output=True, text=True, timeout=180)
+        if rb.returncode != 0:
+            subprocess.run(["git", "rebase", "--abort"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=180)
     return False
 
 
@@ -76,7 +119,16 @@ def main() -> int:
     ap.add_argument("--force", action="store_true", help="不管新不新，強制採集一次")
     args = ap.parse_args()
 
-    git("pull", "--rebase", "--autostash", "origin", "main", check=False)
+    pull = git("pull", "--rebase", "--autostash", "origin", "main", check=False)
+    if pull.returncode != 0:
+        # pull 失敗很可能就是衝突。先把 rebase 收乾淨，再讓守門員檢查/修復，
+        # 千萬不要像舊版那樣放著不管 —— 那樣後面的 git add -A 會 commit 衝突標記。
+        subprocess.run(["git", "rebase", "--abort"], cwd=ROOT,
+                       capture_output=True, text=True, timeout=180)
+        print(f"[watchdog] ⚠ git pull 失敗：{pull.stderr.strip()[:200]}", file=sys.stderr)
+
+    if not ensure_clean_data():
+        return 1
 
     now = scrape.datetime.now(scrape.MACAO)
     prev = last_scraped_at()
@@ -106,6 +158,12 @@ def main() -> int:
     if build.returncode != 0:
         print("[watchdog] dashboard rebuild 失敗（資料已採到，但網頁可能沒更新）",
               file=sys.stderr)
+
+    # 最後一道防線：commit 之前再確認一次資料檔沒有衝突標記。
+    # 這一步是 2026-09-28 事故的直接補救 —— 寧可這次不 commit，也不要污染歷史資料。
+    if not ensure_clean_data():
+        print("[watchdog] ✗ 資料仍有衝突標記，中止 commit（資料沒有遺失）", file=sys.stderr)
+        return 1
 
     git("add", "-A", "data", "dashboard")
     d = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
