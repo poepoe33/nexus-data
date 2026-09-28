@@ -100,7 +100,8 @@ scripts/dispatch.sh                  呼叫 workflow_dispatch（外部 cron 用�
 dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
 dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
 dashboard/data.json                  聚合結果（每次 snapshot 自動重建）
-.github/workflows/scrape.yml         每 30 分鐘：快照
+.github/workflows/scrape.yml         每 30 分鐘：快照 + 重建 dashboard + 部署 Pages
+.github/workflows/pages.yml          手動推送儀表板時的備援部署
 .github/workflows/reference.yml      每天：總車位等主資料
 data/latest.csv                      最新一次快照
 data/latest.json                     最新一次快照（JSON，含 metadata）
@@ -150,6 +151,58 @@ git add -A data dashboard                          # ← 把衝突標記一起 c
 python3 scripts/data_guard.py --check     # 有標記就 exit 1
 python3 scripts/data_guard.py --resolve   # 修復
 ```
+
+## 部署到 GitHub Pages
+
+線上儀表板：<https://poepoe33.github.io/nexus-data/>
+
+### 為什麼 `scrape.yml` 自己部署，而不是讓 `pages.yml` 接手
+
+`pages.yml` 是靠 `push` 觸發的。但 `scrape.yml` 是用 **`GITHUB_TOKEN`** 推 commit，
+而 GitHub 有條硬規則：
+
+> 用 `GITHUB_TOKEN` 產生的事件，**不會再觸發其他 workflow**（防止遞迴）。
+
+所以自動採集推上去的 commit **永遠叫不動 `pages.yml`** —— 只有人手推才會。
+下場就是：**儀表板會停在舊資料，而資料其實一直在更新。**
+
+> 這是 2026-09-28 實測抓到的：bot 在 14:47:59 推了 `90debe9`，
+> 之後零個 `pages` run，線上版本卡在 `22:39:51`。
+
+修法是把部署**收進同一個 workflow**：
+
+```yaml
+# scrape.yml
+permissions:
+  contents: write
+  pages: write        # ← 新增
+  id-token: write     # ← 新增
+
+jobs:
+  scrape:
+    steps:
+      # ... 採集、重建、commit ...
+      - uses: actions/upload-pages-artifact@v3   # 一定要在 commit 之後
+        with:
+          path: ./dashboard
+
+  deploy:                # environment 只能設在 job 層級，所以要獨立一個 job
+    needs: scrape
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages       # 與 pages.yml 共用，避免兩邊同時部署打架
+    steps:
+      - uses: actions/deploy-pages@v4
+```
+
+`pages.yml` 保留，用於「只改儀表板、沒跑採集」的手動推送。
+
+### 一句話總結
+
+**不管誰觸發採集**（schedule / dispatch / launchd / 外部 cron），
+儀表板都會跟著更新 —— 因為採集與部署現在是同一個 workflow。
 
 ## ⚠️ GitHub Actions 排程的三個坑（重要）
 
