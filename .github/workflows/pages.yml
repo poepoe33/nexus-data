@@ -1,0 +1,43 @@
+name: pages
+
+# 把 dashboard/ 部署到 GitHub Pages
+# 網址：https://poepoe33.github.io/nexus-data/
+#
+# 觸發時機：每次資料更新（dashboard/index.html 被 commit）就重新部署一次。
+# 約每 30 分鐘一次，遠低於 GitHub Pages 的建置頻率上限。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/index.html"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dashboard
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
