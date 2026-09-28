@@ -133,3 +133,54 @@ print(busy.groupby("name")["car"].mean().sort_values().head(10))
   方便你收到 GitHub 的通知信。
 - 抓取頻率與並發都刻意壓到最低（快照 1 請求、主資料每次請求間隔 0.5 秒），
   避免對政府網站造成負擔。
+
+## 排程：為什麼 GitHub 的 schedule 不能信
+
+GitHub Actions 的 `schedule` 是 **best-effort**，不是保證：
+
+- 官方文件明講整點（`:00`）負載最高，最容易被延遲或直接丟掉。
+  所以 cron 刻意寫成 `7,37 * * * *`（避開 0 與 30）。
+- **每次改動 workflow 檔，GitHub 都會重新註冊排程**，註冊要 15 分鐘到數小時，
+  期間一次都不會跑。改完就不要再動它。
+- 全新 repo 尤其明顯：實測本 repo 建立後 5.5 小時內，8 次 run **全部**來自
+  `push` / `workflow_dispatch`，`schedule` 次數為 **0**。
+- 排程只認 default branch（本 repo = `main`），fork 的 repo 不會跑排程。
+- Private repo 的排程要付費方案；本 repo 已改公開，所以免費。
+
+### 所以：三層備援
+
+| 層 | 機制 | 頻率 | 依賴 |
+|---|---|---|---|
+| 1 | GitHub Actions `schedule` | 每 30 分 | GitHub 排程器（目前不穩） |
+| 2 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 |
+| 3 | 本機 WorkBuddy 每小時自動化 | 每小時 | WorkBuddy 開著 |
+
+`scripts/watchdog.py` 是第 2、3 層共用的：它會先 `git pull`，看 `data/latest.csv`
+的 `scraped_at` 有多舊，**舊於 25 分鐘才**補採集，然後 rebuild dashboard、
+commit、push。門檻設 25 而不是 45，是為了讓 30 分鐘的節奏真的落在 30 分鐘
+（設 45 會出現「看到只舊 24 分就跳過、下次等到 60 分」的 84 分鐘空洞）。
+
+### 手動 / 外部觸發
+
+`scripts/dispatch.sh` 會呼叫 `workflow_dispatch`，讓任何有計時能力的東西
+（launchd、cron、cron-job.org、UptimeRobot…）都能把採集叫起來：
+
+```bash
+export GITHUB_TOKEN=<fine-grained PAT，只需此 repo 的 Actions: write>
+./scripts/dispatch.sh
+```
+
+建議用 fine-grained PAT 而不是 classic PAT，只給這一個 repo 的
+**Actions: Read and write**，其餘全部 No access。
+
+### 安裝本機 30 分鐘排程（一行）
+
+```bash
+launchctl bootstrap gui/$UID \
+  ~/Library/LaunchAgents/com.paulchang.macao-carpark-watchdog.plist
+```
+
+log 在 `~/Library/Logs/macao-carpark-watchdog.log`。
+移除：`launchctl bootout gui/$UID/com.paulchang.macao-carpark-watchdog`。
+`~/Library/LaunchAgents` 裡的 plist 也會在**下次登入時自動載入**，
+所以就算不跑上面那行，重開機登入後也會生效。
