@@ -226,15 +226,41 @@ log 在 `~/Library/Logs/macao-carpark-watchdog.log`。
 GitHub 的 `schedule` 目前還沒註冊成功（見上表），但 `workflow_dispatch` **是通的**。
 所以任何有計時能力的服務都能當觸發器，而且不需要 Mac 開機：
 
+**curl 版（在 Terminal 直接打，或貼進任何 cron）：**
+
+```bash
+# 最簡版：token 直接內嵌
+curl -X POST \
+  -H "Authorization: Bearer <你的 PAT>" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/dispatches \
+  -d '{"ref":"main"}'
+```
+
+```bash
+# 安全版：從本機 token 檔讀（就是 watchdog 用的那個）
+curl -X POST \
+  -H "Authorization: Bearer $(cat ~/.config/nexus-data/gh-token)" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/dispatches \
+  -d '{"ref":"main"}'
+```
+
+**成功 = HTTP 204，回應內容是空的。** 失敗會是 401（token 錯）、403（權限不足）、
+404（repo 或 workflow 檔名錯）。要看結果加 `-w "\nHTTP %{http_code}\n"`。
+
+**cron-job.org 版（它吃欄位，不吃 curl）：**
+
 1. 到 [cron-job.org](https://cron-job.org)（免費）註冊
-2. Create cronjob：
-   - URL：`https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/dispatches`
-   - Method：`POST`
-   - Schedule：every 30 minutes
-   - Advanced → Headers：
-     - `Authorization: Bearer <你的 fine-grained PAT>`
-     - `Accept: application/vnd.github+json`
-   - Request body：`{"ref":"main"}`
+2. Create cronjob，填：
+   | 欄位 | 值 |
+   |---|---|
+   | URL | `https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/dispatches` |
+   | Request method | `POST` |
+   | Schedule | every 30 minutes |
+   | Request body | `{"ref":"main"}` |
+   | Header 1 | `Authorization` = `Bearer <你的 PAT>` |
+   | Header 2 | `Accept` = `application/vnd.github+json` |
 3. 存檔。之後每 30 分鐘 GitHub 就會收到一次觸發。
 
 ⚠️ 這個 PAT 會存在第三方伺服器上，所以**一定要用 fine-grained PAT**，
