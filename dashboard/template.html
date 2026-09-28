@@ -122,6 +122,14 @@ select{
 .seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
   font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
 .seg button.on{background:#1E2A3A;color:var(--tx);border-color:#33465C}
+.hstat{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hstat div{background:var(--card2);border-radius:10px;padding:9px 10px}
+.hstat b{display:block;font-size:19px;font-weight:600;letter-spacing:-.3px}
+.hstat span{font-size:11px;color:var(--tx3)}
+.hstat i{font-style:normal;font-size:11px;margin-left:4px}
+.hrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx3);margin-top:9px;gap:8px}
+.hrow b{font-weight:500;color:var(--tx2)}
+.hbars{margin-top:11px}
 #cpsel{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
   color:var(--tx);font:inherit;font-size:14px;padding:11px 10px;outline:none;margin-bottom:10px;
   -webkit-appearance:none;appearance:none}
@@ -169,6 +177,8 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
   </header>
 
   <div class="banner" id="banner"></div>
+
+  <div class="chart" id="health" style="margin-top:16px"></div>
 
   <div class="ov">
     <div class="ring">
@@ -362,6 +372,60 @@ function allOver(){
   };
 }
 
+const COL = D.collection || {};
+
+function minsAgo(ts){
+  if(!ts) return null;
+  const p = ts.split(" ");
+  if(p.length < 2) return null;
+  const d = p[0].split("-").map(Number), t = p[1].split(":").map(Number);
+  const then = new Date(d[0], d[1]-1, d[2], t[0], t[1], t[2]||0);
+  return (Date.now() - then.getTime()) / 60000;
+}
+
+function hourBars(counts, perHour){
+  const W=340,H=92,pL=4,pR=4,pT=6,pB=17;
+  const pw=W-pL-pR, ph=H-pT-pB, n=counts.length;
+  const slot=pw/n, bw=Math.max(4, slot*0.62);
+  const top=Math.max(perHour, ...counts);
+  let bars="";
+  counts.forEach((c,i)=>{
+    const cx=pL+slot*i+slot/2;
+    const h=c>0 ? Math.max(4, (c/top)*ph) : 3;
+    const y=pT+ph-h;
+    const fill = c===0 ? "#1B2431" : (c>=perHour ? "#2EA043" : (c>=1 ? "#D29922" : "#2EA043"));
+    bars+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"/>`;
+    if(i%3===0) bars+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${H-4}" text-anchor="middle">${i}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${bars}</svg>`;
+}
+
+function renderHealth(){
+  const el = document.getElementById("health");
+  if(!el) return;
+  const m = minsAgo(COL.last);
+  const ok = m!=null && m < 40, warn = m!=null && m >= 40 && m < 120;
+  const dot = m==null ? "#6B7889" : (ok ? "#2EA043" : (warn ? "#D29922" : "#F85149"));
+  const ago = m==null ? "--" : (m < 60 ? `${Math.round(m)} 分鐘前` : `${(m/60).toFixed(1)} 小時前`);
+  const state = m==null ? "無資料" : (ok ? "正常" : (warn ? "偏慢" : "已停擺"));
+  const pctToday = COL.expected_today ? Math.min(100, Math.round(COL.today/COL.expected_today*100)) : 0;
+
+  el.innerHTML = `
+    <div class="hd"><b>採集狀態</b>
+      <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:5px"></span>${state}</span></div>
+    <div class="hstat">
+      <div><b>${nf(COL.total)}</b><span>累計採集次數</span></div>
+      <div><b style="color:${ok?'#2EA043':(warn?'#D29922':'#F85149')}">${ago}</b><span>距離上次採集</span></div>
+      <div><b>${nf(COL.today)}<i style="color:var(--tx3);font-size:12px"> / ${nf(COL.expected_today)}</i></b><span>今日採集（${pctToday}%）</span></div>
+      <div><b>${nf(COL.hours_covered)}<i style="color:var(--tx3);font-size:12px"> / 24</i></b><span>今日有資料的時段</span></div>
+    </div>
+    <div class="hrow"><span>首次 <b>${esc((COL.first||"--").slice(5,16))}</b></span>
+      <span>最近 <b>${esc((COL.last||"--").slice(5,16))}</b></span></div>
+    <div class="hbars">${hourBars(COL.hourly_today||new Array(24).fill(0), COL.expected_per_hour||2)}
+      <div class="hrow" style="margin-top:6px"><span>綠＝該小時採滿 ${COL.expected_per_hour||2} 筆</span>
+      <span>灰＝完全沒採到</span></div></div>`;
+}
+
 function overview(){
   const o = D.overall || {};
   document.getElementById("gen").textContent = (D.last_snapshot||D.generated_at||"") + " (UTC+8)";
@@ -508,9 +572,11 @@ function closeSheet(){
 }
 
 overview();
+renderHealth();
 initSel();
 renderCharts();
 render();
+setInterval(renderHealth, 60000);
 </script>
 </body>
 </html>

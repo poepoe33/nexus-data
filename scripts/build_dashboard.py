@@ -252,6 +252,30 @@ def main() -> int:
 
     overall_rate = round(1 - total_free / total_cap, 4) if total_cap else None
 
+    # 採集狀態：用來判斷 workflow 有沒有正常在跑
+    # 注意：history CSV 一列 = 一個停車場，所以要算「不重複的時間戳」才是採集次數
+    uniq = sorted({datetime.strptime(t, "%Y-%m-%d %H:%M:%S") for t in stamps})
+    latest_day = max(p.date() for p in uniq) if uniq else None
+    today_set = [p for p in uniq if latest_day and p.date() == latest_day]
+    hourly_today = [0] * 24
+    for p in today_set:
+        hourly_today[p.hour] += 1
+    hours_covered = sum(1 for c in hourly_today if c > 0)
+    last_hour = max(p.hour for p in today_set) if today_set else 0
+    collection = {
+        "total": len(uniq),
+        "today": len(today_set),
+        "expected_per_hour": 2,
+        # 目標只算到「最近一次採集的那一小時」，不然剛開始收集的那天會永遠顯示落後
+        "expected_today": 2 * (last_hour + 1),
+        "expected_hour": last_hour,
+        "first": min(stamps) if stamps else None,
+        "last": max(stamps) if stamps else None,
+        "hourly_today": hourly_today,
+        "hours_covered": hours_covered,
+        "latest_day": latest_day.isoformat() if latest_day else None,
+    }
+
     # 全澳圖表資料（以車位數加權）
     def wmean(wd_list, hr_list):
         s = w = 0.0
@@ -272,7 +296,7 @@ def main() -> int:
         "tz": "Asia/Macau (UTC+8)",
         "weekdays": WEEKDAYS,
         "days_covered": len(dates),
-        "snapshots": len(stamps),
+        "snapshots": len(uniq),
         "first_snapshot": min(stamps) if stamps else None,
         "last_snapshot": max(stamps) if stamps else None,
         "overall": {
@@ -283,6 +307,7 @@ def main() -> int:
             "rate": overall_rate,
         },
         "charts": charts,
+        "collection": collection,
         "carparks": carparks,
     }
 
@@ -302,7 +327,8 @@ def main() -> int:
             html.replace("<!--DATA-->", embedded), encoding="utf-8"
         )
 
-    print(f"[dashboard] {len(carparks)} carparks | {len(stamps)} snapshots | {len(dates)} day(s)")
+    print(f"[dashboard] {len(carparks)} carparks | {len(uniq)} snapshots "
+          f"({len(stamps)} rows) | {len(dates)} day(s)")
     print(f"            overall occupancy {overall_rate}")
     print(f"            -> {OUT_DIR / 'index.html'} (self-contained)")
     return 0
