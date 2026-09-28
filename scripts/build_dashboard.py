@@ -120,6 +120,10 @@ def main() -> int:
     dates = set()
     stamps = []
 
+    # 全澳加總（以車位數加權）：weekday -> hour -> [rate*w, w]
+    g_rate = [[0.0] * 24 for _ in range(7)]
+    g_w = [[0.0] * 24 for _ in range(7)]
+
     for r in rows:
         ts = (r.get("scraped_at") or "").strip()
         try:
@@ -146,6 +150,8 @@ def main() -> int:
         rate = max(0.0, min(1.0, rate))
         agg[cid][dt.weekday()][dt.hour].append(rate)
         hourly[cid][dt.hour].append(rate)
+        g_rate[dt.weekday()][dt.hour] += rate * cap
+        g_w[dt.weekday()][dt.hour] += cap
 
     carparks = []
     total_cap = total_free = 0
@@ -175,6 +181,14 @@ def main() -> int:
 
         profile = [mean(hourly[cid].get(hr, [])) for hr in HOURS] if cid in hourly else [None] * 24
 
+        weekday_profile = []
+        for wd in range(7):
+            xs = []
+            if cid in agg:
+                for hr in HOURS:
+                    xs.extend(agg[cid][wd].get(hr, []))
+            weekday_profile.append(mean(xs))
+
         rate = None
         if cap_car and free_car is not None:
             rate = max(0.0, min(1.0, 1 - free_car / cap_car))
@@ -198,6 +212,7 @@ def main() -> int:
                 "heatmap": heatmap,
                 "samples": samples,
                 "profile": profile,
+                "weekday_profile": weekday_profile,
                 "peak": (
                     {
                         "rate": peaks[0][0],
@@ -236,6 +251,22 @@ def main() -> int:
     carparks.sort(key=lambda c: (-(c["rate"] if c["rate"] is not None else -1), c["name"]))
 
     overall_rate = round(1 - total_free / total_cap, 4) if total_cap else None
+
+    # 全澳圖表資料（以車位數加權）
+    def wmean(wd_list, hr_list):
+        s = w = 0.0
+        for wd in wd_list:
+            for hr in hr_list:
+                s += g_rate[wd][hr]
+                w += g_w[wd][hr]
+        return round(s / w, 4) if w else None
+
+    charts = {
+        "profile": [wmean(range(7), [hr]) for hr in HOURS],
+        "weekday": [wmean([wd], HOURS) for wd in range(7)],
+        "heatmap": [[wmean([wd], [hr]) for hr in HOURS] for wd in range(7)],
+    }
+
     payload = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "tz": "Asia/Macau (UTC+8)",
@@ -251,6 +282,7 @@ def main() -> int:
             "occupied": total_cap - total_free,
             "rate": overall_rate,
         },
+        "charts": charts,
         "carparks": carparks,
     }
 

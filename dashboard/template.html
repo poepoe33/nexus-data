@@ -106,6 +106,23 @@ select{
 .legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10.5px;color:var(--tx3)}
 .legend i{width:15px;height:9px;border-radius:2px;display:block}
 
+/* charts */
+.chart{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px}
+.chart .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.chart .hd b{font-size:13.5px;font-weight:600}
+.chart .hd span{font-size:11px;color:var(--tx3)}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.gline{stroke:#202A38;stroke-width:1}
+.gtxt{fill:#5C6879;font-size:9px}
+.bars{fill:#2EA043}
+.blab{fill:#7A8798;font-size:9.5px;text-anchor:middle}
+.pkdot{stroke:#0B0E14;stroke-width:2}
+.pktxt{font-size:9.5px;font-weight:600;text-anchor:middle}
+.seg{display:flex;gap:4px;margin-bottom:10px}
+.seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
+  font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
+.seg button.on{background:#1E2A3A;color:var(--tx);border-color:#33465C}
+
 /* sheet */
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:.22s;z-index:40}
 .mask.on{opacity:1;pointer-events:auto}
@@ -162,6 +179,8 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
     </div>
   </div>
 
+  <div id="charts" style="margin-top:16px"></div>
+
   <div class="tabs">
     <button id="t1" class="on" onclick="setTab(0)">即時車位</button>
     <button id="t2" onclick="setTab(1)">每週高峰</button>
@@ -210,6 +229,96 @@ function setTab(t){
   document.getElementById("v1").style.display = t===0 ? "" : "none";
   document.getElementById("v2").style.display = t===1 ? "" : "none";
   render();
+}
+
+const CH = D.charts || {profile:[], weekday:[], heatmap:[]};
+const WDS = ["一","二","三","四","五","六","日"];
+const frame = (t,s,svg) => `<div class="chart"><div class="hd"><b>${t}</b><span>${s}</span></div>${svg}</div>`;
+
+function lineChart(vals){
+  const W=340,H=150,pL=30,pR=10,pT=14,pB=22;
+  const pw=W-pL-pR, ph=H-pT-pB, n=vals.length||1;
+  const X=i=>pL+(n>1?i/(n-1):0)*pw, Y=v=>pT+(1-v)*ph;
+  let g="";
+  [0,0.5,1].forEach(v=>{
+    g+=`<line class="gline" x1="${pL}" y1="${Y(v)}" x2="${W-pR}" y2="${Y(v)}"/>`;
+    g+=`<text class="gtxt" x="${pL-5}" y="${Y(v)+3}" text-anchor="end">${Math.round(v*100)}%</text>`;
+  });
+  const segs=[]; let cur=[];
+  vals.forEach((v,i)=>{ if(v==null){ if(cur.length)segs.push(cur); cur=[]; } else cur.push([i,v]); });
+  if(cur.length) segs.push(cur);
+  let area="", line="";
+  segs.forEach(s=>{
+    const pts=s.map(([i,v])=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`);
+    if(s.length>1){
+      line+=`<polyline fill="none" stroke="#4C8DFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${pts.join(" ")}"/>`;
+      area+=`<polygon fill="rgba(76,141,255,.13)" points="${pts.join(" ")} ${X(s[s.length-1][0]).toFixed(1)},${pT+ph} ${X(s[0][0]).toFixed(1)},${pT+ph}"/>`;
+    } else {
+      line+=`<circle cx="${X(s[0][0]).toFixed(1)}" cy="${Y(s[0][1]).toFixed(1)}" r="2.6" fill="#4C8DFF"/>`;
+    }
+  });
+  let pi=-1,pv=-1;
+  vals.forEach((v,i)=>{ if(v!=null&&v>pv){pv=v;pi=i;} });
+  let pk="";
+  if(pi>=0) pk=`<circle class="pkdot" cx="${X(pi).toFixed(1)}" cy="${Y(pv).toFixed(1)}" r="4" fill="${colText(pv)}"/>
+    <text class="pktxt" x="${Math.min(W-pR-12,Math.max(pL+12,X(pi))).toFixed(1)}" y="${Y(pv)-9}" fill="${colText(pv)}">${String(pi).padStart(2,"0")}:00 ${Math.round(pv*100)}%</text>`;
+  let xl="";
+  [0,4,8,12,16,20,23].forEach(i=>{ xl+=`<text class="gtxt" x="${X(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${i}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${area}${line}${pk}${xl}</svg>`;
+}
+
+function barChart(vals, labels){
+  const W=340,H=132,pL=30,pR=10,pT=16,pB=24;
+  const pw=W-pL-pR, ph=H-pT-pB, n=vals.length||1;
+  const slot=pw/n, bw=Math.min(30, slot*0.56), Y=v=>pT+(1-v)*ph;
+  let g="";
+  [0,0.5,1].forEach(v=>{
+    g+=`<line class="gline" x1="${pL}" y1="${Y(v)}" x2="${W-pR}" y2="${Y(v)}"/>`;
+    g+=`<text class="gtxt" x="${pL-5}" y="${Y(v)+3}" text-anchor="end">${Math.round(v*100)}%</text>`;
+  });
+  let pi=-1,pv=-1;
+  vals.forEach((v,i)=>{ if(v!=null&&v>pv){pv=v;pi=i;} });
+  let bars="";
+  vals.forEach((v,i)=>{
+    const cx=pL+slot*i+slot/2, x=cx-bw/2;
+    if(v==null){
+      bars+=`<rect x="${x.toFixed(1)}" y="${pT+ph-3}" width="${bw.toFixed(1)}" height="3" rx="1.5" fill="#1B2431"/>`;
+    } else {
+      const y=Y(v), h=Math.max(2,pT+ph-y);
+      bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${colText(v)}" opacity="${i===pi?1:.7}"/>`;
+      bars+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle" fill="${colText(v)}">${Math.round(v*100)}</text>`;
+    }
+    bars+=`<text class="blab" x="${cx.toFixed(1)}" y="${H-8}">${labels[i]||""}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${bars}</svg>`;
+}
+
+function renderCharts(){
+  const el = document.getElementById("charts");
+  if(!el) return;
+  el.innerHTML =
+    frame("全澳 24 小時使用率","依車位數加權平均", lineChart(CH.profile||[])) +
+    frame("各星期平均使用率","全澳加權", barChart(CH.weekday||[], WDS));
+}
+
+function allOver(){
+  const hm = CH.heatmap || [];
+  const cells = [];
+  for(let wd=0; wd<7; wd++) for(let hr=0; hr<24; hr++){
+    const v = hm[wd] ? hm[wd][hr] : null;
+    if(v!=null) cells.push({v,wd,hr});
+  }
+  cells.sort((a,b)=>b.v-a.v);
+  const top = cells[0];
+  return {
+    id:"__all__", name:"全澳整體", zone:"全澳",
+    capacity:{car:D.overall.capacity}, current:{car:D.overall.free, updated_at:D.last_snapshot},
+    rate:D.overall.rate, heatmap:hm, samples:null,
+    profile:CH.profile||[], weekday_profile:CH.weekday||[],
+    peak: top ? {rate:top.v, weekday:top.wd, weekday_label:WD[top.wd], hour:top.hr, samples:0} : null,
+    peak_top: cells.slice(0,5).map(c=>({rate:c.v,weekday:c.wd,weekday_label:WD[c.wd],hour:c.hr,samples:0})),
+    meta:{}
+  };
 }
 
 function overview(){
@@ -285,26 +394,35 @@ function render(){
   } else {
     rows = rows.filter(c => c.peak);
     rows.sort((a,b)=> (b.peak?b.peak.rate:0) - (a.peak?a.peak.rate:0));
-    document.getElementById("plist").innerHTML = rows.length ? rows.map(c=>{
+    const card = c => {
       const p = c.peak;
       return `<div class="pk" onclick="openSheet('${c.id}')">
         <div class="l"><div class="n">${esc(c.name)}</div>
           <div class="p">高峰 <b style="color:${colText(p.rate)}">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00</b>
-          · ${p.samples} 筆樣本</div></div>
+          ${p.samples?`· ${p.samples} 筆樣本`:""}</div></div>
         <div class="r"><b style="color:${colText(p.rate)}">${pct(p.rate)}</b><span>使用率</span></div>
       </div>`;
-    }).join("") : `<div class="empty">尚無足夠資料判斷高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
+    };
+    const ao = allOver();
+    const head = (!q && ao.peak) ? card(ao) : "";
+    const body = rows.length ? rows.map(card).join("")
+      : `<div class="empty">尚無足夠資料判斷高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
+    document.getElementById("plist").innerHTML =
+      (head ? head + `<div style="height:1px;background:var(--line);margin:10px 2px"></div>` : "") + body;
   }
 }
 
 function openSheet(id){
-  const c = D.carparks.find(x=>x.id===id);
+  const c = id==="__all__" ? allOver() : D.carparks.find(x=>x.id===id);
   if(!c) return;
   const cur = c.current||{}, cap = c.capacity||{};
   const slot = (label, free, total) => free==null&&total==null ? "" :
     `<div class="slot"><b style="color:${colText(free!=null&&total?1-free/total:null)}">${free==null?"-":free}${total?`<small> / ${total}</small>`:""}</b><span>${label}</span></div>`;
 
-  let h = `<h2>${esc(c.name)}</h2><div class="sz">${esc(c.zone)} · 更新 ${esc(cur.updated_at||"--")}</div>`;
+  const sub = id==="__all__"
+    ? `全澳 ${nf(D.overall.carparks)} 個停車場 · 依車位數加權`
+    : `${esc(c.zone)} · 更新 ${esc(cur.updated_at||"--")}`;
+  let h = `<h2>${esc(c.name)}</h2><div class="sz">${sub}</div>`;
   h += `<div class="slots">
     ${slot("輕型汽車", cur.car, cap.car)}
     ${slot("電單車", cur.motor, cap.motor)}
@@ -312,6 +430,9 @@ function openSheet(id){
     ${slot("電動電單車", cur.ev_motor, cap.ev_motor)}
     ${slot("傷殘車位", cur.disabled, cap.disabled)}
   </div>`;
+
+  h += frame("24 小時使用量曲線","平均使用率", lineChart(c.profile||[]));
+  h += frame("各星期平均使用率","", barChart(c.weekday_profile||[], WDS));
 
   if(c.peak){
     h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰</b><span>${c.peak.samples} 筆樣本 @ 尖峰</span></div>
@@ -343,6 +464,7 @@ function closeSheet(){
 }
 
 overview();
+renderCharts();
 render();
 </script>
 </body>
