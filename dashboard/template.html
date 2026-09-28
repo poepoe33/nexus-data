@@ -509,11 +509,16 @@ function renderHealth(){
   const el = document.getElementById("health");
   if(!el) return;
   const m = minsAgo(COL.last);
-  const ok = m!=null && m < 40, warn = m!=null && m >= 40 && m < 120;
+  /* 目標是每 30 分鐘一次：35 分鐘內算正常，超過 90 分鐘就是真的停了 */
+  const ok = m!=null && m < 35, warn = m!=null && m >= 35 && m < 90;
   const dot = m==null ? "#6B7889" : (ok ? "#2EA043" : (warn ? "#D29922" : "#F85149"));
   const ago = m==null ? "--" : (m < 60 ? `${Math.round(m)} 分鐘前` : `${(m/60).toFixed(1)} 小時前`);
   const state = m==null ? "無資料" : (ok ? "正常" : (warn ? "偏慢" : "已停擺"));
   const pctToday = COL.expected_today ? Math.min(100, Math.round(COL.today/COL.expected_today*100)) : 0;
+
+  const gmin = x => x==null ? "--" : (x < 60 ? `${Math.round(x)} 分` : `${(x/60).toFixed(1)} 小時`);
+  const gcol = x => x==null ? "#6B7889" : (x <= 35 ? "#2EA043" : (x <= 75 ? "#D29922" : "#F85149"));
+  const tgt = COL.target_gap_min || 30;
 
   el.innerHTML = `
     <div class="hd"><b>採集狀態</b>
@@ -521,6 +526,8 @@ function renderHealth(){
     <div class="hstat">
       <div><b>${nf(COL.total)}</b><span>累計採集次數</span></div>
       <div><b style="color:${ok?'#2EA043':(warn?'#D29922':'#F85149')}">${ago}</b><span>距離上次採集</span></div>
+      <div><b style="color:${gcol(COL.median_gap_min)}">${gmin(COL.median_gap_min)}</b><span>平均採集間隔<i style="color:#4A5666">/ ${tgt} 分</i></span></div>
+      <div><b style="color:${gcol(COL.last_gap_min)}">${gmin(COL.last_gap_min)}</b><span>最近一次間隔</span></div>
       <div><b>${nf(COL.today)}<i style="color:var(--tx3);font-size:12px"> / ${nf(COL.expected_today)}</i></b><span>今日採集（${pctToday}%）</span></div>
       <div><b>${nf(COL.hours_covered)}<i style="color:var(--tx3);font-size:12px"> / 24</i></b><span>今日有資料的時段</span></div>
     </div>

@@ -3,8 +3,10 @@ name: carpark-snapshot
 # 每 30 分鐘抓取一次澳門 DSAT 公共停車場實時剩餘車位
 # cron 使用 UTC；UTC 的 :00 / :30 對應澳門時間 (UTC+8) 的 08:00 / 08:30 ...
 on:
+  # 寫成 0,30 而不是 */30：GitHub 對 */n 的註冊偶爾會失效，
+  # 改成明確的列舉值並重新 push 可以強制它重新註冊排程。
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0,30 * * * *"
   workflow_dispatch:
 
 permissions:

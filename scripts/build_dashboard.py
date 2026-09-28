@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 import gzip
 import json
+import statistics
 import sys
 from collections import defaultdict
 from datetime import datetime
@@ -274,6 +275,9 @@ def main() -> int:
     for p in today_set:
         hourly_today[p.hour] += 1
     last_hour = max(p.hour for p in today_set) if today_set else 0
+
+    # 實際採集間隔：這是唯一能誠實回答「到底有沒有每 30 分鐘採一次」的指標。
+    gaps = [(uniq[i + 1] - uniq[i]).total_seconds() / 60 for i in range(len(uniq) - 1)]
     collection = {
         "total": len(uniq),
         "today": len(today_set),
@@ -285,6 +289,10 @@ def main() -> int:
         "hourly_today": hourly_today,
         "hours_covered": sum(1 for c in hourly_today if c > 0),
         "latest_day": latest_day.isoformat() if latest_day else None,
+        "target_gap_min": 30,
+        "last_gap_min": round(gaps[-1], 1) if gaps else None,
+        "median_gap_min": round(statistics.median(gaps), 1) if gaps else None,
+        "max_gap_min": round(max(gaps), 1) if gaps else None,
     }
 
     # ---- 各車種獨立統計 ----

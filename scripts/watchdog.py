@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
 本機看門狗：GitHub Actions 的排程是 best-effort，新 repo 的 cron 可能好幾個小時
-都沒註冊成功。這支腳本每 30 分鐘由本機自動化呼叫一次：
+都沒註冊成功。這支腳本每 30 分鐘由 launchd 呼叫一次：
 
   1. 先 git pull，拿到 GitHub 上最新的資料
   2. 看 data/latest.csv 的 scraped_at 有多舊
-  3. 還很新（預設 < 45 分鐘）→ 表示 Actions 有正常跑，什麼都不做
-  4. 太舊 → 由本機補一次採集，commit 並 push
+  3. 還很新（預設 < 25 分鐘）→ 表示 Actions 有正常跑，什麼都不做
+  4. 太舊 → 由本機補一次採集，rebuild dashboard，commit 並 push
 
 這樣兩個來源（GitHub Actions + 本機）互為備援，而且平常不會重複寫入。
+
+門檻為什麼是 25 分鐘而不是 45：本機每 30 分鐘才被叫醒一次，如果門檻設 45，
+就會出現「21:00 看到只舊 24 分鐘 → 跳過 → 22:00 才採」這種實際間隔被拉到
+80 幾分鐘的狀況。設 25 分鐘，30 分鐘的節奏才會真的落實成 30 分鐘。
 """
 
 from __future__ import annotations
@@ -24,7 +28,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import scrape  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-STALE_MINUTES = 45
+STALE_MINUTES = 25
+BUILD = ROOT / "scripts" / "build_dashboard.py"
 
 
 def git(*args, check=True):
@@ -93,7 +98,16 @@ def main() -> int:
         print("[watchdog] 採集失敗", file=sys.stderr)
         return rc
 
-    git("add", "-A", "data")
+    # 一定要 rebuild dashboard：pages.yml 只在 dashboard/index.html 變動時才部署，
+    # 如果只 commit data/，網頁上的數字永遠不會更新。
+    build = subprocess.run([sys.executable, str(BUILD)], cwd=ROOT,
+                           capture_output=True, text=True, timeout=300)
+    print(build.stdout.strip() or build.stderr.strip()[:300])
+    if build.returncode != 0:
+        print("[watchdog] dashboard rebuild 失敗（資料已採到，但網頁可能沒更新）",
+              file=sys.stderr)
+
+    git("add", "-A", "data", "dashboard")
     d = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
     if d.returncode == 0:
         print("[watchdog] 沒有資料變動，不 commit")
