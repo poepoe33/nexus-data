@@ -9,8 +9,9 @@
 :root{
   --bg:#0B0E14; --card:#141A24; --card2:#1A2230; --line:#232E3E;
   --tx:#E6EDF3; --tx2:#9AA7B8; --tx3:#6B7889;
-  --ok:#2EA043; --warn:#D29922; --bad:#F85149; --accent:#388BFD;
+  --ok:#2EA043; --warn:#D29922; --bad:#F85149; --accent:#4C8DFF;
 }
+body.mode-motor{--accent:#F0A33C}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{
@@ -26,11 +27,32 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .sub{margin-top:5px;font-size:12px;color:var(--tx3)}
 .sub b{color:var(--tx2);font-weight:500}
 
+/* ---- 頂部兩大分類 ---- */
+.modes{display:flex;gap:10px;margin:16px 0 6px}
+.mbtn{
+  flex:1;background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:13px 10px 12px;cursor:pointer;text-align:center;transition:.18s;color:var(--tx2)
+}
+.mbtn:active{transform:scale(.985)}
+.mbtn .ico{display:block;margin:0 auto 6px;color:var(--tx3)}
+.mbtn .nm{font-size:15.5px;font-weight:600;color:var(--tx);letter-spacing:.3px}
+.mbtn .ds{font-size:11px;color:var(--tx3);margin-top:3px}
+.mbtn.on{border-color:transparent;color:#fff}
+.mbtn.on .ico,.mbtn.on .ds{color:rgba(255,255,255,.82)}
+.mbtn.on .nm{color:#fff}
+#mb-car.on{background:linear-gradient(160deg,#2A5FBF,#1B3E80);box-shadow:0 4px 16px rgba(76,141,255,.22)}
+#mb-motor.on{background:linear-gradient(160deg,#B9741F,#80500F);box-shadow:0 4px 16px rgba(240,163,60,.22)}
+.mhint{font-size:11px;color:var(--tx3);text-align:center;margin:0 0 4px}
+
 /* data progress banner */
 .banner{
   margin:12px 0 16px;padding:11px 13px;border-radius:12px;
-  background:linear-gradient(90deg,rgba(56,139,253,.14),rgba(56,139,253,.04));
-  border:1px solid rgba(56,139,253,.28);font-size:12px;color:var(--tx2);line-height:1.55
+  background:linear-gradient(90deg,rgba(76,141,255,.14),rgba(76,141,255,.04));
+  border:1px solid rgba(76,141,255,.28);font-size:12px;color:var(--tx2);line-height:1.55
+}
+body.mode-motor .banner{
+  background:linear-gradient(90deg,rgba(240,163,60,.14),rgba(240,163,60,.04));
+  border-color:rgba(240,163,60,.28)
 }
 .banner b{color:var(--accent);font-weight:600}
 .bar{height:5px;border-radius:3px;background:#1B2431;margin-top:8px;overflow:hidden}
@@ -54,7 +76,8 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
   flex:1;border:0;background:transparent;color:var(--tx2);font:inherit;font-size:14px;font-weight:500;
   padding:9px 0;border-radius:9px;cursor:pointer;transition:.18s
 }
-.tabs button.on{background:var(--accent);color:#fff}
+.tabs button.on{background:var(--accent);color:#0B0E14;font-weight:600}
+body.mode-motor .tabs button.on{color:#1B1204}
 
 /* search + sort */
 .tools{display:flex;gap:8px;margin-bottom:12px}
@@ -114,10 +137,15 @@ select{
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
 .gline{stroke:#202A38;stroke-width:1}
 .gtxt{fill:#5C6879;font-size:9px}
-.bars{fill:#2EA043}
 .blab{fill:#7A8798;font-size:9.5px;text-anchor:middle}
 .pkdot{stroke:#0B0E14;stroke-width:2}
 .pktxt{font-size:9.5px;font-weight:600;text-anchor:middle}
+.cline{stroke:#4C8DFF;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.carea{fill:rgba(76,141,255,.13)}
+.cdot{fill:#4C8DFF}
+body.mode-motor .cline{stroke:#F0A33C}
+body.mode-motor .carea{fill:rgba(240,163,60,.13)}
+body.mode-motor .cdot{fill:#F0A33C}
 .seg{display:flex;gap:4px;margin-bottom:10px}
 .seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
   font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
@@ -158,10 +186,14 @@ select{
 .slot b{display:block;font-size:17px;font-weight:600;letter-spacing:-.3px}
 .slot b small{font-size:11px;font-weight:400;color:var(--tx3)}
 .slot span{font-size:10.5px;color:var(--tx3);display:block;margin-top:2px}
+.slot.hero{grid-column:span 3;background:linear-gradient(160deg,#1E2A3A,#172030);border:1px solid #33465C}
+.slot.hero b{font-size:28px;letter-spacing:-1px}
+.slot.hero span{margin-top:5px;font-size:11.5px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .chip{background:var(--card2);border-radius:8px;padding:6px 9px;font-size:11.5px;color:var(--tx2)}
 .chip b{color:var(--tx);font-weight:600}
-.kv{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:7px}
+.sect{margin-top:16px;font-size:11.5px;color:var(--tx3);font-weight:600;letter-spacing:.5px}
+.kv{margin-top:8px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:7px}
 .kv div{display:flex;gap:10px;font-size:12.5px}
 .kv em{color:var(--tx3);font-style:normal;flex:0 0 64px}
 .kv span{flex:1;color:var(--tx2);word-break:break-word}
@@ -176,6 +208,26 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
     <div class="sub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集 · <b id="gen"></b></div>
   </header>
 
+  <div class="modes">
+    <button class="mbtn" id="mb-car" onclick="setMode('car')">
+      <svg class="ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 15.5h16M5.5 15.5v-2.4l1.9-4.1A2 2 0 019.2 7.6h5.6a2 2 0 011.8 1.1l1.9 4.3v2.5"/>
+        <circle cx="7.6" cy="16.6" r="1.7"/><circle cx="16.4" cy="16.6" r="1.7"/>
+      </svg>
+      <div class="nm">私家車</div><div class="ds" id="d-car">--</div>
+    </button>
+    <button class="mbtn" id="mb-motor" onclick="setMode('motor')">
+      <svg class="ico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="5.4" cy="16.2" r="3.1"/><circle cx="18.6" cy="16.2" r="3.1"/>
+        <path d="M5.4 16.2l3.4-6.1h4.4l1.9 6.1M8.8 10.1l2.6-4.2h3.2M13.4 16.2h5.2"/>
+      </svg>
+      <div class="nm">電單車</div><div class="ds" id="d-motor">--</div>
+    </button>
+  </div>
+  <div class="mhint" id="mhint">私家車與電單車車位分開統計，請先選擇你的車種</div>
+
   <div class="banner" id="banner"></div>
 
   <div class="chart" id="health" style="margin-top:16px"></div>
@@ -187,13 +239,13 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
         <circle id="arc" cx="48" cy="48" r="40" fill="none" stroke="#F85149" stroke-width="9"
                 stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
       </svg>
-      <div class="val"><b id="orate">--</b><span>全澳使用率</span></div>
+      <div class="val"><b id="orate">--</b><span id="olab">全澳使用率</span></div>
     </div>
     <div class="stats">
       <div class="stat"><b id="socc">--</b><span>使用中車位</span></div>
       <div class="stat"><b id="sfree">--</b><span>剩餘車位</span></div>
-      <div class="stat"><b id="scap">--</b><span>輕型車總位</span></div>
-      <div class="stat"><b id="scnt">--</b><span>停車場數</span></div>
+      <div class="stat"><b id="scap">--</b><span id="scapl">總車位</span></div>
+      <div class="stat"><b id="scnt">--</b><span>有此車位場數</span></div>
     </div>
   </div>
 
@@ -220,7 +272,7 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
   <div id="v2" style="display:none"><div class="list" id="plist"></div></div>
 
   <footer>
-    使用率 = 1 − 剩餘 ÷ 總車位（輕型汽車）<br>
+    <span id="fdesc">使用率 = 1 − 剩餘 ÷ 總車位（私家車）</span><br>
     時段為澳門時間 UTC+8 · 顏色越紅代表越滿
   </footer>
 </div>
@@ -233,8 +285,10 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
 
 <!--DATA-->
 <script>
-const D = window.__DATA__ || {carparks:[],overall:{}};
+const D = window.__DATA__ || {carparks:[], modes:{}};
 const WD = D.weekdays || ["週一","週二","週三","週四","週五","週六","週日"];
+const MODES = D.mode_order && D.mode_order.length ? D.mode_order : Object.keys(D.modes||{});
+let mode = MODES[0] || "car";
 let tab = 0;
 
 const col = r => r==null ? "#131922" : `hsl(${Math.round(140-140*r)},62%,${Math.round(30+20*r)}%)`;
@@ -242,6 +296,54 @@ const colText = r => r==null ? "#6B7889" : `hsl(${Math.round(140-140*r)},70%,62%
 const pct = r => r==null ? "--" : Math.round(r*100)+"%";
 const nf = n => n==null ? "--" : n.toLocaleString("en-US");
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- 車種切換 ---------- */
+function M(){ return (D.modes||{})[mode] || {overall:{}, charts:{}, by_id:{}}; }
+function mLabel(){ return (D.modes||{})[mode] ? (D.modes[mode].label||mode) : ""; }
+function md(id){ return M().by_id[id] || null; }
+
+function modeRow(c){
+  const m = md(c.id);
+  if(!m) return null;
+  return {
+    id:c.id, name:c.name, zone:c.zone, meta:c.meta||{},
+    cap_all:c.capacity||{}, cur_all:c.current||{}, updated_at:c.updated_at,
+    cap:m.cap, free:m.free, rate:m.rate,
+    heatmap:m.heatmap, samples:m.samples,
+    profile:m.profile||[], weekday_profile:m.weekday_profile||[],
+    peak:m.peak, peak_top:m.peak_top||[]
+  };
+}
+function rowsForMode(){
+  const out = [];
+  (D.carparks||[]).forEach(c=>{ const r = modeRow(c); if(r) out.push(r); });
+  return out;
+}
+
+function renderModes(){
+  MODES.forEach(mid=>{
+    const btn = document.getElementById("mb-"+mid);
+    const ds  = document.getElementById("d-"+mid);
+    if(!btn) return;
+    btn.classList.toggle("on", mid===mode);
+    const o = (D.modes||{})[mid] ? D.modes[mid].overall : {};
+    if(ds) ds.textContent = `${o.rate==null?"--":Math.round(o.rate*100)+"%"} 滿 · ${nf(o.carparks)} 場`;
+  });
+  document.body.className = "mode-"+mode;
+  const h = document.getElementById("mhint");
+  if(h) h.textContent = `目前顯示：${mLabel()}車位（只統計有提供${mLabel()}位的停車場）`;
+}
+
+function setMode(m){
+  if(!MODES.includes(m)) return;
+  mode = m;
+  renderModes();
+  overview();
+  initSel(true);
+  renderCharts();
+  render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
 
 function setTab(t){
   tab = t;
@@ -252,7 +354,6 @@ function setTab(t){
   render();
 }
 
-const CH = D.charts || {profile:[], weekday:[], heatmap:[]};
 const WDS = ["一","二","三","四","五","六","日"];
 const frame = (t,s,svg) => `<div class="chart"><div class="hd"><b>${t}</b><span>${s}</span></div>${svg}</div>`;
 
@@ -272,10 +373,10 @@ function lineChart(vals){
   segs.forEach(s=>{
     const pts=s.map(([i,v])=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`);
     if(s.length>1){
-      line+=`<polyline fill="none" stroke="#4C8DFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${pts.join(" ")}"/>`;
-      area+=`<polygon fill="rgba(76,141,255,.13)" points="${pts.join(" ")} ${X(s[s.length-1][0]).toFixed(1)},${pT+ph} ${X(s[0][0]).toFixed(1)},${pT+ph}"/>`;
+      line+=`<polyline class="cline" points="${pts.join(" ")}"/>`;
+      area+=`<polygon class="carea" points="${pts.join(" ")} ${X(s[s.length-1][0]).toFixed(1)},${pT+ph} ${X(s[0][0]).toFixed(1)},${pT+ph}"/>`;
     } else {
-      line+=`<circle cx="${X(s[0][0]).toFixed(1)}" cy="${Y(s[0][1]).toFixed(1)}" r="2.6" fill="#4C8DFF"/>`;
+      line+=`<circle class="cdot" cx="${X(s[0][0]).toFixed(1)}" cy="${Y(s[0][1]).toFixed(1)}" r="2.6"/>`;
     }
   });
   let pi=-1,pv=-1;
@@ -314,11 +415,12 @@ function barChart(vals, labels){
   return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${bars}</svg>`;
 }
 
-function initSel(){
+function initSel(reset){
   const sel = document.getElementById("cpsel");
-  if(!sel || sel.options.length) return;
-  const list = [{id:"__all__", name:"全澳整體"}].concat(
-    D.carparks.slice().sort((a,b)=>a.name.localeCompare(b.name,"zh"))
+  if(!sel) return;
+  if(!reset && sel.options.length) return;
+  const list = [{id:"__all__", name:`全澳${mLabel()}整體`}].concat(
+    rowsForMode().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh"))
       .map(c=>({id:c.id, name:c.name}))
   );
   sel.innerHTML = list.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("");
@@ -328,7 +430,9 @@ function initSel(){
 function pickChart(){
   const sel = document.getElementById("cpsel");
   const id = sel ? sel.value : "__all__";
-  return id==="__all__" ? allOver() : (D.carparks.find(x=>x.id===id) || allOver());
+  if(id==="__all__") return allOver();
+  const r = modeRow((D.carparks||[]).find(x=>x.id===id) || {});
+  return Object.keys(r).length ? r : allOver();
 }
 
 function renderCharts(){
@@ -336,7 +440,7 @@ function renderCharts(){
   if(!el) return;
   const c = pickChart();
   const prof = c.profile||[], wk = c.weekday_profile||[];
-  const sub = c.id==="__all__" ? "依車位數加權平均" : "平均使用率";
+  const sub = c.id==="__all__" ? "依車位數加權平均" : `${mLabel()}平均使用率`;
   el.innerHTML =
     frame(`${esc(c.name)} · 24 小時使用率`, sub, lineChart(prof)) +
     frame(`${esc(c.name)} · 各星期平均使用率`, sub, barChart(wk, WDS)) +
@@ -353,7 +457,8 @@ function pinChart(id){
 }
 
 function allOver(){
-  const hm = CH.heatmap || [];
+  const M0 = M(), ch = M0.charts || {};
+  const hm = ch.heatmap || [];
   const cells = [];
   for(let wd=0; wd<7; wd++) for(let hr=0; hr<24; hr++){
     const v = hm[wd] ? hm[wd][hr] : null;
@@ -362,13 +467,13 @@ function allOver(){
   cells.sort((a,b)=>b.v-a.v);
   const top = cells[0];
   return {
-    id:"__all__", name:"全澳整體", zone:"全澳",
-    capacity:{car:D.overall.capacity}, current:{car:D.overall.free, updated_at:D.last_snapshot},
-    rate:D.overall.rate, heatmap:hm, samples:null,
-    profile:CH.profile||[], weekday_profile:CH.weekday||[],
+    id:"__all__", name:`全澳${mLabel()}整體`, zone:"全澳", meta:{},
+    cap_all:{}, cur_all:{}, updated_at:null,
+    cap:M0.overall.capacity, free:M0.overall.free, rate:M0.overall.rate,
+    heatmap:hm, samples:null,
+    profile:ch.profile||[], weekday_profile:ch.weekday||[],
     peak: top ? {rate:top.v, weekday:top.wd, weekday_label:WD[top.wd], hour:top.hr, samples:0} : null,
     peak_top: cells.slice(0,5).map(c=>({rate:c.v,weekday:c.wd,weekday_label:WD[c.wd],hour:c.hr,samples:0})),
-    meta:{}
   };
 }
 
@@ -393,7 +498,7 @@ function hourBars(counts, perHour){
     const cx=pL+slot*i+slot/2;
     const h=c>0 ? Math.max(4, (c/top)*ph) : 3;
     const y=pT+ph-h;
-    const fill = c===0 ? "#1B2431" : (c>=perHour ? "#2EA043" : (c>=1 ? "#D29922" : "#2EA043"));
+    const fill = c===0 ? "#1B2431" : (c>=perHour ? "#2EA043" : "#D29922");
     bars+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"/>`;
     if(i%3===0) bars+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${H-4}" text-anchor="middle">${i}</text>`;
   });
@@ -427,16 +532,20 @@ function renderHealth(){
 }
 
 function overview(){
-  const o = D.overall || {};
+  const o = M().overall || {};
   document.getElementById("gen").textContent = (D.last_snapshot||D.generated_at||"") + " (UTC+8)";
   document.getElementById("orate").textContent = pct(o.rate);
   document.getElementById("arc").style.stroke = colText(o.rate);
   document.getElementById("arc").style.strokeDashoffset = 251.3 * (1 - (o.rate||0));
+  document.getElementById("olab").textContent = mLabel()+"使用率";
   document.getElementById("socc").textContent = nf(o.occupied);
   document.getElementById("sfree").textContent = nf(o.free);
   document.getElementById("scap").textContent = nf(o.capacity);
+  document.getElementById("scapl").textContent = mLabel()+"總車位";
   document.getElementById("scnt").textContent = nf(o.carparks);
-  document.getElementById("scnt").style.color = "";
+
+  const fd = document.getElementById("fdesc");
+  if(fd) fd.textContent = `使用率 = 1 − 剩餘 ÷ 總車位（${mLabel()}）`;
 
   const days = D.days_covered || 0;
   const need = 7;
@@ -472,32 +581,31 @@ function heatmapHTML(hm, samples){
 }
 
 function render(){
-  const q = document.getElementById("q").value.trim();
+  const q = (document.getElementById("q").value||"").trim();
   const sort = document.getElementById("sort").value;
-  let rows = D.carparks.filter(c => !q || c.name.includes(q) || (c.meta.address||"").includes(q));
+  let rows = rowsForMode().filter(r => !q || r.name.includes(q) || ((r.meta.address||"")).includes(q));
 
   if(tab===0){
     rows.sort((a,b)=>{
       if(sort==="name") return a.name.localeCompare(b.name,"zh");
-      if(sort==="free") return (a.current.car??1e9)-(b.current.car??1e9);
+      if(sort==="free") return (a.free??1e9)-(b.free??1e9);
       return (b.rate??-1)-(a.rate??-1);
     });
-    document.getElementById("list").innerHTML = rows.length ? rows.map(c=>{
-      const cap = c.capacity.car, free = c.current.car;
-      const r = c.rate;
-      return `<div class="cp" onclick="openSheet('${c.id}')">
-        <div class="top"><div class="nm">${esc(c.name)}</div><div class="zn">${esc(c.zone)}</div></div>
+    document.getElementById("list").innerHTML = rows.length ? rows.map(r=>{
+      const r8 = r.rate;
+      return `<div class="cp" onclick="openSheet('${r.id}')">
+        <div class="top"><div class="nm">${esc(r.name)}</div><div class="zn">${esc(r.zone)}</div></div>
         <div class="mid">
-          <div class="num">剩 <b style="color:${colText(r)}">${free==null?"-":free}</b> / ${cap==null?"-":cap}</div>
-          <div class="track"><i style="width:${Math.round((r||0)*100)}%;background:${colText(r)}"></i></div>
-          <div class="num" style="flex:0 0 auto;color:${colText(r)}">${pct(r)}</div>
+          <div class="num">剩 <b style="color:${colText(r8)}">${r.free==null?"-":r.free}</b> / ${r.cap==null?"-":r.cap}</div>
+          <div class="track"><i style="width:${Math.round((r8||0)*100)}%;background:${colText(r8)}"></i></div>
+          <div class="num" style="flex:0 0 auto;color:${colText(r8)}">${pct(r8)}</div>
         </div>
-        <div class="ft"><span>電單車剩 ${c.current.motor==null?"-":c.current.motor}</span>
-        <span>更新 ${esc((c.current.updated_at||"").slice(11,16)||"--:--")}</span></div>
+        <div class="ft"><span>${esc(mLabel())}位 ${nf(r.cap)} 個</span>
+        <span>更新 ${esc((r.updated_at||"").slice(11,16)||"--:--")}</span></div>
       </div>`;
     }).join("") : `<div class="empty">找不到符合的停車場</div>`;
   } else {
-    rows = rows.filter(c => c.peak);
+    rows = rows.filter(r => r.peak);
     rows.sort((a,b)=> (b.peak?b.peak.rate:0) - (a.peak?a.peak.rate:0));
     const card = c => {
       const p = c.peak;
@@ -511,42 +619,51 @@ function render(){
     const ao = allOver();
     const head = (!q && ao.peak) ? card(ao) : "";
     const body = rows.length ? rows.map(card).join("")
-      : `<div class="empty">尚無足夠資料判斷高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
+      : `<div class="empty">尚無足夠資料判斷${mLabel()}高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
     document.getElementById("plist").innerHTML =
       (head ? head + `<div style="height:1px;background:var(--line);margin:10px 2px"></div>` : "") + body;
   }
 }
 
 function openSheet(id){
-  const c = id==="__all__" ? allOver() : D.carparks.find(x=>x.id===id);
-  if(!c) return;
-  const cur = c.current||{}, cap = c.capacity||{};
-  const slot = (label, free, total) => free==null&&total==null ? "" :
-    `<div class="slot"><b style="color:${colText(free!=null&&total?1-free/total:null)}">${free==null?"-":free}${total?`<small> / ${total}</small>`:""}</b><span>${label}</span></div>`;
+  const c = id==="__all__" ? allOver() : modeRow((D.carparks||[]).find(x=>x.id===id) || {});
+  if(!c || !Object.keys(c).length) return;
+  const cur = c.cur_all||{}, capA = c.cap_all||{};
 
   const sub = id==="__all__"
-    ? `全澳 ${nf(D.overall.carparks)} 個停車場 · 依車位數加權`
-    : `${esc(c.zone)} · 更新 ${esc(cur.updated_at||"--")}`;
+    ? `全澳 ${nf(M().overall.carparks)} 個有${mLabel()}位的停車場 · 依車位數加權`
+    : `${esc(c.zone)} · 更新 ${esc(c.updated_at||"--")}`;
   let h = `<h2>${esc(c.name)}</h2><div class="sz">${sub}</div>`;
+
+  /* 主角：目前車種 */
   h += `<div class="slots">
-    ${slot("輕型汽車", cur.car, cap.car)}
-    ${slot("電單車", cur.motor, cap.motor)}
-    ${slot("電動汽車", cur.ev_car, cap.ev_car)}
-    ${slot("電動電單車", cur.ev_motor, cap.ev_motor)}
-    ${slot("傷殘車位", cur.disabled, cap.disabled)}
+    <div class="slot hero"><b style="color:${colText(c.rate)}">${c.free==null?"-":c.free}<small> / ${nf(c.cap)}</small></b>
+      <span>${esc(mLabel())}剩餘車位 · 使用率 ${pct(c.rate)}</span></div>
   </div>`;
 
-  h += frame("24 小時使用量曲線","平均使用率", lineChart(c.profile||[]));
-  h += frame("各星期平均使用率","", barChart(c.weekday_profile||[], WDS));
+  /* 其他車種（次要資訊） */
+  const others = [];
+  if(mode!=="car"     && cur.car!=null)      others.push(["私家車", cur.car, capA.car]);
+  if(mode!=="motor"   && cur.motor!=null)    others.push(["電單車", cur.motor, capA.motor]);
+  if(cur.ev_car!=null)   others.push(["電動汽車", cur.ev_car, capA.ev_car]);
+  if(cur.ev_motor!=null) others.push(["電動電單車", cur.ev_motor, capA.ev_motor]);
+  if(cur.disabled!=null) others.push(["傷殘車位", cur.disabled, capA.disabled]);
+  if(others.length){
+    h += `<div class="sect">其他車位（即時）</div><div class="chips">${others.map(([l,f,t])=>
+      `<span class="chip">${l} 剩 <b style="color:${colText(f!=null&&t?1-f/t:null)}">${f}</b>${t?` / ${t}`:""}</span>`).join("")}</div>`;
+  }
+
+  h += frame(`${esc(mLabel())}24 小時使用量曲線`,"平均使用率", lineChart(c.profile||[]));
+  h += frame(`${esc(mLabel())}各星期平均使用率`,"", barChart(c.weekday_profile||[], WDS));
 
   if(c.peak){
-    h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰</b><span>${c.peak.samples} 筆樣本 @ 尖峰</span></div>
+    h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰（${esc(mLabel())}）</b><span>${c.peak.samples} 筆樣本 @ 尖峰</span></div>
       ${heatmapHTML(c.heatmap, c.samples)}
       <div class="chips">${c.peak_top.map(p=>
         `<span class="chip">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00 <b style="color:${colText(p.rate)}">${pct(p.rate)}</b></span>`
       ).join("")}</div></div>`;
   } else {
-    h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰</b><span>資料累積中</span></div>
+    h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰（${esc(mLabel())}）</b><span>資料累積中</span></div>
       <div class="empty" style="padding:20px 0">這個停車場還沒有足夠的歷史樣本</div></div>`;
   }
 
@@ -571,9 +688,10 @@ function closeSheet(){
   document.getElementById("sheet").classList.remove("on");
 }
 
+renderModes();
 overview();
 renderHealth();
-initSel();
+initSel(true);
 renderCharts();
 render();
 setInterval(renderHealth, 60000);
