@@ -65,13 +65,20 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 
 ## H5 儀表板
 
-`dashboard/index.html` 是一個手機優先的單頁儀表板，直接開就能看（不用起 server，資料在 `dashboard/data.js`）。
+`dashboard/index.html` 是一個手機優先的單頁儀表板，直接開就能看（不用起 server）。
+資料在 build 時由 `<!--DATA-->` 標記**內嵌進 HTML**，所以整頁自包含、單檔可攜，
+`present_files` / GitHub Pages 都只吃這一個檔案。
 
-- **即時車位**：全澳使用率環形圖、91 個停車場排序（可依使用率／剩餘數量／名稱）、搜尋、點開看各車種明細與收費
+- **車種分流**：頂部兩個大按鈕切換「私家車 / 電單車」，兩者資料完全分開統計與顯示
+  （只會看到跟自己有關的圖表與排行）
+- **即時車位**：全澳使用率環形圖、停車場排序（可依使用率／剩餘數量／名稱）、搜尋、點開看各車種明細與收費
 - **每週高峰**：每個停車場的「星期 × 小時」使用率熱力圖（7×24 格），以及使用率最高的 5 個時段
 - **時段圖表**：全澳 24 小時使用率曲線（折線+面積，標出尖峰時刻）、各星期平均使用率長條圖；
   點開任一個停車場也有它自己的 24 小時曲線與星期長條圖。全澳數據以車位數加權。
   圖表是手寫 SVG，不依赖任何 CDN，整頁自包含在單一 HTML 檔裡
+- **採集健康度**：頁面頂部面板顯示累積快照數、資料涵蓋時數、
+  **平均採集間隔**與**最近一次間隔** —— 一眼看出 workflow 有沒有正常在跑
+  （門檻：<35 分綠 / <90 分黃 / ≥90 分紅）
 
 顏色規則：綠 = 空、紅 = 滿；灰色格子代表該時段樣本還沒累積到。
 
@@ -86,8 +93,13 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 ```
 scripts/scrape.py                    採集器（三種模式）
 scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
-dashboard/index.html                 H5 儀表板
-dashboard/data.js / data.json        聚合結果（每次 snapshot 自動重建）
+scripts/data_guard.py                資料守門員：偵測/修復 git 衝突標記
+scripts/check_runs.py                診斷工具：數 schedule 觸發次數、列出每個 step
+scripts/watchdog.py                  本機補採（launchd / WorkBuddy 自動化用）
+scripts/dispatch.sh                  呼叫 workflow_dispatch（外部 cron 用）
+dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
+dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
+dashboard/data.json                  聚合結果（每次 snapshot 自動重建）
 .github/workflows/scrape.yml         每 30 分鐘：快照
 .github/workflows/reference.yml      每天：總車位等主資料
 data/latest.csv                      最新一次快照
@@ -95,6 +107,48 @@ data/latest.json                     最新一次快照（JSON，含 metadata）
 data/carparks.csv                    停車場主資料（總車位 / 地址 / 收費）
 data/history/YYYY-MM-DD.csv          當日所有快照，逐筆 append
 data/history/YYYY-MM-DD.csv.gz       隔天自動壓縮
+install-schedule.command             雙擊安裝本機 30 分鐘排程
+uninstall-schedule.command           雙擊移除
+```
+
+## 🛡️ 資料完整性：為什麼需要 `data_guard.py`
+
+**2026-09-28 真實事故。** 這個 repo 有**兩個寫入者**：GitHub Actions 與本機
+watchdog。當兩者同時跑，舊版這樣寫：
+
+```bash
+git pull --rebase --autostash origin main || true   # ← 錯誤被吞掉
+git add -A data dashboard                          # ← 把衝突標記一起 commit
+```
+
+`--autostash` 在**重新套用** stash 時衝突，而那種衝突**不屬於 rebase**，
+所以 `git rebase --abort` 救不回來。`|| true` 把錯誤吞掉後，`git add -A`
+就把 `<<<<<<< Updated upstream` / `=======` / `>>>>>>> Stashed changes`
+直接 commit 進 `data/latest.csv`、`data/history/*.csv`、`dashboard/data.json`、
+`dashboard/index.html`。
+
+**最陰險的地方**：`git status` 是乾淨的，所以沒有任何東西會提醒你。
+
+### 現在的防線
+
+| 防線 | 位置 | 做什麼 |
+|---|---|---|
+| 採集前先同步 | `scrape.yml` → `Sync with remote (clean tree)` | 工作區保持乾淨 → **永遠不需要 `--autostash`** |
+| 進場守門 | `scrape.yml` → `Guard data files (incoming)` | 上次留下壞資料就自動修復，不讓它卡住整條流程 |
+| 出場守門 | `scrape.yml` → `Guard data files (before commit)` | 偵測到標記就修復 + 重建 dashboard + 再驗一次 |
+| 本機雙重檢查 | `watchdog.py` → `ensure_clean_data()` | `pull` 後、`commit` 前各驗一次；有問題就**中止 commit** |
+| push 重試 | 兩邊都是 `fetch` + `rebase`，失敗就 `--abort` | 不再用 `--autostash`，不會產生救不回來的衝突 |
+
+`data_guard.py` 的修復規則（不是無腦覆蓋，是**搶救資料**）：
+
+- `data/history/*.csv` → **聯集去重**（兩邊的快照都保留，依 `(scraped_at, carpark_id)` 去重）
+- `data/latest.csv` → **只保留最新一個 `scraped_at`**（避免兩個不同快照的列混在一起）
+- `data/latest.json` → 由 `latest.csv` 重新產生
+- `dashboard/*` → 刪掉，由呼叫者重跑 `build_dashboard.py`
+
+```bash
+python3 scripts/data_guard.py --check     # 有標記就 exit 1
+python3 scripts/data_guard.py --resolve   # 修復
 ```
 
 ## ⚠️ GitHub Actions 排程的三個坑（重要）
@@ -104,8 +158,9 @@ data/history/YYYY-MM-DD.csv.gz       隔天自動壓縮
    `curl` 觸發 `workflow_dispatch`，或改用 `repository_dispatch`。
 2. **repo 60 天沒活動，排程會被自動停用。** 因為我們每次都會 commit，所以實務上不會發生；
    但如果長時間沒資料變動（例如對岸網站掛掉），記得回來看一下。
-3. **免費帳號有用量上限**（Private repo 2,000 分鐘/月）。每 30 分鐘一次、每次約 20 秒，
-   一個月約 25 分鐘，遠遠夠用。
+3. **Actions 用量**：本 repo 是 public，GitHub Actions 分鐘數**免費無限**。
+   （若哪天改回 private，免費帳號是 2,000 分鐘/月；每 30 分鐘一次、每次約 20 秒，
+   一個月約 25 分鐘，也遠遠夠用。）
 
 ## 資料量估算
 
@@ -143,12 +198,22 @@ print(busy.groupby("name")["car"].mean().sort_values().head(10))
 | repo | 建立時間 | 可見性 | cron | 第一次 `schedule` run |
 |---|---|---|---|---|
 | `aircancel` | 2026-09-27T14:49Z | private | `0 */3 * * *` | **+7.9 小時**（22:42Z） |
-| `nexus-data` | 2026-09-28T07:54Z | public | `7,37 * * * *` | 尚未（+6h 時仍為 0） |
+| `nexus-data` | 2026-09-28T07:54Z | public | `7,37 * * * *` | 尚未（+6.9h 時仍為 0，13 筆 run 全是 push/dispatch） |
 
 `aircancel` 的排程**正常運作**（後續還有 +8.2h、+11.8h 的 run），
 所以「這個帳號的排程器壞了」不成立。差別只在於 `nexus-data` 還太新。
 
 → **註冊延遲約 8 小時**，這是實測值，不是官方保證。等就對了。
+
+用這支工具直接量（比翻網頁快）：
+
+```bash
+python3 scripts/check_runs.py            # event 統計 + 最近 20 筆
+python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
+```
+
+輸出裡的 `event 統計 : {'workflow_dispatch': 7, 'push': 6}` 就是關鍵 ——
+**`schedule` 一次都沒出現**，代表排程還沒註冊成功。
 
 ### 已知的官方規則（docs.github.com，`schedule` 事件）
 
@@ -164,27 +229,36 @@ print(busy.groupby("name")["car"].mean().sort_values().head(10))
 
 **改動 cron 會讓排程重新註冊**（官方文件提到：對「已停用」的排程，由有 write
 權限的人改動 cron 會重新啟用）。所以本 repo 的實測策略是：**改完就不要再動它**，
-否則註冊時鐘一直歸零。這次就是因為 13:24Z 改過 cron，才要把等待時間重算。
+否則註冊時鐘一直歸零。
 
-### 所以：三層備援
+> ⚠️ **誠實揭露**：本 repo 的 workflow 檔被改過兩次 ——
+> 13:24Z 改 cron（避開 `:00`/`:30` 高負載點）、14:47Z 加上資料守門步驟。
+> 也就是說**註冊時鐘可能又歸零了**，實際等待時間要從 14:47Z 重算。
+> 這不是「排程壞了」，而是為了資料完整性必須付的代價。
+> 如果等不下去，直接用下面第 1 層（本機 launchd）或第 3 層（外部 cron），
+> 那兩條路**完全不依賴** GitHub 的排程器。
 
-| 層 | 機制 | 實際頻率 | 依賴 |
-|---|---|---|---|
-| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 |
-| 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 |
-| 3 | GitHub Actions `schedule` | 尚未生效 | GitHub 排程器 |
+### 所以：四層備援
+
+| 層 | 機制 | 實際頻率 | 依賴 | 現況 |
+|---|---|---|---|---|
+| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已裝好，待雙擊啟用 |
+| 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 | ✅ 運作中 |
+| 3 | 外部 cron（cron-job.org）→ `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ✅ API 已驗證 HTTP 204 |
+| 4 | GitHub Actions `schedule` | 尚未生效 | GitHub 排程器 | ⏳ 註冊中 |
 
 第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
 所以改成「一次觸發、跑兩趟」—— 採集 → 等 28 分鐘 → 再採集一次，
 把實際間隔從 60 分鐘壓到約 30 分鐘。
 
-**這三層互不衝突**：`watchdog.py` 的 25 分鐘門檻會自動去重，
+**這四層互不衝突**：`watchdog.py` 的 25 分鐘門檻會自動去重，
 所以哪一層先跑到，其他層看到資料還新鮮就會直接跳過。
 
-`scripts/watchdog.py` 是第 2、3 層共用的：它會先 `git pull`，看 `data/latest.csv`
+`scripts/watchdog.py` 是第 1、2 層共用的：它會先 `git pull`，看 `data/latest.csv`
 的 `scraped_at` 有多舊，**舊於 25 分鐘才**補採集，然後 rebuild dashboard、
 commit、push。門檻設 25 而不是 45，是為了讓 30 分鐘的節奏真的落在 30 分鐘
 （設 45 會出現「看到只舊 24 分就跳過、下次等到 60 分」的 84 分鐘空洞）。
+第 3 層不經過 `watchdog.py`，是直接打 GitHub API 觸發 Actions。
 
 ### 手動 / 外部觸發
 
