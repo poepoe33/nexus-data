@@ -122,6 +122,14 @@ select{
 .seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
   font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
 .seg button.on{background:#1E2A3A;color:var(--tx);border-color:#33465C}
+#cpsel{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  color:var(--tx);font:inherit;font-size:14px;padding:11px 10px;outline:none;margin-bottom:10px;
+  -webkit-appearance:none;appearance:none}
+#cpsel:focus{border-color:var(--accent)}
+.noData{font-size:11.5px;color:var(--tx3);text-align:center;padding:4px 0 8px}
+.bigbtn{display:block;width:100%;margin-top:16px;background:#1E2A3A;border:1px solid #33465C;
+  color:var(--tx);font:inherit;font-size:13.5px;padding:12px 0;border-radius:11px;cursor:pointer}
+.bigbtn:active{background:#26344A}
 
 /* sheet */
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:.22s;z-index:40}
@@ -179,7 +187,10 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
     </div>
   </div>
 
-  <div id="charts" style="margin-top:16px"></div>
+  <div style="margin-top:16px">
+    <select id="cpsel" onchange="renderCharts()"></select>
+    <div id="charts"></div>
+  </div>
 
   <div class="tabs">
     <button id="t1" class="on" onclick="setTab(0)">即時車位</button>
@@ -293,12 +304,42 @@ function barChart(vals, labels){
   return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${bars}</svg>`;
 }
 
+function initSel(){
+  const sel = document.getElementById("cpsel");
+  if(!sel || sel.options.length) return;
+  const list = [{id:"__all__", name:"全澳整體"}].concat(
+    D.carparks.slice().sort((a,b)=>a.name.localeCompare(b.name,"zh"))
+      .map(c=>({id:c.id, name:c.name}))
+  );
+  sel.innerHTML = list.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("");
+  sel.value = "__all__";
+}
+
+function pickChart(){
+  const sel = document.getElementById("cpsel");
+  const id = sel ? sel.value : "__all__";
+  return id==="__all__" ? allOver() : (D.carparks.find(x=>x.id===id) || allOver());
+}
+
 function renderCharts(){
   const el = document.getElementById("charts");
   if(!el) return;
+  const c = pickChart();
+  const prof = c.profile||[], wk = c.weekday_profile||[];
+  const sub = c.id==="__all__" ? "依車位數加權平均" : "平均使用率";
   el.innerHTML =
-    frame("全澳 24 小時使用率","依車位數加權平均", lineChart(CH.profile||[])) +
-    frame("各星期平均使用率","全澳加權", barChart(CH.weekday||[], WDS));
+    frame(`${esc(c.name)} · 24 小時使用率`, sub, lineChart(prof)) +
+    frame(`${esc(c.name)} · 各星期平均使用率`, sub, barChart(wk, WDS)) +
+    (!prof.some(v=>v!=null)
+      ? `<div class="noData">這個停車場還沒有時段資料，圖表會在資料累積後自動出現</div>` : "");
+}
+
+function pinChart(id){
+  const sel = document.getElementById("cpsel");
+  if(sel){ sel.value = id; renderCharts(); }
+  closeSheet();
+  const el = document.getElementById("charts");
+  if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 function allOver(){
@@ -445,6 +486,9 @@ function openSheet(id){
       <div class="empty" style="padding:20px 0">這個停車場還沒有足夠的歷史樣本</div></div>`;
   }
 
+  if(id!=="__all__")
+    h += `<button class="bigbtn" onclick="pinChart('${c.id}')">在上方圖表顯示這個停車場</button>`;
+
   const m = c.meta||{};
   h += `<div class="kv">
     ${m.address?`<div><em>位置</em><span>${esc(m.address)}</span></div>`:""}
@@ -464,6 +508,7 @@ function closeSheet(){
 }
 
 overview();
+initSel();
 renderCharts();
 render();
 </script>
