@@ -168,11 +168,18 @@ print(busy.groupby("name")["car"].mean().sort_values().head(10))
 
 ### 所以：三層備援
 
-| 層 | 機制 | 頻率 | 依賴 |
+| 層 | 機制 | 實際頻率 | 依賴 |
 |---|---|---|---|
-| 1 | GitHub Actions `schedule` | 每 30 分 | GitHub 排程器（目前不穩） |
-| 2 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 |
-| 3 | 本機 WorkBuddy 每小時自動化 | 每小時 | WorkBuddy 開著 |
+| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 |
+| 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 |
+| 3 | GitHub Actions `schedule` | 尚未生效 | GitHub 排程器 |
+
+第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
+所以改成「一次觸發、跑兩趟」—— 採集 → 等 28 分鐘 → 再採集一次，
+把實際間隔從 60 分鐘壓到約 30 分鐘。
+
+**這三層互不衝突**：`watchdog.py` 的 25 分鐘門檻會自動去重，
+所以哪一層先跑到，其他層看到資料還新鮮就會直接跳過。
 
 `scripts/watchdog.py` 是第 2、3 層共用的：它會先 `git pull`，看 `data/latest.csv`
 的 `scraped_at` 有多舊，**舊於 25 分鐘才**補採集，然後 rebuild dashboard、
@@ -192,7 +199,19 @@ export GITHUB_TOKEN=<fine-grained PAT，只需此 repo 的 Actions: write>
 建議用 fine-grained PAT 而不是 classic PAT，只給這一個 repo 的
 **Actions: Read and write**，其餘全部 No access。
 
-### 安裝本機 30 分鐘排程（一行）
+### 安裝本機 30 分鐘排程
+
+**最簡單：在 Finder 裡雙擊 `install-schedule.command`。**
+
+它會安裝並啟用 launchd 排程（每小時的 `:00` 與 `:30` 各跑一次 watchdog.py）。
+移除則雙擊 `uninstall-schedule.command`。
+
+為什麼要「雙擊」而不是由助理代跑：`.command` 被 Finder 雙擊時是由 Terminal 啟動，
+跑在**使用者的 GUI session** 裡，才有權限安裝 launchd 排程。
+從 AI 助理的沙箱環境呼叫 `launchctl` 一律被拒（`Bootstrap failed: 5: Input/output error`），
+`crontab` 則是 `operation not permitted` —— 這是 macOS sandbox 的限制。
+
+想手打的話，等效指令是：
 
 ```bash
 launchctl bootstrap gui/$UID \
@@ -200,6 +219,27 @@ launchctl bootstrap gui/$UID \
 ```
 
 log 在 `~/Library/Logs/macao-carpark-watchdog.log`。
-移除：`launchctl bootout gui/$UID/com.paulchang.macao-carpark-watchdog`。
-`~/Library/LaunchAgents` 裡的 plist 也會在**下次登入時自動載入**，
-所以就算不跑上面那行，重開機登入後也會生效。
+**不用做任何事也會生效**：`~/Library/LaunchAgents` 裡的 plist 會在下次登入時自動載入。
+
+### 完全不想依賴這台 Mac？用外部 cron 打 workflow_dispatch
+
+GitHub 的 `schedule` 目前還沒註冊成功（見上表），但 `workflow_dispatch` **是通的**。
+所以任何有計時能力的服務都能當觸發器，而且不需要 Mac 開機：
+
+1. 到 [cron-job.org](https://cron-job.org)（免費）註冊
+2. Create cronjob：
+   - URL：`https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/dispatches`
+   - Method：`POST`
+   - Schedule：every 30 minutes
+   - Advanced → Headers：
+     - `Authorization: Bearer <你的 fine-grained PAT>`
+     - `Accept: application/vnd.github+json`
+   - Request body：`{"ref":"main"}`
+3. 存檔。之後每 30 分鐘 GitHub 就會收到一次觸發。
+
+⚠️ 這個 PAT 會存在第三方伺服器上，所以**一定要用 fine-grained PAT**，
+只授權 `poepoe33/nexus-data` 這一個 repo、權限只給 **Actions: Read and write**，
+其他全部設 No access。被洩漏時傷害範圍就只限這個 repo。
+
+想在雲端保存 token 更安全的話，改用 Cloudflare Worker + Cron Trigger
+（免費方案支援每分鐘觸發，token 放 Worker Secret）。
