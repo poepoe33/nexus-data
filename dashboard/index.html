@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#0B0E14">
+<title>澳門停車場實時車位</title>
+<style>
+:root{
+  --bg:#0B0E14; --card:#141A24; --card2:#1A2230; --line:#232E3E;
+  --tx:#E6EDF3; --tx2:#9AA7B8; --tx3:#6B7889;
+  --ok:#2EA043; --warn:#D29922; --bad:#F85149; --accent:#388BFD;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--tx);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
+
+/* header */
+header{padding:22px 0 12px}
+h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
+.sub{margin-top:5px;font-size:12px;color:var(--tx3)}
+.sub b{color:var(--tx2);font-weight:500}
+
+/* data progress banner */
+.banner{
+  margin:12px 0 16px;padding:11px 13px;border-radius:12px;
+  background:linear-gradient(90deg,rgba(56,139,253,.14),rgba(56,139,253,.04));
+  border:1px solid rgba(56,139,253,.28);font-size:12px;color:var(--tx2);line-height:1.55
+}
+.banner b{color:var(--accent);font-weight:600}
+.bar{height:5px;border-radius:3px;background:#1B2431;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
+
+/* overview */
+.ov{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.ring{position:relative;width:96px;height:96px;flex:0 0 96px}
+.ring svg{transform:rotate(-90deg)}
+.ring .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .val b{font-size:23px;font-weight:600;letter-spacing:-.5px}
+.ring .val span{font-size:10px;color:var(--tx3);margin-top:1px}
+.stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px 8px}
+.stat{background:var(--card2);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:16px;font-weight:600;letter-spacing:-.2px}
+.stat span{font-size:11px;color:var(--tx3)}
+
+/* tabs */
+.tabs{display:flex;gap:6px;margin:18px 0 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{
+  flex:1;border:0;background:transparent;color:var(--tx2);font:inherit;font-size:14px;font-weight:500;
+  padding:9px 0;border-radius:9px;cursor:pointer;transition:.18s
+}
+.tabs button.on{background:var(--accent);color:#fff}
+
+/* search + sort */
+.tools{display:flex;gap:8px;margin-bottom:12px}
+input[type=search]{
+  flex:1;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  padding:10px 12px;color:var(--tx);font:inherit;font-size:14px;outline:none
+}
+input[type=search]:focus{border-color:var(--accent)}
+select{
+  background:var(--card);border:1px solid var(--line);border-radius:11px;color:var(--tx2);
+  font:inherit;font-size:13px;padding:10px 8px;outline:none
+}
+
+/* carpark cards */
+.list{display:flex;flex-direction:column;gap:9px}
+.cp{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;transition:.15s}
+.cp:active{background:var(--card2)}
+.cp .top{display:flex;align-items:baseline;gap:8px}
+.cp .nm{font-size:15px;font-weight:500;flex:1;line-height:1.35}
+.cp .zn{font-size:10px;color:var(--tx3);border:1px solid var(--line);border-radius:5px;padding:1px 5px;white-space:nowrap}
+.cp .mid{display:flex;align-items:center;gap:10px;margin-top:9px}
+.cp .num{font-size:13px;color:var(--tx2);white-space:nowrap}
+.cp .num b{font-size:19px;font-weight:600;color:var(--tx);letter-spacing:-.3px}
+.track{flex:1;height:7px;border-radius:4px;background:#1B2431;overflow:hidden}
+.track i{display:block;height:100%;border-radius:4px}
+.cp .ft{margin-top:7px;font-size:11px;color:var(--tx3);display:flex;justify-content:space-between;gap:8px}
+
+/* peak row */
+.pk{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.pk:active{background:var(--card2)}
+.pk .l{flex:1;min-width:0}
+.pk .l .n{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk .l .p{font-size:11.5px;color:var(--tx3);margin-top:3px}
+.pk .l .p b{font-weight:600}
+.pk .r{text-align:right;flex:0 0 auto}
+.pk .r b{display:block;font-size:17px;font-weight:600;letter-spacing:-.3px}
+.pk .r span{font-size:10px;color:var(--tx3)}
+
+/* heatmap */
+.hm{margin-top:14px}
+.hm-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.hm-hd b{font-size:13.5px;font-weight:600}
+.hm-hd span{font-size:11px;color:var(--tx3)}
+.grid{display:grid;grid-template-columns:26px repeat(24,1fr);gap:2px}
+.gl{font-size:9.5px;color:var(--tx3);display:flex;align-items:center;justify-content:flex-end;padding-right:3px}
+.hc{aspect-ratio:1;border-radius:2px;background:#161D28}
+.hc.na{background:#131922}
+.hl{font-size:8.5px;color:var(--tx3);text-align:center;line-height:1}
+.legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10.5px;color:var(--tx3)}
+.legend i{width:15px;height:9px;border-radius:2px;display:block}
+
+/* sheet */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:.22s;z-index:40}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;max-height:88vh;overflow-y:auto;
+  background:#10161F;border-top:1px solid var(--line);border-radius:20px 20px 0 0;
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,0,1);
+  padding:8px 16px calc(30px + env(safe-area-inset-bottom));
+  max-width:520px;margin:0 auto;-webkit-overflow-scrolling:touch
+}
+.sheet.on{transform:translateY(0)}
+.handle{width:38px;height:4px;border-radius:2px;background:#2C3949;margin:6px auto 14px}
+.sheet h2{margin:0 0 3px;font-size:18px;font-weight:600;line-height:1.35}
+.sheet .sz{font-size:11.5px;color:var(--tx3)}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 4px}
+.slot{background:var(--card2);border-radius:11px;padding:9px 8px;text-align:center}
+.slot b{display:block;font-size:17px;font-weight:600;letter-spacing:-.3px}
+.slot b small{font-size:11px;font-weight:400;color:var(--tx3)}
+.slot span{font-size:10.5px;color:var(--tx3);display:block;margin-top:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{background:var(--card2);border-radius:8px;padding:6px 9px;font-size:11.5px;color:var(--tx2)}
+.chip b{color:var(--tx);font-weight:600}
+.kv{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:7px}
+.kv div{display:flex;gap:10px;font-size:12.5px}
+.kv em{color:var(--tx3);font-style:normal;flex:0 0 64px}
+.kv span{flex:1;color:var(--tx2);word-break:break-word}
+.empty{text-align:center;color:var(--tx3);font-size:13px;padding:34px 0}
+footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>澳門公共停車場 · 實時車位</h1>
+    <div class="sub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集 · <b id="gen"></b></div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="ov">
+    <div class="ring">
+      <svg width="96" height="96" viewBox="0 0 96 96">
+        <circle cx="48" cy="48" r="40" fill="none" stroke="#1B2431" stroke-width="9"/>
+        <circle id="arc" cx="48" cy="48" r="40" fill="none" stroke="#F85149" stroke-width="9"
+                stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+      </svg>
+      <div class="val"><b id="orate">--</b><span>全澳使用率</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="socc">--</b><span>使用中車位</span></div>
+      <div class="stat"><b id="sfree">--</b><span>剩餘車位</span></div>
+      <div class="stat"><b id="scap">--</b><span>輕型車總位</span></div>
+      <div class="stat"><b id="scnt">--</b><span>停車場數</span></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="t1" class="on" onclick="setTab(0)">即時車位</button>
+    <button id="t2" onclick="setTab(1)">每週高峰</button>
+  </div>
+
+  <div class="tools">
+    <input type="search" id="q" placeholder="搜尋停車場名稱…" oninput="render()">
+    <select id="sort" onchange="render()">
+      <option value="rate">使用率</option>
+      <option value="free">剩餘少</option>
+      <option value="name">名稱</option>
+    </select>
+  </div>
+
+  <div id="v1"><div class="list" id="list"></div></div>
+  <div id="v2" style="display:none"><div class="list" id="plist"></div></div>
+
+  <footer>
+    使用率 = 1 − 剩餘 ÷ 總車位（輕型汽車）<br>
+    時段為澳門時間 UTC+8 · 顏色越紅代表越滿
+  </footer>
+</div>
+
+<div class="mask" id="mask" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="handle"></div>
+  <div id="sbody"></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+const D = window.__DATA__ || {carparks:[],overall:{}};
+const WD = D.weekdays || ["週一","週二","週三","週四","週五","週六","週日"];
+let tab = 0;
+
+const col = r => r==null ? "#131922" : `hsl(${Math.round(140-140*r)},62%,${Math.round(30+20*r)}%)`;
+const colText = r => r==null ? "#6B7889" : `hsl(${Math.round(140-140*r)},70%,62%)`;
+const pct = r => r==null ? "--" : Math.round(r*100)+"%";
+const nf = n => n==null ? "--" : n.toLocaleString("en-US");
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function setTab(t){
+  tab = t;
+  document.getElementById("t1").classList.toggle("on", t===0);
+  document.getElementById("t2").classList.toggle("on", t===1);
+  document.getElementById("v1").style.display = t===0 ? "" : "none";
+  document.getElementById("v2").style.display = t===1 ? "" : "none";
+  render();
+}
+
+function overview(){
+  const o = D.overall || {};
+  document.getElementById("gen").textContent = (D.last_snapshot||D.generated_at||"") + " (UTC+8)";
+  document.getElementById("orate").textContent = pct(o.rate);
+  document.getElementById("arc").style.stroke = colText(o.rate);
+  document.getElementById("arc").style.strokeDashoffset = 251.3 * (1 - (o.rate||0));
+  document.getElementById("socc").textContent = nf(o.occupied);
+  document.getElementById("sfree").textContent = nf(o.free);
+  document.getElementById("scap").textContent = nf(o.capacity);
+  document.getElementById("scnt").textContent = nf(o.carparks);
+  document.getElementById("scnt").style.color = "";
+
+  const days = D.days_covered || 0;
+  const need = 7;
+  const p = Math.min(100, Math.round(days/need*100));
+  document.getElementById("banner").innerHTML =
+    `<b>週間高峰分析 · 資料累積 ${days} / ${need} 天</b>
+     <div class="bar"><i style="width:${p}%"></i></div>
+     <div style="margin-top:7px">${days < need
+       ? `已有 ${D.snapshots||0} 筆快照。每個「星期 × 小時」格子要累積約 7 天才能判斷穩定的高峰時段，未滿的格子會顯示為空白。`
+       : `樣本已足夠，熱力圖可直接判讀每週高峰時段。`}</div>`;
+}
+
+function heatmapHTML(hm, samples){
+  let h = '<div class="grid"><div class="gl"></div>';
+  for(let hr=0; hr<24; hr++) h += `<div class="hl">${hr%3===0?hr:""}</div>`;
+  for(let wd=0; wd<7; wd++){
+    h += `<div class="gl">${WD[wd].slice(1)}</div>`;
+    for(let hr=0; hr<24; hr++){
+      const v = hm && hm[wd] ? hm[wd][hr] : null;
+      const n = samples && samples[wd] ? samples[wd][hr] : 0;
+      const na = v==null ? " na" : "";
+      const tip = v==null ? "資料累積中" : `${WD[wd]} ${hr}:00 平均使用率 ${pct(v)}（${n} 筆）`;
+      h += `<div class="hc${na}" style="background:${col(v)}" title="${tip}"></div>`;
+    }
+  }
+  h += "</div>";
+  h += `<div class="legend"><span>空</span>
+    <i style="background:${col(0)}"></i><i style="background:${col(.25)}"></i>
+    <i style="background:${col(.5)}"></i><i style="background:${col(.75)}"></i>
+    <i style="background:${col(1)}"></i><span>滿</span>
+    <span style="margin-left:auto">灰格 = 待累積</span></div>`;
+  return h;
+}
+
+function render(){
+  const q = document.getElementById("q").value.trim();
+  const sort = document.getElementById("sort").value;
+  let rows = D.carparks.filter(c => !q || c.name.includes(q) || (c.meta.address||"").includes(q));
+
+  if(tab===0){
+    rows.sort((a,b)=>{
+      if(sort==="name") return a.name.localeCompare(b.name,"zh");
+      if(sort==="free") return (a.current.car??1e9)-(b.current.car??1e9);
+      return (b.rate??-1)-(a.rate??-1);
+    });
+    document.getElementById("list").innerHTML = rows.length ? rows.map(c=>{
+      const cap = c.capacity.car, free = c.current.car;
+      const r = c.rate;
+      return `<div class="cp" onclick="openSheet('${c.id}')">
+        <div class="top"><div class="nm">${esc(c.name)}</div><div class="zn">${esc(c.zone)}</div></div>
+        <div class="mid">
+          <div class="num">剩 <b style="color:${colText(r)}">${free==null?"-":free}</b> / ${cap==null?"-":cap}</div>
+          <div class="track"><i style="width:${Math.round((r||0)*100)}%;background:${colText(r)}"></i></div>
+          <div class="num" style="flex:0 0 auto;color:${colText(r)}">${pct(r)}</div>
+        </div>
+        <div class="ft"><span>電單車剩 ${c.current.motor==null?"-":c.current.motor}</span>
+        <span>更新 ${esc((c.current.updated_at||"").slice(11,16)||"--:--")}</span></div>
+      </div>`;
+    }).join("") : `<div class="empty">找不到符合的停車場</div>`;
+  } else {
+    rows = rows.filter(c => c.peak);
+    rows.sort((a,b)=> (b.peak?b.peak.rate:0) - (a.peak?a.peak.rate:0));
+    document.getElementById("plist").innerHTML = rows.length ? rows.map(c=>{
+      const p = c.peak;
+      return `<div class="pk" onclick="openSheet('${c.id}')">
+        <div class="l"><div class="n">${esc(c.name)}</div>
+          <div class="p">高峰 <b style="color:${colText(p.rate)}">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00</b>
+          · ${p.samples} 筆樣本</div></div>
+        <div class="r"><b style="color:${colText(p.rate)}">${pct(p.rate)}</b><span>使用率</span></div>
+      </div>`;
+    }).join("") : `<div class="empty">尚無足夠資料判斷高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
+  }
+}
+
+function openSheet(id){
+  const c = D.carparks.find(x=>x.id===id);
+  if(!c) return;
+  const cur = c.current||{}, cap = c.capacity||{};
+  const slot = (label, free, total) => free==null&&total==null ? "" :
+    `<div class="slot"><b style="color:${colText(free!=null&&total?1-free/total:null)}">${free==null?"-":free}${total?`<small> / ${total}</small>`:""}</b><span>${label}</span></div>`;
+
+  let h = `<h2>${esc(c.name)}</h2><div class="sz">${esc(c.zone)} · 更新 ${esc(cur.updated_at||"--")}</div>`;
+  h += `<div class="slots">
+    ${slot("輕型汽車", cur.car, cap.car)}
+    ${slot("電單車", cur.motor, cap.motor)}
+    ${slot("電動汽車", cur.ev_car, cap.ev_car)}
+    ${slot("電動電單車", cur.ev_motor, cap.ev_motor)}
+    ${slot("傷殘車位", cur.disabled, cap.disabled)}
+  </div>`;
+
+  if(c.peak){
+    h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰</b><span>${c.peak.samples} 筆樣本 @ 尖峰</span></div>
+      ${heatmapHTML(c.heatmap, c.samples)}
+      <div class="chips">${c.peak_top.map(p=>
+        `<span class="chip">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00 <b style="color:${colText(p.rate)}">${pct(p.rate)}</b></span>`
+      ).join("")}</div></div>`;
+  } else {
+    h += `<div class="hm"><div class="hm-hd"><b>每週使用高峰</b><span>資料累積中</span></div>
+      <div class="empty" style="padding:20px 0">這個停車場還沒有足夠的歷史樣本</div></div>`;
+  }
+
+  const m = c.meta||{};
+  h += `<div class="kv">
+    ${m.address?`<div><em>位置</em><span>${esc(m.address)}</span></div>`:""}
+    ${m.phone?`<div><em>電話</em><span>${esc(m.phone)}</span></div>`:""}
+    ${m.height_limit_m?`<div><em>高度限制</em><span>${esc(m.height_limit_m)} 米</span></div>`:""}
+    ${m.fee_light?`<div><em>輕型車收費</em><span>${esc(m.fee_light)}</span></div>`:""}
+    ${m.fee_motor?`<div><em>電單車收費</em><span>${esc(m.fee_motor)}</span></div>`:""}
+  </div>`;
+
+  document.getElementById("sbody").innerHTML = h;
+  document.getElementById("mask").classList.add("on");
+  document.getElementById("sheet").classList.add("on");
+}
+function closeSheet(){
+  document.getElementById("mask").classList.remove("on");
+  document.getElementById("sheet").classList.remove("on");
+}
+
+overview();
+render();
+</script>
+</body>
+</html>

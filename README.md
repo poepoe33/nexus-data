@@ -63,10 +63,28 @@ python3 scripts/scrape.py reference --root .   # 抓總車位/地址/收費（91
 python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .gz
 ```
 
+## H5 儀表板
+
+`dashboard/index.html` 是一個手機優先的單頁儀表板，直接開就能看（不用起 server，資料在 `dashboard/data.js`）。
+
+- **即時車位**：全澳使用率環形圖、91 個停車場排序（可依使用率／剩餘數量／名稱）、搜尋、點開看各車種明細與收費
+- **每週高峰**：每個停車場的「星期 × 小時」使用率熱力圖（7×24 格），以及使用率最高的 5 個時段
+
+顏色規則：綠 = 空、紅 = 滿；灰色格子代表該時段樣本還沒累積到。
+
+⚠️ **週間高峰需要時間養資料**：每個「星期 × 小時」格子要累積約 7 天才能判斷穩定高峰，
+頁面頂部會顯示累積進度（目前 `days_covered / 7`）。資料是每 30 分鐘自動補的，
+滿一週後熱力圖就能直接判讀。
+
+本地重新產生：`python3 scripts/build_dashboard.py`
+
 ## Repo 結構
 
 ```
 scripts/scrape.py                    採集器（三種模式）
+scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
+dashboard/index.html                 H5 儀表板
+dashboard/data.js / data.json        聚合結果（每次 snapshot 自動重建）
 .github/workflows/scrape.yml         每 30 分鐘：快照
 .github/workflows/reference.yml      每天：總車位等主資料
 data/latest.csv                      最新一次快照
