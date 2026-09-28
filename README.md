@@ -48,7 +48,7 @@
 git init
 git add .
 git commit -m "init"
-git remote add origin git@github.com:<你>/macao-carpark-scraper.git
+git remote add origin git@github.com:poepoe33/nexus-data.git
 git push -u origin main
 
 # 2. 手動觸發一次，確認 Actions 能跑
