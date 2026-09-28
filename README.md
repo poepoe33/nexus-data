@@ -134,18 +134,37 @@ print(busy.groupby("name")["car"].mean().sort_values().head(10))
 - 抓取頻率與並發都刻意壓到最低（快照 1 請求、主資料每次請求間隔 0.5 秒），
   避免對政府網站造成負擔。
 
-## 排程：為什麼 GitHub 的 schedule 不能信
+## 排程：新 repo 的 schedule 需要好幾個小時才會生效
 
-GitHub Actions 的 `schedule` 是 **best-effort**，不是保證：
+**先講結論：GitHub 的排程器沒有壞，是「新 repo 的排程註冊很慢」。**
 
-- 官方文件明講整點（`:00`）負載最高，最容易被延遲或直接丟掉。
-  所以 cron 刻意寫成 `7,37 * * * *`（避開 0 與 30）。
-- **每次改動 workflow 檔，GitHub 都會重新註冊排程**，註冊要 15 分鐘到數小時，
-  期間一次都不會跑。改完就不要再動它。
-- 全新 repo 尤其明顯：實測本 repo 建立後 5.5 小時內，8 次 run **全部**來自
-  `push` / `workflow_dispatch`，`schedule` 次數為 **0**。
-- 排程只認 default branch（本 repo = `main`），fork 的 repo 不會跑排程。
-- Private repo 的排程要付費方案；本 repo 已改公開，所以免費。
+實測證據（同一個帳號 poepoe33，用 API 對照）：
+
+| repo | 建立時間 | 可見性 | cron | 第一次 `schedule` run |
+|---|---|---|---|---|
+| `aircancel` | 2026-09-27T14:49Z | private | `0 */3 * * *` | **+7.9 小時**（22:42Z） |
+| `nexus-data` | 2026-09-28T07:54Z | public | `7,37 * * * *` | 尚未（+6h 時仍為 0） |
+
+`aircancel` 的排程**正常運作**（後續還有 +8.2h、+11.8h 的 run），
+所以「這個帳號的排程器壞了」不成立。差別只在於 `nexus-data` 還太新。
+
+→ **註冊延遲約 8 小時**，這是實測值，不是官方保證。等就對了。
+
+### 已知的官方規則（docs.github.com，`schedule` 事件）
+
+- **只認 default branch**：workflow 檔必須在 default branch 上才會觸發。
+- 排程一律跑 default branch 的**最新 commit**。
+- **整點（`:00`）是負載最高點**：「If the load is sufficiently high enough, some queued
+  jobs may be dropped.」→ 所以 cron 刻意寫成 `7,37 * * * *`，避開 0 與 30。
+- **Public repo 連續 60 天沒有活動，排程會被自動停用**（private repo 沒有這條）。
+- 最短間隔 5 分鐘；不支援 `@daily` / `@hourly` 之類的非標準語法。
+- 官方文件**沒有**說明註冊要多久 —— 所以只能實測。
+
+### 改動 workflow 檔的注意事項
+
+**改動 cron 會讓排程重新註冊**（官方文件提到：對「已停用」的排程，由有 write
+權限的人改動 cron 會重新啟用）。所以本 repo 的實測策略是：**改完就不要再動它**，
+否則註冊時鐘一直歸零。這次就是因為 13:24Z 改過 cron，才要把等待時間重算。
 
 ### 所以：三層備援
 
