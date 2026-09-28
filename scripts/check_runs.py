@@ -50,10 +50,22 @@ def api(url: str, token: str) -> dict:
         return json.load(r)
 
 
+def show_steps(run: dict, token: str) -> None:
+    """列出某次 run 的每個 step 與結果 —— 排查 workflow 哪一步壞掉最快。"""
+    jobs = api(run["jobs_url"], token).get("jobs", [])
+    for j in jobs:
+        print(f"\njob: {j['name']} -> {j.get('conclusion')}")
+        for s in j.get("steps", []):
+            mark = "OK " if s.get("conclusion") == "success" else "XX "
+            print(f"   {mark} {s['name']:<42} {s.get('conclusion')}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=20)
     ap.add_argument("--repo", default=REPO)
+    ap.add_argument("--steps", action="store_true",
+                    help="同時列出最新一次 run 的每個 step（含失敗原因）")
     args = ap.parse_args()
 
     token = load_token()
@@ -89,6 +101,11 @@ def main() -> int:
         print(f"✓ schedule 已生效：此頁有 {n_sched} 筆排程觸發")
     else:
         print("✗ schedule 尚未觸發（此頁 0 筆）—— 排程可能還在註冊中")
+
+    if args.steps and runs:
+        print("\n=== 最新一次 run 的步驟 ===")
+        print(f"{runs[0]['name']} ({runs[0]['event']}) {runs[0]['created_at']}")
+        show_steps(runs[0], token)
     return 0
 
 
