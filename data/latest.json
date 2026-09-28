@@ -1,5 +1,9 @@
 {
+<<<<<<< Updated upstream
   "scraped_at": "2026-09-28 22:36:28",
+=======
+  "scraped_at": "2026-09-28 22:36:43",
+>>>>>>> Stashed changes
   "source": "https://www.dsat.gov.mo/dsat/carpark_realtime.aspx",
   "timezone": "Asia/Macau (UTC+8)",
   "count": 91,
@@ -16,10 +20,17 @@
       "heavy_gt_8m": 80,
       "carpark_id": "7085",
       "name": "蓮花路 (重型)",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:56",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -33,10 +44,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6045",
       "name": "塔石廣場地下上落客區(重型客車)",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 19,
@@ -53,7 +71,11 @@
       "updated_at": "2026-09-28 22:36:05",
       "fee_type": null,
       "special_flag": "yellow",
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -70,7 +92,11 @@
       "updated_at": "2026-09-28 22:36:11",
       "fee_type": "24小時",
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -84,10 +110,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6022",
       "name": "永寧街",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 74,
@@ -101,10 +134,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6026",
       "name": "交通事務局大樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 265,
@@ -118,10 +158,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6018",
       "name": "氹仔中央公園",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:11",
       "fee_type": "日夜間分段",
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:21",
+      "fee_type": "日夜間分段",
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 122,
@@ -138,7 +185,11 @@
       "updated_at": "2026-09-28 22:36:09",
       "fee_type": "日夜間分段",
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 2,
@@ -155,7 +206,11 @@
       "updated_at": "2026-09-28 22:36:02",
       "fee_type": "日夜間分段",
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 4,
@@ -169,10 +224,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7067",
       "name": "台暉樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:10",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 404,
@@ -186,10 +248,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7044",
       "name": "氹仔客運碼頭",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 287,
@@ -203,10 +272,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6028",
       "name": "何賢公園",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:06",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -220,10 +296,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7090",
       "name": "巴波沙大馬路公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:53",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:16",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 1,
@@ -237,10 +320,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7097",
       "name": "田畔街公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:52",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:22",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -257,7 +347,11 @@
       "updated_at": "2026-09-28 22:36:03",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 239,
@@ -271,10 +365,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7082",
       "name": "長者公寓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:11",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:20",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 506,
@@ -288,10 +389,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6005",
       "name": "宋玉生廣場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:23",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 5,
@@ -305,13 +413,20 @@
       "heavy_gt_8m": null,
       "carpark_id": "6030",
       "name": "居雅大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:22",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
-      "car": 69,
+      "car": 68,
       "motor": null,
       "ev_car": 18,
       "ev_motor": null,
@@ -322,10 +437,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7072",
       "name": "快富樓A入口",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:54",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:23",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -339,10 +461,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7073",
       "name": "快富樓B入口",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:05",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -356,10 +485,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7063",
       "name": "李加祿街",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": null,
       "special_flag": "yellow",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": "yellow",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 152,
@@ -373,10 +509,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7050",
       "name": "和諧廣場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:21",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 54,
@@ -393,7 +536,11 @@
       "updated_at": "2026-09-28 22:35:59",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 10,
@@ -407,10 +554,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7057",
       "name": "快盈大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:47",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:18",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 78,
@@ -427,7 +581,11 @@
       "updated_at": "2026-09-28 22:36:11",
       "fee_type": null,
       "special_flag": "yellow",
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -441,10 +599,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6009",
       "name": "亞馬喇前地",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": "夜間",
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": "夜間",
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -458,10 +623,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6020",
       "name": "河邊新街",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 154,
@@ -475,10 +647,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6034",
       "name": "馬六甲街",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:26",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 98,
@@ -495,7 +674,11 @@
       "updated_at": "2026-09-28 22:36:06",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 50,
@@ -512,10 +695,17 @@
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
     },
     {
       "car": 31,
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 32,
+>>>>>>> Stashed changes
       "motor": 38,
       "ev_car": null,
       "ev_motor": null,
@@ -526,10 +716,17 @@
       "heavy_gt_8m": 4,
       "carpark_id": "7077",
       "name": "柯維納馬路戶外",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:59",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:15",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 226,
@@ -543,10 +740,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6019",
       "name": "青翠樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:56",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 44,
@@ -560,10 +764,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7081",
       "name": "專科大樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:47",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:18",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 58,
@@ -580,11 +791,19 @@
       "updated_at": "2026-09-28 22:36:03",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
     },
     {
       "car": null,
       "motor": 52,
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": null,
+      "motor": 51,
+>>>>>>> Stashed changes
       "ev_car": null,
       "ev_motor": null,
       "disabled": null,
@@ -594,10 +813,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7098",
       "name": "南灣大馬路公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:00",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:30",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 369,
@@ -611,10 +837,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6001",
       "name": "南灣(栢湖)",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:25",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 14,
@@ -628,10 +861,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6035",
       "name": "青葱大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:58",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 4,
@@ -648,7 +888,11 @@
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 94,
@@ -665,7 +909,11 @@
       "updated_at": "2026-09-28 22:36:02",
       "fee_type": null,
       "special_flag": "yellow",
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 61,
@@ -679,10 +927,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7064",
       "name": "青茂口岸",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": "yellow",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:20",
+      "fee_type": null,
+      "special_flag": "yellow",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 34,
@@ -696,6 +951,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7058",
       "name": "青濤大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
@@ -704,6 +960,16 @@
     {
       "car": 635,
       "motor": 556,
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 636,
+      "motor": 557,
+>>>>>>> Stashed changes
       "ev_car": 84,
       "ev_motor": 0,
       "disabled": 15,
@@ -713,10 +979,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7059",
       "name": "青洲坊大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": "yellow",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": "yellow",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 361,
@@ -730,6 +1003,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7100",
       "name": "東民大廈公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:55",
       "fee_type": null,
       "special_flag": null,
@@ -738,6 +1012,16 @@
     {
       "car": 29,
       "motor": 19,
+=======
+      "updated_at": "2026-09-28 22:36:25",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 29,
+      "motor": 18,
+>>>>>>> Stashed changes
       "ev_car": null,
       "ev_motor": null,
       "disabled": 1,
@@ -747,10 +1031,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7091",
       "name": "東亞運大馬路公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:55",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:25",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 113,
@@ -764,10 +1055,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7083",
       "name": "東創大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:46",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:17",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 275,
@@ -784,7 +1082,11 @@
       "updated_at": "2026-09-28 22:35:58",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 382,
@@ -798,6 +1100,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7087",
       "name": "東城大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:00",
       "fee_type": null,
       "special_flag": null,
@@ -805,6 +1108,15 @@
     },
     {
       "car": 17,
+=======
+      "updated_at": "2026-09-28 22:36:15",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 16,
+>>>>>>> Stashed changes
       "motor": 46,
       "ev_car": 8,
       "ev_motor": null,
@@ -815,10 +1127,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7088",
       "name": "航海學校公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:02",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -835,7 +1154,11 @@
       "updated_at": "2026-09-28 22:36:08",
       "fee_type": "24小時",
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 12,
@@ -849,10 +1172,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7096",
       "name": "高美士街公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:52",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:22",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -866,6 +1196,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7099",
       "name": "徐日昇寅公馬路公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:50",
       "fee_type": null,
       "special_flag": null,
@@ -873,6 +1204,15 @@
     },
     {
       "car": 115,
+=======
+      "updated_at": "2026-09-28 22:36:20",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 116,
+>>>>>>> Stashed changes
       "motor": 162,
       "ev_car": 8,
       "ev_motor": 10,
@@ -883,10 +1223,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6043",
       "name": "松樹尾",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:26",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 220,
@@ -900,10 +1247,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7062",
       "name": "栢力",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:23",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -920,7 +1274,11 @@
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": "24小時",
       "special_flag": "orange",
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 140,
@@ -937,7 +1295,11 @@
       "updated_at": "2026-09-28 22:36:05",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 159,
@@ -951,10 +1313,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7078",
       "name": "協和醫院 - 東入口",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 377,
@@ -968,10 +1337,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7079",
       "name": "協和醫院 - 北入口",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 159,
@@ -985,10 +1361,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7074",
       "name": "旅遊塔",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 17,
@@ -1002,10 +1385,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6042",
       "name": "栢景",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:53",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 352,
@@ -1019,10 +1409,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6011",
       "name": "栢樂停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:07",
       "fee_type": null,
       "special_flag": "yellow",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": "yellow",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 95,
@@ -1036,10 +1433,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6012",
       "name": "栢蕙",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:53",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 167,
@@ -1056,7 +1460,11 @@
       "updated_at": "2026-09-28 22:36:02",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 146,
@@ -1073,7 +1481,11 @@
       "updated_at": "2026-09-28 22:35:59",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 84,
@@ -1087,10 +1499,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6024",
       "name": "栢港",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:06",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 52,
@@ -1107,7 +1526,11 @@
       "updated_at": "2026-09-28 22:36:07",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 19,
@@ -1121,10 +1544,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6027",
       "name": "栢威",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:58",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 22,
@@ -1138,10 +1568,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6037",
       "name": "黑橋街",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:07",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 56,
@@ -1155,10 +1592,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6006",
       "name": "華士古達嘉馬花園",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:10",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 21,
@@ -1172,10 +1616,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6014",
       "name": "祐漢公園",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:29",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 2804,
@@ -1189,10 +1640,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7052",
       "name": "港珠澳大橋邊檢大樓東公共停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:05",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:21",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 2874,
@@ -1206,10 +1664,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7053",
       "name": "港珠澳大橋邊檢大樓西停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:58",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -1223,6 +1688,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7075",
       "name": "媽閣交通樞紐停車場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": "24小時",
       "special_flag": null,
@@ -1230,6 +1696,15 @@
     },
     {
       "car": 29,
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": "24小時",
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 28,
+>>>>>>> Stashed changes
       "motor": 44,
       "ev_car": 0,
       "ev_motor": 8,
@@ -1240,10 +1715,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7061",
       "name": "海灣南街",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:09",
       "fee_type": null,
       "special_flag": "yellow",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:26",
+      "fee_type": null,
+      "special_flag": "yellow",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -1260,7 +1742,11 @@
       "updated_at": "2026-09-28 22:36:09",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 17,
@@ -1274,10 +1760,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7071",
       "name": "華士古達嘉馬花園- 東區",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:10",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:24",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": null,
@@ -1291,6 +1784,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7086",
       "name": "望信樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": "夜間",
       "special_flag": "orange",
@@ -1298,6 +1792,15 @@
     },
     {
       "car": 353,
+=======
+      "updated_at": "2026-09-28 22:36:26",
+      "fee_type": "夜間",
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 352,
+>>>>>>> Stashed changes
       "motor": 235,
       "ev_car": 22,
       "ev_motor": 8,
@@ -1308,10 +1811,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7066",
       "name": "望德樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 119,
@@ -1325,6 +1835,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "7068",
       "name": "望廈體育中心",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:10",
       "fee_type": null,
       "special_flag": null,
@@ -1332,6 +1843,15 @@
     },
     {
       "car": 27,
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 26,
+>>>>>>> Stashed changes
       "motor": 110,
       "ev_car": 7,
       "ev_motor": 19,
@@ -1342,6 +1862,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "6007",
       "name": "望善樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:14",
       "fee_type": null,
       "special_flag": null,
@@ -1349,6 +1870,15 @@
     },
     {
       "car": 39,
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 40,
+>>>>>>> Stashed changes
       "motor": 100,
       "ev_car": 9,
       "ev_motor": 4,
@@ -1359,6 +1889,7 @@
       "heavy_gt_8m": null,
       "carpark_id": "6025",
       "name": "望賢樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:09",
       "fee_type": null,
       "special_flag": null,
@@ -1366,6 +1897,15 @@
     },
     {
       "car": 119,
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+    },
+    {
+      "car": 120,
+>>>>>>> Stashed changes
       "motor": 737,
       "ev_car": 16,
       "ev_motor": 13,
@@ -1376,10 +1916,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6029",
       "name": "湖畔大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:09",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:27",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 88,
@@ -1393,10 +1940,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6032",
       "name": "業興大廈",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:23",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 312,
@@ -1413,7 +1967,11 @@
       "updated_at": "2026-09-28 22:36:08",
       "fee_type": null,
       "special_flag": null,
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 108,
@@ -1427,10 +1985,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7054",
       "name": "澳門新批發市場",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:51",
       "fee_type": null,
       "special_flag": "yellow",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:22",
+      "fee_type": null,
+      "special_flag": "yellow",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 320,
@@ -1444,10 +2009,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6015",
       "name": "蓮花路",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:10",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:20",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 122,
@@ -1464,7 +2036,11 @@
       "updated_at": "2026-09-28 22:35:59",
       "fee_type": null,
       "special_flag": "orange",
+<<<<<<< Updated upstream
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 184,
@@ -1478,10 +2054,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6004",
       "name": "藝園",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:07",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:23",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 126,
@@ -1495,10 +2078,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6031",
       "name": "樂群樓",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": null,
       "special_flag": null,
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:25",
+      "fee_type": null,
+      "special_flag": null,
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 24,
@@ -1512,10 +2102,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "6013",
       "name": "麗都",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:12",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:28",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 404,
@@ -1529,10 +2126,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7060",
       "name": "關閘綜合體育場館",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:36:13",
       "fee_type": null,
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:23",
+      "fee_type": null,
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     },
     {
       "car": 0,
@@ -1546,10 +2150,17 @@
       "heavy_gt_8m": null,
       "carpark_id": "7069",
       "name": "聯生圓形地",
+<<<<<<< Updated upstream
       "updated_at": "2026-09-28 22:35:50",
       "fee_type": "夜間",
       "special_flag": "orange",
       "scraped_at": "2026-09-28 22:36:28"
+=======
+      "updated_at": "2026-09-28 22:36:22",
+      "fee_type": "夜間",
+      "special_flag": "orange",
+      "scraped_at": "2026-09-28 22:36:43"
+>>>>>>> Stashed changes
     }
   ]
 }
