@@ -1121,6 +1121,66 @@ function showHits(list){
   }
 }
 
+/* 高德的搜索外掛「剛載入完」不等於「可以用了」：內部的授權握手
+   （FlyDataAuthTask）是非同步的，握手還沒完成時送出的第一個請求會直接
+   error 或一直不回來。實測：同一頁面在 plugin 載入後立刻搜尋會失敗，
+   隔幾秒後同樣的關鍵字 6/6 成功。
+   所以 (1) 給請求加逾時，避免「查詢中…」永遠卡住；
+        (2) error／逾時自動重試一次，救回冷啟動。
+   兩次都失敗才報錯 —— 不隱藏真正的故障。
+   測試用的加速鉤子見 scripts/test_map.js；正式環境 window.__AMAP_TEST__ 不存在。 */
+var _T = window.__AMAP_TEST__ || null;
+var SEARCH_TIMEOUT = (_T && _T.timeout) || 12000;
+var RETRY_DELAY    = (_T && _T.retry)   || 1200;
+
+function runSearch(kw, attempt){
+  var settled = false;
+  var timer = setTimeout(function(){
+    if(settled) return;
+    settled = true;
+    if(attempt < 1) retry(); else fail("");
+  }, SEARCH_TIMEOUT);
+
+  function retry(){
+    setTimeout(function(){ runSearch(kw, attempt + 1); }, RETRY_DELAY);
+  }
+  function fail(info){
+    qbtn(false);
+    $("qhint").innerHTML = '搜尋服務無法使用' +
+      (info ? '（' + esc(info) + '）' : '') +
+      ' · 請直接<b>點地圖</b>選位置（地圖與推薦不受影響）';
+  }
+
+  PS.search(kw, function(status, result){
+    if(settled) return;              // 逾時已處理過，這個回呼就丟掉
+    settled = true;
+    clearTimeout(timer);
+
+    /* status 有三種：complete（有結果）/ no_data（查無結果）/
+       error（服務本身出錯 —— 例如 INVALID_USER_DOMAIN 域名白名單不符、
+       額度用完、網路問題）。error 一定要跟「查無結果」分開講，
+       否則用戶會以為係自己打錯字。 */
+    if(status === "error"){
+      if(attempt < 1){ retry(); return; }   // 先重試一次再報錯
+      fail((result && result.info) || "");
+      return;
+    }
+    qbtn(false);
+    var pois = (status === "complete" && result && result.poiList && result.poiList.pois) || [];
+    if(!pois.length){
+      $("qhint").innerHTML = '找不到「' + esc(kw) + '」 · 換個關鍵字或<b>點地圖</b>選位置';
+      return;
+    }
+    var hits = pois.map(function(p){
+      var L = p.location;   // AMap.LngLat
+      return { lat: L.lat, lng: L.lng, name: p.name, addr: p.address };
+    });
+    hitCache[kw] = hits;
+    if(hits.length === 1) setOrigin(hits[0]);
+    else showHits(hits);     // 多個符合 → 讓用戶自己揀，不要擅自揀第一個
+  });
+}
+
 function doSearch(kw){
   kw = (kw || "").trim();
   if(kw.length < 2) return;
@@ -1133,31 +1193,7 @@ function doSearch(kw){
       $("qhint").innerHTML = '搜尋服務載入失敗（可能是 key 權限或網路），請直接<b>點地圖</b>選位置';
       return;
     }
-    PS.search(kw, function(status, result){
-      qbtn(false);
-      /* status 有三種：complete（有結果）/ no_data（查無結果）/
-         error（服務本身出錯 —— 例如 INVALID_USER_DOMAIN 域名白名單不符、
-         額度用完、網路問題）。error 一定要跟「查無結果」分開講，
-         否則用戶會以為係自己打錯字。 */
-      if(status === "error"){
-        var info = (result && result.info) ? ('（' + esc(result.info) + '）') : '';
-        $("qhint").innerHTML = '搜尋服務無法使用' + info +
-          ' · 請直接<b>點地圖</b>選位置（地圖與推薦不受影響）';
-        return;
-      }
-      var pois = (status === "complete" && result && result.poiList && result.poiList.pois) || [];
-      if(!pois.length){
-        $("qhint").innerHTML = '找不到「' + esc(kw) + '」 · 換個關鍵字或<b>點地圖</b>選位置';
-        return;
-      }
-      var hits = pois.map(function(p){
-        var L = p.location;   // AMap.LngLat
-        return { lat: L.lat, lng: L.lng, name: p.name, addr: p.address };
-      });
-      hitCache[kw] = hits;
-      if(hits.length === 1) setOrigin(hits[0]);
-      else showHits(hits);     // 多個符合 → 讓用戶自己揀，不要擅自揀第一個
-    });
+    runSearch(kw, 0);
   });
 }
 

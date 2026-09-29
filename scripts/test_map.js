@@ -169,6 +169,11 @@ function makeAMap() {
   PlaceSearch.prototype.search = function (kw, cb) {
     this.queries.push(kw);
     if (kw === "__ERROR__") { cb("error", { info: "INVALID_USER_DOMAIN" }); return; }
+    if (kw === "__HANG__") { return; }                 // never calls back → exercises the timeout
+    if (kw === "__FLAKY__") {                          // fails once, then succeeds
+      if (!this._flaked) { this._flaked = true; cb("error", { info: "AUTH_PENDING" }); return; }
+      kw = "__FLAKY_OK__";
+    }
     const hits = FAKE_POIS[kw];
     if (!hits) { cb("no_data", { info: "no_data" }); return; }
     cb("complete", {
@@ -211,6 +216,9 @@ function run() {
   const win = { navigator: nav };
   doc.write = function () {};           // the SDK loader calls document.write
   win.document = doc;
+  // The app reads these once at eval time to shrink its real-world search
+  // timeout (12 s) and retry delay (1.2 s) to something a test can wait for.
+  win.__AMAP_TEST__ = { timeout: 150, retry: 30 };
 
   const blocks = [];
   const re = /<script([^>]*)>([\s\S]*?)<\/script>/g;
@@ -229,6 +237,10 @@ function run() {
 
 const { doc, log, win, blocks } = run();
 const $ = (id) => doc.getElementById(id);
+
+/* The assertion body is async so it can await the app's setTimeout-based
+   search timeout / retry. `pass` / `fail` / `failures` stay module-level. */
+(async () => {
 
 /* Derive expectations from the payload instead of hardcoding counts — the
    reference data (capacities, carpark set) is refreshed daily, so a literal
@@ -461,7 +473,10 @@ ok(log.heat[log.heat.length - 1].dataset.data.length === LIVE_COUNT,
 
 /* ================= 推薦功能 ================= */
 
-const sleep = (ms) => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); };
+/* MUST be a real async sleep, not Atomics.wait: the app's search timeout and
+   retry are setTimeout-based, and blocking the thread would stop those timers
+   from ever firing. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* Parse the rendered recommendation rows out of the sheet HTML. */
 function recRows() {
@@ -492,7 +507,7 @@ mapObj.fire("click", { lnglat: { lat: 22.1990, lng: 113.5410 } });
 ok($("qhint").innerHTML === before, "點完圓點後緊接的地圖 click 不會設為起點（時間差守衛）");
 
 // 真正的點地圖選位置。等過守衛的 400ms 視窗再點。
-sleep(450);
+await sleep(450);
 // 起點選「全澳空位最多」的那個場：它在任何子集合裡都仍然是空位最多的，
 // 所以必然排第一 —— 這讓「排第一」與「距離 0」兩個斷言都是確定性的。
 const HOST = LIVE.slice().sort((a, b) => b.free - a.free)[0];
@@ -563,13 +578,38 @@ const callsBefore = log.ps[0].queries.length;
 $("qbtn").onclick();
 ok(log.ps[0].queries.length === callsBefore, "同一個關鍵字第二次查詢走快取，不再耗額度");
 
-// 服務出錯（例如域名白名單不符）要跟「查無結果」分開講
+// 服務出錯（例如域名白名單不符）要跟「查無結果」分開講。
+// 注意：error 會先自動重試一次（救冷啟動），所以要等重試跑完才看到訊息。
 $("q").value = "__ERROR__";
 $("q").dispatch("input");
+const errCallsBefore = log.ps[0].queries.length;
 $("qbtn").onclick();
+ok($("qbtn").disabled === true, "查詢中按鈕停用，避免重複送出");
+await sleep(400);
+ok(log.ps[0].queries.length === errCallsBefore + 2,
+   "服務出錯會自動重試一次（冷啟動時授權握手可能未完成）",
+   log.ps[0].queries.length - errCallsBefore);
 ok(/搜尋服務無法使用/.test($("qhint").innerHTML), "服務錯誤顯示「無法使用」而不是「找不到」", $("qhint").innerHTML);
 ok(/INVALID_USER_DOMAIN/.test($("qhint").innerHTML), "把高德回傳的錯誤碼顯示出來，方便診斷");
 ok(/點地圖/.test($("qhint").innerHTML), "服務錯誤時引導用戶改為點地圖");
+ok($("qbtn").disabled === false, "報錯後按鈕要恢復可用，不能卡在「查詢中…」");
+
+// 只有第一次失敗 → 重試就成功，用戶不應該看到任何錯誤
+FAKE_POIS["__FLAKY_OK__"] = [{ name: "重試成功的點", addr: "X", lat: 22.1976, lng: 113.5406 }];
+$("q").value = "__FLAKY__";
+$("q").dispatch("input");
+$("qbtn").onclick();
+await sleep(400);
+ok(!/無法使用/.test($("qhint").innerHTML), "第一次失敗但重試成功時，不顯示錯誤", $("qhint").innerHTML);
+ok(/重試成功的點/.test($("qhint").innerHTML), "重試成功後正常定位", $("qhint").innerHTML);
+
+// 服務完全不回應 → 逾時必須放掉按鈕，不能永遠卡在「查詢中…」
+$("q").value = "__HANG__";
+$("q").dispatch("input");
+$("qbtn").onclick();
+await sleep(500);
+ok($("qbtn").disabled === false, "逾時後按鈕要恢復可用（不會永遠卡住）");
+ok(/搜尋服務無法使用/.test($("qhint").innerHTML), "逾時也走同一條錯誤路徑", $("qhint").innerHTML);
 
 // 清除起點
 $("qclr").onclick();
@@ -579,7 +619,7 @@ ok(log.markers[0]._map === null, "清除後起點標記從地圖移除");
 
 // 決定性情境：把起點設在「全澳最滿」的場。它距離 0 但空位最少，
 // 所以如果排序真的按空位（而不是按距離），它就不應該排第一。
-sleep(450);
+await sleep(450);
 mapObj.fire("click", { lnglat: { lat: FULLEST.g[0], lng: FULLEST.g[1] } });
 const recs3 = recRows();
 ok(recs3.length >= 1, "最滿的場附近仍有推薦", recs3.length);
@@ -597,3 +637,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log("all good ✓");
+
+})().catch((e) => { console.error("HARNESS ERROR:", e); process.exit(1); });
