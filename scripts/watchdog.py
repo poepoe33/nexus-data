@@ -30,6 +30,29 @@ import scrape  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 STALE_MINUTES = 25
 BUILD = ROOT / "scripts" / "build_dashboard.py"
+MAPBUILD = ROOT / "scripts" / "build_map.py"
+
+
+def run_builds() -> None:
+    """Rebuild both pages.
+
+    The dashboard is the primary deliverable, so a failure is reported loudly.
+    The map is an enhancement — a failure must never fail the collection run.
+    """
+    b = subprocess.run([sys.executable, str(BUILD)], cwd=ROOT,
+                       capture_output=True, text=True, timeout=300)
+    print(b.stdout.strip() or b.stderr.strip()[:300])
+    if b.returncode != 0:
+        print("[watchdog] dashboard rebuild 失敗（資料已採到，但網頁可能沒更新）",
+              file=sys.stderr)
+
+    m = subprocess.run([sys.executable, str(MAPBUILD)], cwd=ROOT,
+                       capture_output=True, text=True, timeout=300)
+    print(m.stdout.strip() or m.stderr.strip()[:300])
+    if m.returncode != 0:
+        print("[watchdog] 地圖重建失敗，本次略過地圖更新（不影響採集）", file=sys.stderr)
+
+
 GUARD = ROOT / "scripts" / "data_guard.py"
 
 
@@ -62,9 +85,7 @@ def ensure_clean_data(rebuild_dashboard: bool = True) -> bool:
         return False
 
     if rebuild_dashboard:
-        b = subprocess.run([sys.executable, str(BUILD)], cwd=ROOT,
-                           capture_output=True, text=True, timeout=300)
-        print(b.stdout.strip() or b.stderr.strip()[:300])
+        run_builds()
 
     return run_guard("--check").returncode == 0
 
@@ -152,12 +173,7 @@ def main() -> int:
 
     # 一定要 rebuild dashboard：pages.yml 只在 dashboard/index.html 變動時才部署，
     # 如果只 commit data/，網頁上的數字永遠不會更新。
-    build = subprocess.run([sys.executable, str(BUILD)], cwd=ROOT,
-                           capture_output=True, text=True, timeout=300)
-    print(build.stdout.strip() or build.stderr.strip()[:300])
-    if build.returncode != 0:
-        print("[watchdog] dashboard rebuild 失敗（資料已採到，但網頁可能沒更新）",
-              file=sys.stderr)
+    run_builds()
 
     # 最後一道防線：commit 之前再確認一次資料檔沒有衝突標記。
     # 這一步是 2026-09-28 事故的直接補救 —— 寧可這次不 commit，也不要污染歷史資料。

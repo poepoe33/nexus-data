@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .venv/
+
+# GitHub Pages 的暫存目錄：CI 只用來挑出要發布的建置產物，不進版控
+_site/

@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - "dashboard/index.html"
+      - "dashboard/map.html"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -28,9 +29,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # 只發布建置產物；dashboard/ 裡的 template.html / map_template.html
+      # 是原始模板，不應該出現在公開網站上。
+      - name: Stage site
+        run: |
+          set -e
+          rm -rf _site
+          mkdir -p _site
+          cp dashboard/index.html _site/index.html
+          if [ -f dashboard/map.html ]; then cp dashboard/map.html _site/map.html; fi
+          ls -la _site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dashboard
+          path: ./_site
 
   deploy:
     needs: build

@@ -42,6 +42,9 @@ body{
 .trow1 .live i{width:6px;height:6px;border-radius:50%;background:#2EA043;display:block}
 .sub{margin-top:3px;font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub b{color:var(--tx2);font-weight:500}
+.backlink{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:600;
+  color:var(--accent);text-decoration:none}
+.backlink:hover{text-decoration:underline}
 
 .segs{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
 .seg{display:flex;background:#0F1520;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
@@ -152,6 +155,7 @@ body.mode-motor .seg button.on{color:#1B1204}
       <div class="live"><i></i><span id="agen">--</span></div>
     </div>
     <div class="sub" id="asub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集</div>
+    <a class="backlink" href="index.html">← 回實時車位列表</a>
 
     <div class="segs">
       <div class="seg" id="seg-mode"><span class="lab">車種</span></div>
@@ -389,7 +393,7 @@ function renderSegs(){
     var b = document.createElement("button");
     b.type = "button"; b.textContent = o[1];
     if(o[0]===layer) b.className = "on";
-    b.onclick = function(){ layer = o[0]; renderSegs(); rebuild(); };
+    b.onclick = function(){ setLayer(o[0]); };
     sl.appendChild(b);
   });
   var CRSS = [["gcj","騰訊"],["wgs","衛星"]];
@@ -461,10 +465,17 @@ function renderHead(){
 
 function closeInfo(){ if(iw) iw.close(); }
 
+/* 切換圖層只做顯示／隱藏，不重建圖層（避免閃爍與多餘的 remove/add） */
+function applyVisibility(){
+  if(heat) layer === "dot"  ? heat.hide() : heat.show();
+  if(dot)  layer === "heat" ? dot.hide()  : dot.show();
+}
+
 function rebuild(){
   document.body.className = "mode-" + mode;
   buildHeat();
   buildDot();
+  applyVisibility();
   renderStats();
   renderSheet();
 }
@@ -473,6 +484,12 @@ function setMode(m){
   if(MODES.indexOf(m) < 0) return;
   mode = m; closeInfo();
   renderSegs(); rebuild();
+}
+
+function setLayer(l){
+  if(l === layer) return;
+  layer = l; closeInfo();
+  renderSegs(); applyVisibility(); renderStats();
 }
 
 /* ---- 事件 ---- */

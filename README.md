@@ -88,11 +88,58 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 
 本地重新產生：`python3 scripts/build_dashboard.py`
 
+## 使用率地圖（熱力圖）
+
+`dashboard/map.html` 把 91 個公共停車場放到騰訊地圖上，用顏色表現使用率 ——
+像天氣圖那樣一眼看出哪一區擠。線上：<https://poepoe33.github.io/nexus-data/map.html>
+
+- **熱力圖層**：`TMap.visualization.Heat`，權重 = 該場使用率 × 100，
+  且 `min`/`max` 固定為 0 / 100 —— 所以顏色在任何時間點都可以直接互相比較，
+  不會因為當下的最大值改變而整體變色
+- **圓點圖層**：`TMap.visualization.Dot`，大小 ≈ 車位數、顏色 ≈ 使用率
+- **圖層切換**（熱力＋圓點 / 純熱力 / 純圓點）只呼叫 `show()` / `hide()`，
+  不重建圖層，所以切換時不會閃爍
+- **車種切換**：私家車 / 電單車（資料完全分開）
+- **點擊任一停車場** → 資訊窗顯示使用率、剩餘/總車位、高峰時段、地址、電話
+- **最擠迫排行榜**：右側面板，由最擠排起
+
+### 座標怎麼來的（這部分比看起來複雜）
+
+DSAT 的資料**沒有座標**，只有地址。所以座標取自澳門特區政府的官方 GIS：
+
+```
+https://webmap.gis.gov.mo/arcgis/rest/services/WebMap/MacauMap_P_POI/MapServer/8
+layer "Carpark" — 90 個官方停車場 POI
+```
+
+但這條路有三個坑，全部處理了：
+
+| 坑 | 處理 |
+|---|---|
+| 圖層用**自訂投影** `MacauProj`（Macau Grid / International 1924），ArcGIS 不支援 `outSR=4326` 重投影（會回 `Failed to execute query`） | 自己實作反算 Transverse Mercator（`scripts/macau_proj.py`），round-trip 誤差 **0** |
+| 需要 **Intl 1924 → WGS84** 的基準轉換參數，憑猜會偏幾百米 | **實測校準**：政府把同一批建築物同時發佈在兩個座標系（`Macau_P` vs `Macau_P_WGS84`），用共用的 `FID_1` 配對 89 個頂點，量出偏移 **−133.8 m 北 / +309.1 m 東**，全澳殘差只有 **1.6 m / 4.6 m** |
+| 騰訊地圖要 **GCJ-02**，不是 WGS84；澳門的偏移約 **−327 m 北 / +526 m 東（約 620 m）**，不轉會整片位移 | `scripts/gcj02.py` 做 WGS84→GCJ-02（round-trip 誤差 0）。頁面保留「座標：騰訊 / 衛星」切換鍵，必要時可即時比對 |
+
+`data/carpark_coords.csv` 是 91 場對上 90 個官方 POI 的結果
+（82 精確 + 9 模糊，**0 未匹配**）。模糊匹配如「快富樓A入口／B入口 → 快富樓停車場」
+（兩個入口共用一個 POI，地圖上會自動散開 45 m 以免重疊）。
+
+```bash
+python3 scripts/fetch_carpark_coords.py          # 重新抓官方座標並 join
+python3 scripts/calibrate_macau_crs.py           # 重新量測基準轉換偏移
+python3 scripts/build_map.py                     # 產生 dashboard/map.html
+```
+
 ## Repo 結構
 
 ```
 scripts/scrape.py                    採集器（三種模式）
 scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
+scripts/build_map.py                 產生使用率地圖（熱力圖）
+scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
+scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
+scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
+scripts/gcj02.py                     WGS84 → GCJ-02（騰訊地圖座標）
 scripts/data_guard.py                資料守門員：偵測/修復 git 衝突標記
 scripts/check_runs.py                診斷工具：數 schedule 觸發次數、列出每個 step
 scripts/watchdog.py                  本機補採（launchd / WorkBuddy 自動化用）
@@ -101,7 +148,10 @@ worker/dispatch-cron.js              Cloudflare Worker：每 30 分觸發（可�
 worker/wrangler.toml                 Worker 設定（crons / vars）
 dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
 dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
+dashboard/map_template.html          地圖版型（含 <!--MAPDATA--> 標記）
+dashboard/map.html                   產出：使用率地圖（單檔自包含）
 dashboard/data.json                  聚合結果（每次 snapshot 自動重建）
+data/carpark_coords.csv              91 場的官方座標（WGS84）+ 對應的政府 POI 名
 .github/workflows/scrape.yml         每 30 分鐘：快照 + 重建 dashboard + 部署 Pages
 .github/workflows/pages.yml          手動推送儀表板時的備援部署
 .github/workflows/reference.yml      每天：總車位等主資料
@@ -200,6 +250,26 @@ jobs:
 ```
 
 `pages.yml` 保留，用於「只改儀表板、沒跑採集」的手動推送。
+
+### 只發布建置產物，不要發布模板
+
+`dashboard/` 裡同時有**原始模板**（`template.html`、`map_template.html`，含
+`<!--DATA-->` / `<!--MAPDATA-->` 佔位標記）和**建置產物**（`index.html`、`map.html`）。
+如果 `upload-pages-artifact` 直接指 `path: ./dashboard`，模板會被一起公開到網站上 ——
+網站上多出兩個壞掉的頁面。所以兩個 workflow 都先挑檔到暫存目錄再上傳：
+
+```yaml
+- name: Stage Pages site
+  run: |
+    rm -rf _site && mkdir -p _site
+    cp dashboard/index.html _site/index.html
+    if [ -f dashboard/map.html ]; then cp dashboard/map.html _site/map.html; fi
+- uses: actions/upload-pages-artifact@v3
+  with:
+    path: ./_site          # ← 不是 ./dashboard
+```
+
+`_site/` 已加進 `.gitignore`。
 
 ### 一句話總結
 

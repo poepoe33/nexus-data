@@ -70,7 +70,11 @@ jobs:
         run: python3 scripts/scrape.py housekeep --root .
 
       - name: Rebuild dashboard data
-        run: python3 scripts/build_dashboard.py
+        run: |
+          python3 scripts/build_dashboard.py
+          # 地圖是加值功能。萬一 data/carpark_coords.csv 缺失，也不要讓
+          # 整條採集流程失敗 —— 採集與儀表板才是主線。
+          python3 scripts/build_map.py || echo "::warning::build_map.py 失敗，本次略過地圖更新"
 
       # 守門員：絕對不 commit 帶衝突標記的資料。偵測到就自動修復再重建。
       - name: Guard data files (before commit)
@@ -81,6 +85,7 @@ jobs:
           echo "::warning::偵測到衝突標記，自動修復後重建 dashboard"
           python3 scripts/data_guard.py --resolve
           python3 scripts/build_dashboard.py
+          python3 scripts/build_map.py || echo "::warning::build_map.py 失敗，本次略過地圖更新"
           python3 scripts/data_guard.py --check
 
       - name: Commit and push
@@ -108,12 +113,28 @@ jobs:
           echo "::error::push 失敗 3 次，放棄。資料沒有遺失，下一班會再採。"
           exit 1
 
+      # 只上傳「建置產物」。dashboard/ 裡還有 template.html / map_template.html
+      # 這兩個原始模板（含 <!--DATA--> / <!--MAPDATA--> 佔位標記），
+      # 直接上傳整個 dashboard/ 會把它們一起公開出去，所以先挑檔到 _site/。
+      - name: Stage Pages site
+        run: |
+          set -e
+          rm -rf _site
+          mkdir -p _site
+          cp dashboard/index.html _site/index.html
+          if [ -f dashboard/map.html ]; then
+            cp dashboard/map.html _site/map.html
+          else
+            echo "::warning::dashboard/map.html 不存在，本次不發布地圖"
+          fi
+          ls -la _site
+
       # 一定要在 commit 之後才上傳 —— 這樣 artifact 裡的 dashboard/index.html
       # 才是剛重建好的那一版。
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dashboard
+          path: ./_site
 
   # 部署獨立成一個 job：deploy-pages 需要 github-pages environment，
   # 而 environment 是 job 層級的設定。
