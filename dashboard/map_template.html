@@ -158,12 +158,14 @@ body.mode-motor .seg button.on{color:#1B1204}
 }
 #fail b{display:block;color:var(--tx);font-size:15px;margin-bottom:8px}
 #fail code{background:#1A2230;border-radius:5px;padding:1px 5px;font-size:12px;color:var(--tx2)}
+/* 底部面板展開時，把圖例與縮放鈕推上去，否則會被面板蓋住 */
+body.sheet-open #legend,
+body.sheet-open #zoom{bottom:calc(31vh + 58px)}
+
 @media (max-width:560px){
-  #legend{bottom:calc(31vh + 18px)}
   #legend .lg-ft{display:none}
   .trow1 h1{font-size:15px}
   #sheetbody{max-height:29vh}
-  #legend{bottom:calc(29vh + 16px)}
   .seg button{padding:6px 9px}
   .seg button.wd{padding:6px 6px;min-width:26px}
 }
@@ -688,6 +690,9 @@ function renderHead(){
 
 function closeInfo(){ if(iw) iw.close(); }
 
+/* 底部面板是否展開 —— 展開時圖例與縮放鈕要讓位 */
+function sheetOpen(){ return !$("sheetcard").classList.contains("collapsed"); }
+
 /* 切換圖層只做顯示／隱藏，不重建圖層（避免閃爍與多餘的 remove/add）。
    HeatMap 的 show/hide 並非所有版本都保證存在，所以做了退回處理。 */
 function setHeatVisible(v){
@@ -707,7 +712,8 @@ function applyVisibility(){
 }
 
 function rebuild(){
-  document.body.className = "mode-" + mode;
+  /* body 的 class 用「重設」而不是「疊加」，所以要自己把 sheet-open 帶回去 */
+  document.body.className = "mode-" + mode + (sheetOpen() ? " sheet-open" : "");
   buildHeat();
   buildDot();
   applyVisibility();
@@ -748,7 +754,10 @@ $("zfit").onclick = function(){
   closeInfo();
   map.setZoomAndCenter(13, MAPCENTER, false, 460);
 };
-$("sheethd").onclick = function(){ $("sheetcard").classList.toggle("collapsed"); };
+$("sheethd").onclick = function(){
+  $("sheetcard").classList.toggle("collapsed");
+  document.body.classList.toggle("sheet-open", sheetOpen());
+};
 $("tophd").onclick   = function(){ $("topcard").classList.toggle("collapsed"); };
 
 /* ---- 啟動 ---- */
