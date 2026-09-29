@@ -107,8 +107,15 @@ body.mode-motor .seg button.on{color:#1B1204}
 .cp .rt{font-size:12px;font-weight:600;width:38px;text-align:right;flex:0 0 38px;letter-spacing:-.2px}
 
 /* ---------- info window ---------- */
+/* 高德自訂窗體（isCustom）沒有自帶外框，這裡自己畫，並補一個朝下的小箭頭。 */
 .iw{min-width:196px;max-width:250px;background:#141A24;border:1px solid var(--line);
-  border-radius:13px;padding:11px 12px 12px;color:var(--tx);box-shadow:0 10px 30px rgba(0,0,0,.6)}
+  border-radius:13px;padding:11px 12px 12px;color:var(--tx);box-shadow:0 10px 30px rgba(0,0,0,.6);
+  position:relative}
+.iw::after{
+  content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;margin-left:-6px;
+  background:#141A24;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  transform:rotate(45deg)
+}
 .iw .t{font-size:14px;font-weight:600;line-height:1.35;padding-right:14px}
 .iw .g{font-size:10px;color:var(--tx3);margin-top:3px}
 .iw .big{display:flex;align-items:baseline;gap:7px;margin-top:9px}
@@ -129,6 +136,7 @@ body.mode-motor .seg button.on{color:#1B1204}
   background:var(--bg);padding:24px;text-align:center;font-size:13px;color:var(--tx2);line-height:1.7
 }
 #fail b{display:block;color:var(--tx);font-size:15px;margin-bottom:8px}
+#fail code{background:#1A2230;border-radius:5px;padding:1px 5px;font-size:12px;color:var(--tx2)}
 @media (max-width:560px){
   #legend{bottom:calc(31vh + 18px)}
   #legend .lg-ft{display:none}
@@ -138,28 +146,28 @@ body.mode-motor .seg button.on{color:#1B1204}
 }
 </style>
 <script type="text/javascript">
-  /* WorkBuddy 預覽環境會把 __WB_HTTP_PORT__ / __WB_TMAP_SECRET__ 換成真實代理位址；
-     公開網站（GitHub Pages）不會替換，所以先偵測「佔位符還在不在」。
-     用字串探針判斷，因為替換是對整份 HTML 做文字取代。 */
-  var WB_PROBE = '__WB_HTTP_PORT__';
-  window.__PROXY_OK__ = WB_PROBE.indexOf('__WB') === -1;
+  /* 高德地圖 JS API 2.0。
+     key 與安全密鑰由 scripts/build_map.py 在建置時注入（來源：環境變數或本地未入版控的設定檔）。
+     佔位符還在 → 代表還沒填憑證，主程式會顯示「請自備 key」提示卡，而不是載入一個註定失敗的 SDK。
 
-  if (window.__PROXY_OK__) {
-    window._TMapSecurityConfig = {
-      serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__',
-    };
+     硬規則：window._AMapSecurityConfig 必須在 SDK <script> 之前設定，否則設定無效。
+     2021-12-02 之後申請的 key 必須搭配安全密鑰一起使用。 */
+  var AMAP_KEY = '__AMAP_KEY__';
+  var AMAP_SEC = '__AMAP_SECURITY__';
+  window.__NEEDS_KEY__ = AMAP_KEY.indexOf('__AMAP') === 0;
+
+  if (!window.__NEEDS_KEY__) {
+    window._AMapSecurityConfig = { securityJsCode: AMAP_SEC };
   }
 </script>
 <script type="text/javascript">
-  /* 用 document.write 同步載入，確保 TMap 在下面的主程式之前就定義好。
-     代理可用 → 不帶 key（金鑰由 WorkBuddy 後端保管）。
-     公開網站 → 帶「自備 key」佔位符，使用者換成自己的即可。 */
+  /* 用 document.write 同步載入，確保 AMap 在下面的主程式之前就定義好。
+     plugin= 是高德的同步預載參數（單數、逗號分隔）；熱力圖是外掛，圓點標記是核心類別不用載。 */
   (function () {
-    var KEY_PLACEHOLDER = '請自行到騰訊位置服務開放平台（lbs.qq.com）申請 key 並替換此處';
-    var src = 'https://map.qq.com/api/gljs?v=1.exp&libraries=visualization';
-    if (!window.__PROXY_OK__) {
-      src += '&key=' + encodeURIComponent(KEY_PLACEHOLDER);
-    }
+    if (window.__NEEDS_KEY__) return;
+    var src = 'https://webapi.amap.com/maps?v=2.0' +
+              '&key=' + encodeURIComponent(AMAP_KEY) +
+              '&plugin=AMap.HeatMap';
     document.write('<script charset="utf-8" src="' + src + '"><\/script>');
   })();
 </script>
@@ -231,7 +239,12 @@ var D = window.__MAPDATA__ || {modes:{}, mode_order:[]};
 var MODES = (D.mode_order && D.mode_order.length) ? D.mode_order : Object.keys(D.modes||{});
 var mode  = MODES[0] || "car";
 var layer = "both";     // heat | dot | both
-var crs   = "gcj";      // gcj (騰訊) | wgs (原始衛星)
+var crs   = "gcj";      // gcj（高德底圖用的火星座標）| wgs（原始衛星座標）
+
+/* 高德的熱力圖外掛（AMap.HeatMap）官方標示「暫時不支持移動端」，
+   所以手機／平板預設只顯示圓點，並在圖例說明原因。 */
+var IS_TOUCH = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||"");
+if (IS_TOUCH) layer = "dot";
 
 var $ = function(id){ return document.getElementById(id); };
 var esc = function(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){
@@ -258,8 +271,12 @@ function ramp(r){
   }
   return STOPS[STOPS.length-1][1];
 }
+/* 高德的 gradient 用 rgb()/hex 皆可，這裡統一轉成 rgb() 字串。 */
 var GRADIENT = {};
-STOPS.forEach(function(s){ GRADIENT[s[0]] = s[1]; });
+STOPS.forEach(function(s){
+  var c = h2r(s[1]);
+  GRADIENT[s[0]] = "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
+});
 
 /* ---- 資料存取 ---- */
 function M(){ return (D.modes||{})[mode] || null; }
@@ -274,88 +291,89 @@ function rebuildIndex(){
     IDX[k]=t;
   });
 }
+/* payload 裡的座標一律是 [lat, lng]；高德要的是 LngLat(lng, lat)，順序相反。 */
 function pt(p){ return crs==="gcj" ? p.g : p.w; }
+function ll(c){ return new AMap.LngLat(c[1], c[0]); }
 
 /* ---- 地圖 ---- */
-if(typeof TMap === "undefined"){
+if(typeof AMap === "undefined"){
   var f = $("fail");
-  if(!window.__PROXY_OK__ && f.firstChild){
-    f.firstChild.innerHTML = '<b>需要自備騰訊地圖 key</b>' +
-      '本頁正在公開網站上執行，無法使用本機金鑰代理。<br>' +
-      '請到 <b>lbs.qq.com</b> 申請 WebService key，' +
-      '填入 <code>dashboard/map_template.html</code> 的 KEY_PLACEHOLDER 後重新建置；' +
-      '或直接用 WorkBuddy 預覽開啟本頁（會自動走代理）。';
+  if(window.__NEEDS_KEY__ && f.firstChild){
+    f.firstChild.innerHTML = '<b>需要自備高德地圖 key</b>' +
+      '本頁沒有內建金鑰。請到 <b>lbs.amap.com</b> 申請「Web端(JS API)」key 與安全密鑰，' +
+      '寫入 <code>dashboard/.amap_key.json</code> 後重新執行 ' +
+      '<code>scripts/build_map.py</code>；' +
+      '或在 GitHub 專案設定加上 <code>AMAP_KEY</code> / <code>AMAP_SECURITY</code> 兩個 Secret。';
   }
   f.style.display = "flex";
   return;
 }
-var CENTER = D.center || [22.1875,113.5495];
-var map = new TMap.Map("map", {
-  center: new TMap.LatLng(CENTER[0], CENTER[1]),
+var CENTER = D.center || [22.1875,113.5495];   // [lat, lng]
+var MAPCENTER = [CENTER[1], CENTER[0]];        // 高德要 [lng, lat]
+
+var map = new AMap.Map("map", {
+  center: MAPCENTER,
   zoom: 13,
-  pitch: 0,
-  rotation: 0,
-  minZoom: 11,
-  maxZoom: 19
+  viewMode: "2D",                    // 預設是 3D，這裡固定 2D
+  mapStyle: "amap://styles/dark",    // 官方內建深色底圖（幻影黑），免申請自訂樣式
+  zooms: [11, 19],                   // 注意：高德用 zooms:[min,max]，不是 minZoom/maxZoom
+  resizeEnable: true
 });
 
-var heat = null, dot = null, iw = null;
+var heat = null, dots = null, iw = null;
 
-function clearHeat(){ if(heat){ heat.remove(); heat = null; } }
-function clearDot(){ if(dot){ dot.remove(); dot = null; } }
+function clearHeat(){ if(heat){ heat.setMap(null); heat = null; } }
+function clearDot(){
+  if(dots){ for(var i=0;i<dots.length;i++) dots[i].setMap(null); dots = null; }
+}
 
 function buildHeat(){
   clearHeat();
   if(layer==="dot") return;
   var m = M(); if(!m) return;
-  heat = new TMap.visualization.Heat({
-    radius: 62,
-    height: 0,
-    min: 0,
-    max: 100,
-    opacity: 0.76,
-    distanceUnit: "pixel",
-    enableLighting: false,
-    gradientColor: GRADIENT
-  }).addTo(map);
-  heat.setData((m.parks||[]).map(function(p){
-    var c = pt(p);
-    return { lat:c[0], lng:c[1], count: Math.round((p.rate||0)*100), properties:{ id:p.id } };
-  }));
+  heat = new AMap.HeatMap(map, {
+    radius: 62,            // 單位 pixel（官方預設 30）
+    opacity: [0, 0.76],    // 注意：高德是「區間陣列」，不是單一數值
+    gradient: GRADIENT,    // key 為 0~1 的間隔位置
+    zooms: [11, 19],
+    zIndex: 120,
+    visible: true
+  });
+  heat.setDataSet({
+    data: (m.parks||[]).map(function(p){
+      var c = pt(p);
+      return { lng: c[1], lat: c[0], count: Math.round((p.rate||0)*100) };
+    }),
+    max: 100
+  });
 }
 
 function buildDot(){
   clearDot();
   if(layer==="heat") return;
   var m = M(); if(!m) return;
-  var styles = {};
-  var data = (m.parks||[]).map(function(p){
+  dots = [];
+  (m.parks||[]).forEach(function(p){
     var c = pt(p);
-    var r = (p.rate==null) ? 0 : p.rate;
     var cap = p.cap||0;
+    /* 半徑用車位數開根號，避免大場把小場完全蓋住。CircleMarker 半徑單位是 px（上限 64）。 */
     var rad = Math.max(5, Math.min(17, 4.6 + Math.sqrt(Math.max(cap,0))*0.20));
-    var sid = "r" + Math.round(r*24) + "_" + rad.toFixed(1);
-    if(!styles[sid]){
-      styles[sid] = {
-        type: "circle",
-        fillColor: ramp(p.rate),
-        strokeColor: "rgba(6,10,18,.62)",
-        strokeWidth: 1,
-        radius: rad
-      };
-    }
-    return { lat:c[0], lng:c[1], styleId: sid, properties:{ id:p.id } };
-  });
-  dot = new TMap.visualization.Dot({
-    styles: styles,
-    faceTo: "screen",
-    selectOptions: { action: "click", enableHighlight: false }
-  }).addTo(map);
-  dot.setData(data);
-  dot.on("click", function(evt){
-    var d = evt && evt.detail && evt.detail.dot;
-    if(!d || !d.properties) return;
-    showInfo(d.properties.id, new TMap.LatLng(d.lat, d.lng), false);
+    var cm = new AMap.CircleMarker({
+      center: ll(c),
+      radius: rad,
+      strokeColor: "rgba(6,10,18,.62)",
+      strokeWeight: 1,
+      strokeOpacity: 1,
+      fillColor: ramp(p.rate),
+      fillOpacity: 0.85,
+      zIndex: 120,
+      cursor: "pointer"
+    });
+    (function(id, pos){
+      cm.on("click", function(){ showInfo(id, pos, false); });
+    })(p.id, ll(c));
+    cm.setMap(map);
+    dots.push(cm);
   });
 }
 
@@ -386,15 +404,15 @@ function showInfo(id, pos, fly){
   var p = parkById(id);
   if(!p) return;
   if(!iw){
-    iw = new TMap.InfoWindow({
-      map: map, position: pos, enableCustom: true,
-      offset: { x: 0, y: -10 }, zIndex: 30
+    iw = new AMap.InfoWindow({
+      isCustom: true,                 // 自訂 HTML 窗體（外框與箭頭由 .iw 自己畫）
+      offset: new AMap.Pixel(0, -12), // 相對 content 下緣中點的位移
+      zIndex: 30
     });
   }
-  iw.setPosition(pos);
   iw.setContent(infoHTML(p));
-  iw.open();
-  if(fly) map.easeTo({ center: pos, zoom: Math.max(map.getZoom(), 15) }, { duration: 520 });
+  iw.open(map, pos);                  // 同一時間只會開一個窗體
+  if(fly) map.setZoomAndCenter(Math.max(map.getZoom(), 15), pos, false, 520);
   highlight(id);
 }
 
@@ -424,7 +442,7 @@ function renderSegs(){
     b.onclick = function(){ setLayer(o[0]); };
     sl.appendChild(b);
   });
-  var CRSS = [["gcj","騰訊"],["wgs","衛星"]];
+  var CRSS = [["gcj","高德"],["wgs","衛星"]];
   sc.innerHTML = '<span class="lab">座標</span>';
   CRSS.forEach(function(o){
     var b = document.createElement("button");
@@ -451,9 +469,9 @@ function renderStats(){
 
   $("lg-title").textContent = mLabel() + "使用率";
   $("lg-dot").style.background = ramp(o.rate);
-  $("lg-fttx").textContent = layer==="heat"
-    ? "熱力強度＝該場使用率"
-    : "圓點大小＝該場車位數";
+  var ft = layer==="heat" ? "熱力強度＝該場使用率" : "圓點大小＝該場車位數";
+  if(IS_TOUCH) ft += "（高德熱力圖暫不支援手機，建議用「純圓點」）";
+  $("lg-fttx").textContent = ft;
 }
 
 function renderSheet(){
@@ -477,8 +495,7 @@ function renderSheet(){
       row.onclick = function(){
         var id = row.getAttribute("data-id");
         var p = parkById(id); if(!p) return;
-        var c = pt(p);
-        showInfo(id, new TMap.LatLng(c[0], c[1]), true);
+        showInfo(id, ll(pt(p)), true);
       };
     })(rows[i]);
   }
@@ -493,10 +510,22 @@ function renderHead(){
 
 function closeInfo(){ if(iw) iw.close(); }
 
-/* 切換圖層只做顯示／隱藏，不重建圖層（避免閃爍與多餘的 remove/add） */
+/* 切換圖層只做顯示／隱藏，不重建圖層（避免閃爍與多餘的 remove/add）。
+   HeatMap 的 show/hide 並非所有版本都保證存在，所以做了退回處理。 */
+function setHeatVisible(v){
+  if(!heat) return;
+  if(v){
+    if(typeof heat.show === "function") heat.show(); else heat.setOptions({visible:true});
+  } else {
+    if(typeof heat.hide === "function") heat.hide(); else heat.setOptions({visible:false});
+  }
+}
 function applyVisibility(){
-  if(heat) layer === "dot"  ? heat.hide() : heat.show();
-  if(dot)  layer === "heat" ? dot.hide()  : dot.show();
+  setHeatVisible(layer !== "dot");
+  if(dots){
+    var want = (layer !== "heat");
+    for(var i=0;i<dots.length;i++) dots[i].setMap(want ? map : null);
+  }
 }
 
 function rebuild(){
@@ -525,7 +554,7 @@ $("zin").onclick  = function(){ map.setZoom(Math.min(19, map.getZoom()+1)); };
 $("zout").onclick = function(){ map.setZoom(Math.max(11, map.getZoom()-1)); };
 $("zfit").onclick = function(){
   closeInfo();
-  map.easeTo({ center: new TMap.LatLng(CENTER[0], CENTER[1]), zoom: 13 }, { duration: 460 });
+  map.setZoomAndCenter(13, MAPCENTER, false, 460);
 };
 $("sheethd").onclick = function(){ $("sheetcard").classList.toggle("collapsed"); };
 

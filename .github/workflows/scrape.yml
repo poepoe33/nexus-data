@@ -70,6 +70,12 @@ jobs:
         run: python3 scripts/scrape.py housekeep --root .
 
       - name: Rebuild dashboard data
+        env:
+          # 高德地圖憑證（見 README「使用率地圖」）。
+          # 沒設這兩個 Secret 也不會壞：build_map.py 會沿用既有 map.html 裡的憑證，
+          # 只更新資料，不會把線上的地圖弄成空白。
+          AMAP_KEY: ${{ secrets.AMAP_KEY }}
+          AMAP_SECURITY: ${{ secrets.AMAP_SECURITY }}
         run: |
           python3 scripts/build_dashboard.py
           # 地圖是加值功能。萬一 data/carpark_coords.csv 缺失，也不要讓
@@ -78,6 +84,9 @@ jobs:
 
       # 守門員：絕對不 commit 帶衝突標記的資料。偵測到就自動修復再重建。
       - name: Guard data files (before commit)
+        env:
+          AMAP_KEY: ${{ secrets.AMAP_KEY }}
+          AMAP_SECURITY: ${{ secrets.AMAP_SECURITY }}
         run: |
           if python3 scripts/data_guard.py --check; then
             exit 0

@@ -5,3 +5,8 @@ __pycache__/
 
 # GitHub Pages 的暫存目錄：CI 只用來挑出要發布的建置產物，不進版控
 _site/
+
+# 高德地圖憑證（key + 安全密鑰）。
+# 不進版控；建置時由 scripts/build_map.py 注入 dashboard/map.html。
+# 正式站請改用 GitHub Secrets：AMAP_KEY / AMAP_SECURITY。
+dashboard/.amap_key.json

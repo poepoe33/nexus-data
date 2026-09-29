@@ -90,18 +90,59 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 
 ## 使用率地圖（熱力圖）
 
-`dashboard/map.html` 把 91 個公共停車場放到騰訊地圖上，用顏色表現使用率 ——
+`dashboard/map.html` 把 91 個公共停車場放到**高德地圖**上，用顏色表現使用率 ——
 像天氣圖那樣一眼看出哪一區擠。線上：<https://poepoe33.github.io/nexus-data/map.html>
 
-- **熱力圖層**：`TMap.visualization.Heat`，權重 = 該場使用率 × 100，
-  且 `min`/`max` 固定為 0 / 100 —— 所以顏色在任何時間點都可以直接互相比較，
-  不會因為當下的最大值改變而整體變色
-- **圓點圖層**：`TMap.visualization.Dot`，大小 ≈ 車位數、顏色 ≈ 使用率
-- **圖層切換**（熱力＋圓點 / 純熱力 / 純圓點）只呼叫 `show()` / `hide()`，
+- **熱力圖層**：`AMap.HeatMap`，權重 = 該場使用率 × 100，`dataSet.max` 固定 100 ——
+  所以顏色在任何時間點都可以直接互相比較，不會因為當下的最大值改變而整體變色
+- **圓點圖層**：`AMap.CircleMarker`，大小 ≈ 車位數、顏色 ≈ 使用率
+  （半徑單位是 px、上限 64；這裡用 5–17）
+- **圖層切換**（熱力＋圓點 / 純熱力 / 純圓點）只做 `show()` / `hide()` 與 `setMap()`，
   不重建圖層，所以切換時不會閃爍
 - **車種切換**：私家車 / 電單車（資料完全分開）
-- **點擊任一停車場** → 資訊窗顯示使用率、剩餘/總車位、高峰時段、地址、電話
+- **點擊任一停車場** → 自訂資訊窗（`AMap.InfoWindow` + `isCustom`）顯示使用率、
+  剩餘/總車位、高峰時段、地址、電話
 - **最擠迫排行榜**：右側面板，由最擠排起
+- 底圖用高德官方內建深色樣式 `amap://styles/dark`（幻影黑），不需另外申請自訂地圖
+
+> ⚠️ **高德熱力圖外掛官方標示「暫時不支持移動端」。** 所以手機／平板開啟時會自動
+> 預設為「純圓點」並在圖例說明原因；桌面則預設「熱力＋圓點」。
+
+### 憑證（key + 安全密鑰）
+
+高德 JS API 2.0 需要**兩個**值：**key** 與**安全密鑰（securityJsCode）**。
+2021-12-02 之後申請的 key 少了安全密鑰會直接被拒。
+
+申請：<https://console.amap.com/> → 實名認證 → 應用管理 → 建立新應用 → 添加 Key
+→ **服務平台選「Web端(JS API)」**（選成「Web服務」會 403）→ 同時抄下 key 與安全密鑰。
+
+`scripts/build_map.py` 依序找憑證：
+
+| 順位 | 來源 | 用途 |
+|---|---|---|
+| 1 | 環境變數 `AMAP_KEY` / `AMAP_SECURITY` | GitHub Actions（來自 repo Secrets） |
+| 2 | `dashboard/.amap_key.json`（**已 gitignore**） | 本機建置 |
+| 3 | 既有 `dashboard/map.html` 裡的值 | **保險**：CI 沒設 Secrets 時沿用舊憑證、只更新資料，不會把線上地圖弄成空白 |
+
+三個都沒有 → 頁面顯示「請自備 key」提示卡，而不是靜默失敗。
+
+```bash
+# 本機：建立 dashboard/.amap_key.json
+{ "key": "你的 key", "security": "你的安全密鑰" }
+
+# GitHub：Settings → Secrets and variables → Actions → New repository secret
+#   AMAP_KEY  /  AMAP_SECURITY
+```
+
+> **靜態網站只能用「明文安全密鑰」。** 官方強烈建議的 `/_AMapService` 反向代理需要
+> 自架伺服器，GitHub Pages 做不到。所以請務必到控制台把這個 key 的**域名白名單**
+> 設成 `poepoe33.github.io` —— 沒有白名單，任何人抄走 key 就能消耗你的配額。
+>
+> 也要知道：地圖要能用，key 就**必然**會出現在公開的 `map.html` 裡（這是 JS API 的
+> 設計，不是洩漏）。真正的保護是域名白名單。
+>
+> 免費額度：個人認證開發者「JS 地圖圖面初始化」**150 萬次／月**，
+> 但**只給一年**（自認證日起算）。
 
 ### 座標怎麼來的（這部分比看起來複雜）
 
@@ -118,7 +159,7 @@ layer "Carpark" — 90 個官方停車場 POI
 |---|---|
 | 圖層用**自訂投影** `MacauProj`（Macau Grid / International 1924），ArcGIS 不支援 `outSR=4326` 重投影（會回 `Failed to execute query`） | 自己實作反算 Transverse Mercator（`scripts/macau_proj.py`），round-trip 誤差 **0** |
 | 需要 **Intl 1924 → WGS84** 的基準轉換參數，憑猜會偏幾百米 | **實測校準**：政府把同一批建築物同時發佈在兩個座標系（`Macau_P` vs `Macau_P_WGS84`），用共用的 `FID_1` 配對 89 個頂點，量出偏移 **−133.8 m 北 / +309.1 m 東**，全澳殘差只有 **1.6 m / 4.6 m** |
-| 騰訊地圖要 **GCJ-02**，不是 WGS84；澳門的偏移約 **−327 m 北 / +526 m 東（約 620 m）**，不轉會整片位移 | `scripts/gcj02.py` 做 WGS84→GCJ-02（round-trip 誤差 0）。頁面保留「座標：騰訊 / 衛星」切換鍵，必要時可即時比對 |
+| 高德地圖要 **GCJ-02**，不是 WGS84；澳門的偏移約 **−327 m 北 / +526 m 東（約 620 m）**，不轉會整片位移 | `scripts/gcj02.py` 做 WGS84→GCJ-02（round-trip 誤差 0）。頁面保留「座標：高德 / 衛星」切換鍵，必要時可即時比對 |
 
 `data/carpark_coords.csv` 是 91 場對上 90 個官方 POI 的結果
 （82 精確 + 9 模糊，**0 未匹配**）。模糊匹配如「快富樓A入口／B入口 → 快富樓停車場」
@@ -139,7 +180,7 @@ scripts/build_map.py                 產生使用率地圖（熱力圖）
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
 scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
-scripts/gcj02.py                     WGS84 → GCJ-02（騰訊地圖座標）
+scripts/gcj02.py                     WGS84 → GCJ-02（高德地圖座標）
 scripts/data_guard.py                資料守門員：偵測/修復 git 衝突標記
 scripts/check_runs.py                診斷工具：數 schedule 觸發次數、列出每個 step
 scripts/watchdog.py                  本機補採（launchd / WorkBuddy 自動化用）

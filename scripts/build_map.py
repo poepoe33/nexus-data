@@ -7,12 +7,28 @@ Inputs:
     data/carpark_coords.csv     government WGS84 coordinates (from fetch_carpark_coords.py)
     data/carparks.csv           capacity / address / phone
     dashboard/map_template.html layout with a <!--MAPDATA--> marker
+    AMap credentials            see "Credentials" below
 
 Output:
     dashboard/map.html          self-contained (data inlined, no external files)
 
-Coordinates: the government publishes WGS84; Tencent Maps expects GCJ-02, so both
-are baked in and the page can switch (see the 校正 toggle) if a provider differs.
+Coordinates: the government publishes WGS84; AMap expects GCJ-02, so both are
+baked in and the page can switch (see the 座標 toggle) if a provider differs.
+
+Credentials
+-----------
+AMap JS API needs a key AND a security key (安全密鑰) — keys issued after
+2021-12-02 are rejected without the latter. They are resolved in this order:
+
+    1. env vars  AMAP_KEY / AMAP_SECURITY   (used by GitHub Actions, from Secrets)
+    2. dashboard/.amap_key.json             (local, git-ignored)
+    3. whatever is already baked into dashboard/map.html   (carry-over)
+
+Step 3 exists so a CI run that has no Secrets configured does NOT overwrite a
+working map with a key-less one — it keeps the previous credentials and just
+refreshes the data. If none of the three yields credentials, the placeholders
+stay in place and the page renders a "please supply your own key" card instead
+of silently failing.
 
 Run after build_dashboard.py:
     python3 scripts/build_map.py
@@ -21,6 +37,8 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,6 +53,14 @@ COORDS_CSV = ROOT / "data" / "carpark_coords.csv"
 CARPARKS_CSV = ROOT / "data" / "carparks.csv"
 TEMPLATE = DASH_DIR / "map_template.html"
 OUT = DASH_DIR / "map.html"
+KEY_FILE = DASH_DIR / ".amap_key.json"
+
+KEY_PLACEHOLDER = "__AMAP_KEY__"
+SEC_PLACEHOLDER = "__AMAP_SECURITY__"
+
+# Carry-over probes: how the credentials appear in an already-built map.html.
+_RE_KEY = re.compile(r"var\s+AMAP_KEY\s*=\s*'([^']*)'")
+_RE_SEC = re.compile(r"var\s+AMAP_SEC\s*=\s*'([^']*)'")
 
 try:
     from zoneinfo import ZoneInfo
@@ -74,6 +100,43 @@ def load_meta() -> dict[str, dict]:
             "tel": (r.get("phone") or "").strip(),
         }
     return out
+
+
+def load_credentials() -> tuple[str, str] | None:
+    """Resolve the AMap key + security key. See the module docstring for the order.
+
+    Returns None when nothing usable is found, in which case the template keeps
+    its placeholders and the page shows a "supply your own key" card.
+    """
+    key = (os.environ.get("AMAP_KEY") or "").strip()
+    sec = (os.environ.get("AMAP_SECURITY") or "").strip()
+    if key and sec:
+        print("[map] 憑證來源：環境變數 AMAP_KEY / AMAP_SECURITY")
+        return key, sec
+
+    if KEY_FILE.exists():
+        try:
+            cfg = json.loads(KEY_FILE.read_text(encoding="utf-8"))
+            key = str(cfg.get("key") or "").strip()
+            sec = str(cfg.get("security") or "").strip()
+            if key and sec:
+                print(f"[map] 憑證來源：{KEY_FILE.name}")
+                return key, sec
+            print(f"[map] {KEY_FILE.name} 缺少 key 或 security 欄位，略過", file=sys.stderr)
+        except Exception as exc:  # malformed JSON shouldn't break the build
+            print(f"[map] 讀不到 {KEY_FILE.name}：{exc}", file=sys.stderr)
+
+    # Carry-over: keep whatever the last successful build baked in.
+    if OUT.exists():
+        prev = OUT.read_text(encoding="utf-8", errors="replace")
+        mk, ms = _RE_KEY.search(prev), _RE_SEC.search(prev)
+        if mk and ms:
+            k, s = mk.group(1), ms.group(1)
+            if k and s and not k.startswith("__AMAP"):
+                print("[map] 憑證來源：沿用既有 map.html（未設定 Secrets 時不會把地圖弄壞）")
+                return k, s
+
+    return None
 
 
 def main() -> int:
@@ -159,6 +222,17 @@ def main() -> int:
     if "<!--MAPDATA-->" not in html:
         print("[map] map_template.html 缺少 <!--MAPDATA--> 標記", file=sys.stderr)
         return 1
+
+    creds = load_credentials()
+    if creds:
+        key, sec = creds
+        # 兩個值都只會含 [A-Za-z0-9_-]，但仍保險跳脫單引號，避免注入破版。
+        html = html.replace(KEY_PLACEHOLDER, key.replace("'", "\\'"))
+        html = html.replace(SEC_PLACEHOLDER, sec.replace("'", "\\'"))
+    else:
+        print("[map] 找不到高德憑證 —— 產出的地圖會顯示「請自備 key」提示卡。", file=sys.stderr)
+        print("[map] 請設定 AMAP_KEY / AMAP_SECURITY 環境變數，"
+              f"或建立 {KEY_FILE.name}", file=sys.stderr)
 
     blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     OUT.write_text(
