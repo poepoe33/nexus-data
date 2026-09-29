@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#0B0E14">
+<title>澳門停車場 · 使用率地圖</title>
+<style>
+:root{
+  --bg:#0B0E14; --card:rgba(20,26,36,.92); --card2:#1A2230; --line:#232E3E;
+  --tx:#E6EDF3; --tx2:#9AA7B8; --tx3:#6B7889; --accent:#4C8DFF;
+  --shadow:0 8px 28px rgba(0,0,0,.46);
+}
+body.mode-motor{--accent:#F0A33C}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--tx);
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
+}
+
+/* ---------- map ---------- */
+#map{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;background:#0B0E14}
+
+/* ---------- HUD scaffolding ---------- */
+.hud{position:fixed;z-index:20;pointer-events:none}
+.hud > *{pointer-events:auto}
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;
+  box-shadow:var(--shadow);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+
+/* ---------- top bar ---------- */
+#top{top:0;left:0;right:0;padding:10px 12px 0;display:flex;justify-content:center}
+#topcard{width:100%;max-width:760px;padding:11px 13px 12px}
+.trow1{display:flex;align-items:baseline;gap:8px}
+.trow1 h1{margin:0;font-size:16.5px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+.trow1 .live{
+  font-size:10px;color:var(--tx3);border:1px solid var(--line);border-radius:20px;
+  padding:1px 7px;white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:5px
+}
+.trow1 .live i{width:6px;height:6px;border-radius:50%;background:#2EA043;display:block}
+.sub{margin-top:3px;font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub b{color:var(--tx2);font-weight:500}
+
+.segs{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.seg{display:flex;background:#0F1520;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.seg button{
+  border:0;background:transparent;color:var(--tx3);font:inherit;font-size:12px;font-weight:500;
+  padding:6px 11px;border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap
+}
+.seg button:hover{color:var(--tx2)}
+.seg button.on{background:var(--accent);color:#08101E;font-weight:600}
+body.mode-motor .seg button.on{color:#1B1204}
+.seg .lab{font-size:10.5px;color:var(--tx3);align-self:center;padding:0 5px 0 7px;white-space:nowrap}
+
+.stats{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.st{background:var(--card2);border-radius:9px;padding:6px 9px;min-width:0}
+.st b{display:block;font-size:14.5px;font-weight:600;letter-spacing:-.2px;line-height:1.2}
+.st span{font-size:10px;color:var(--tx3);white-space:nowrap}
+
+/* ---------- legend ---------- */
+#legend{left:12px;bottom:12px;max-width:min(300px,calc(100vw - 24px))}
+#legcard{padding:9px 11px 10px}
+.lg-hd{font-size:10.5px;color:var(--tx3);display:flex;justify-content:space-between;gap:10px;margin-bottom:6px}
+.lg-hd b{color:var(--tx2);font-weight:500}
+.lg-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,#2C7BE5,#1FB6C9,#35C46A,#D6C022,#F08A24,#F04438)}
+.lg-lb{display:flex;justify-content:space-between;font-size:9.5px;color:var(--tx3);margin-top:3px}
+.lg-ft{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);font-size:10px;color:var(--tx3);line-height:1.5}
+.lg-ft i{font-style:normal;display:inline-block;border-radius:50%;background:#35C46A;vertical-align:middle;margin-right:4px}
+
+/* ---------- zoom ---------- */
+#zoom{right:12px;bottom:12px;display:flex;flex-direction:column;gap:6px}
+#zoom button{
+  width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);
+  color:var(--tx);font-size:19px;line-height:1;cursor:pointer;box-shadow:var(--shadow);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:0
+}
+#zoom button:active{background:var(--card2)}
+
+/* ---------- bottom sheet ---------- */
+#sheet{left:0;right:0;bottom:0;display:flex;justify-content:center;padding:0 12px}
+#sheetcard{width:100%;max-width:760px;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column}
+.sheet-hd{
+  display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;user-select:none;
+  border-bottom:1px solid var(--line)
+}
+.sheet-hd b{font-size:13px;font-weight:600}
+.sheet-hd span{font-size:10.5px;color:var(--tx3)}
+.sheet-hd .chev{margin-left:auto;color:var(--tx3);transition:.2s;font-size:13px}
+#sheetcard.collapsed .chev{transform:rotate(180deg)}
+#sheetbody{max-height:31vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:7px 9px 12px}
+#sheetcard.collapsed #sheetbody{display:none}
+.cp{
+  display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:10px;cursor:pointer;transition:.12s
+}
+.cp:hover,.cp.hl{background:var(--card2)}
+.cp .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;box-shadow:0 0 0 2px rgba(255,255,255,.09)}
+.cp .nm{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp .fr{font-size:10.5px;color:var(--tx3);white-space:nowrap}
+.cp .fr b{color:var(--tx2);font-weight:600}
+.cp .bar{width:52px;height:5px;border-radius:3px;background:#1B2431;overflow:hidden;flex:0 0 52px}
+.cp .bar i{display:block;height:100%;border-radius:3px}
+.cp .rt{font-size:12px;font-weight:600;width:38px;text-align:right;flex:0 0 38px;letter-spacing:-.2px}
+
+/* ---------- info window ---------- */
+.iw{min-width:196px;max-width:250px;background:#141A24;border:1px solid var(--line);
+  border-radius:13px;padding:11px 12px 12px;color:var(--tx);box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.iw .t{font-size:14px;font-weight:600;line-height:1.35;padding-right:14px}
+.iw .g{font-size:10px;color:var(--tx3);margin-top:3px}
+.iw .big{display:flex;align-items:baseline;gap:7px;margin-top:9px}
+.iw .big b{font-size:26px;font-weight:600;letter-spacing:-1px;line-height:1}
+.iw .big small{font-size:11.5px;color:var(--tx3)}
+.iw .track{height:7px;border-radius:4px;background:#1B2431;overflow:hidden;margin-top:8px}
+.iw .track i{display:block;height:100%;border-radius:4px}
+.iw .rows{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
+.iw .rows div{display:flex;gap:8px;font-size:11.5px}
+.iw .rows em{font-style:normal;color:var(--tx3);flex:0 0 52px}
+.iw .rows span{flex:1;color:var(--tx2);word-break:break-word}
+.iw .chip{display:inline-block;background:#1E2A3A;border-radius:7px;padding:3px 7px;font-size:10.5px;color:var(--tx2);margin-top:8px}
+.iw .chip b{color:var(--tx)}
+
+/* ---------- misc ---------- */
+#fail{
+  position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  background:var(--bg);padding:24px;text-align:center;font-size:13px;color:var(--tx2);line-height:1.7
+}
+#fail b{display:block;color:var(--tx);font-size:15px;margin-bottom:8px}
+@media (max-width:560px){
+  #legend{bottom:calc(31vh + 18px)}
+  #legend .lg-ft{display:none}
+  .trow1 h1{font-size:15px}
+  #sheetbody{max-height:29vh}
+  #legend{bottom:calc(29vh + 16px)}
+}
+</style>
+<script type="text/javascript">
+  window._TMapSecurityConfig = {
+    serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__',
+  };
+</script>
+<script src="https://map.qq.com/api/gljs?v=1.exp&libraries=visualization"></script>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="hud" id="top">
+  <div class="panel" id="topcard">
+    <div class="trow1">
+      <h1>澳門公共停車場 · 使用率地圖</h1>
+      <div class="live"><i></i><span id="agen">--</span></div>
+    </div>
+    <div class="sub" id="asub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集</div>
+
+    <div class="segs">
+      <div class="seg" id="seg-mode"><span class="lab">車種</span></div>
+      <div class="seg" id="seg-layer"><span class="lab">顯示</span></div>
+      <div class="seg" id="seg-crs"><span class="lab">座標</span></div>
+    </div>
+
+    <div class="stats">
+      <div class="st"><b id="s-rate">--</b><span id="s-ratel">全澳使用率</span></div>
+      <div class="st"><b id="s-free">--</b><span>剩餘車位</span></div>
+      <div class="st"><b id="s-cap">--</b><span>總車位</span></div>
+      <div class="st"><b id="s-cnt">--</b><span>停車場數</span></div>
+      <div class="st"><b id="s-full">--</b><span>≥90% 場數</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="hud" id="legend">
+  <div class="panel" id="legcard">
+    <div class="lg-hd"><b id="lg-title">使用率</b><span id="lg-note">越紅越滿</span></div>
+    <div class="lg-bar"></div>
+    <div class="lg-lb"><span>0% 空</span><span>50%</span><span>100% 滿</span></div>
+    <div class="lg-ft"><i id="lg-dot"></i><span id="lg-fttx">圓點大小＝該場車位數</span></div>
+  </div>
+</div>
+
+<div class="hud" id="zoom">
+  <button type="button" id="zin" title="放大">+</button>
+  <button type="button" id="zout" title="縮小">−</button>
+  <button type="button" id="zfit" title="全澳" style="font-size:14px">◎</button>
+</div>
+
+<div class="hud" id="sheet">
+  <div class="panel" id="sheetcard">
+    <div class="sheet-hd" id="sheethd">
+      <b id="sh-title">最擠的停車場</b>
+      <span id="sh-sub"></span>
+      <span class="chev">▾</span>
+    </div>
+    <div id="sheetbody"></div>
+  </div>
+</div>
+
+<div id="fail"><div><b>地圖載入失敗</b>底圖服務未能載入。<br>請確認網絡連線後重新整理頁面。</div></div>
+
+<!--MAPDATA-->
+
+<script>
+(function(){
+"use strict";
+
+var D = window.__MAPDATA__ || {modes:{}, mode_order:[]};
+var MODES = (D.mode_order && D.mode_order.length) ? D.mode_order : Object.keys(D.modes||{});
+var mode  = MODES[0] || "car";
+var layer = "both";     // heat | dot | both
+var crs   = "gcj";      // gcj (騰訊) | wgs (原始衛星)
+
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+var nf = function(n){ return (n==null||isNaN(n)) ? "--" : Number(n).toLocaleString("en-US"); };
+var pct = function(r){ return (r==null||isNaN(r)) ? "--" : Math.round(r*100)+"%"; };
+
+/* ---- 色階：天氣圖式（藍＝空 → 紅＝滿），紅代表擠 ---- */
+var STOPS = [[0,"#2C7BE5"],[0.25,"#1FB6C9"],[0.5,"#35C46A"],
+             [0.7,"#D6C022"],[0.85,"#F08A24"],[1,"#F04438"]];
+function h2r(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+function ramp(r){
+  if(r==null||isNaN(r)) return "#5C6879";
+  r = r<0?0:(r>1?1:r);
+  for(var i=1;i<STOPS.length;i++){
+    if(r<=STOPS[i][0]){
+      var a=STOPS[i-1], b=STOPS[i];
+      var t=(r-a[0])/((b[0]-a[0])||1);
+      var ca=h2r(a[1]), cb=h2r(b[1]);
+      return "rgb("+Math.round(ca[0]+(cb[0]-ca[0])*t)+","+
+                     Math.round(ca[1]+(cb[1]-ca[1])*t)+","+
+                     Math.round(ca[2]+(cb[2]-ca[2])*t)+")";
+    }
+  }
+  return STOPS[STOPS.length-1][1];
+}
+var GRADIENT = {};
+STOPS.forEach(function(s){ GRADIENT[s[0]] = s[1]; });
+
+/* ---- 資料存取 ---- */
+function M(){ return (D.modes||{})[mode] || null; }
+function mLabel(){ var m=M(); return m ? (m.label||mode) : ""; }
+var IDX = {};
+function parkById(id){ return IDX[mode] ? IDX[mode][id] : null; }
+function rebuildIndex(){
+  IDX = {};
+  Object.keys(D.modes||{}).forEach(function(k){
+    var t = {};
+    (D.modes[k].parks||[]).forEach(function(p){ t[p.id]=p; });
+    IDX[k]=t;
+  });
+}
+function pt(p){ return crs==="gcj" ? p.g : p.w; }
+
+/* ---- 地圖 ---- */
+if(typeof TMap === "undefined"){
+  $("fail").style.display = "flex";
+  return;
+}
+var CENTER = D.center || [22.1875,113.5495];
+var map = new TMap.Map("map", {
+  center: new TMap.LatLng(CENTER[0], CENTER[1]),
+  zoom: 13,
+  pitch: 0,
+  rotation: 0,
+  minZoom: 11,
+  maxZoom: 19
+});
+
+var heat = null, dot = null, iw = null;
+
+function clearHeat(){ if(heat){ heat.remove(); heat = null; } }
+function clearDot(){ if(dot){ dot.remove(); dot = null; } }
+
+function buildHeat(){
+  clearHeat();
+  if(layer==="dot") return;
+  var m = M(); if(!m) return;
+  heat = new TMap.visualization.Heat({
+    radius: 62,
+    height: 0,
+    min: 0,
+    max: 100,
+    opacity: 0.76,
+    distanceUnit: "pixel",
+    enableLighting: false,
+    gradientColor: GRADIENT
+  }).addTo(map);
+  heat.setData((m.parks||[]).map(function(p){
+    var c = pt(p);
+    return { lat:c[0], lng:c[1], count: Math.round((p.rate||0)*100), properties:{ id:p.id } };
+  }));
+}
+
+function buildDot(){
+  clearDot();
+  if(layer==="heat") return;
+  var m = M(); if(!m) return;
+  var styles = {};
+  var data = (m.parks||[]).map(function(p){
+    var c = pt(p);
+    var r = (p.rate==null) ? 0 : p.rate;
+    var cap = p.cap||0;
+    var rad = Math.max(5, Math.min(17, 4.6 + Math.sqrt(Math.max(cap,0))*0.20));
+    var sid = "r" + Math.round(r*24) + "_" + rad.toFixed(1);
+    if(!styles[sid]){
+      styles[sid] = {
+        type: "circle",
+        fillColor: ramp(p.rate),
+        strokeColor: "rgba(6,10,18,.62)",
+        strokeWidth: 1,
+        radius: rad
+      };
+    }
+    return { lat:c[0], lng:c[1], styleId: sid, properties:{ id:p.id } };
+  });
+  dot = new TMap.visualization.Dot({
+    styles: styles,
+    faceTo: "screen",
+    selectOptions: { action: "click", enableHighlight: false }
+  }).addTo(map);
+  dot.setData(data);
+  dot.on("click", function(evt){
+    var d = evt && evt.detail && evt.detail.dot;
+    if(!d || !d.properties) return;
+    showInfo(d.properties.id, new TMap.LatLng(d.lat, d.lng), false);
+  });
+}
+
+/* ---- 資訊窗 ---- */
+function infoHTML(p){
+  var r = p.rate;
+  var h = '<div class="iw">';
+  h += '<div class="t">' + esc(p.n) + '</div>';
+  if(p.gov && p.gov !== p.n) h += '<div class="g">政府登記：' + esc(p.gov) + '</div>';
+  h += '<div class="big"><b style="color:' + ramp(r) + '">' +
+       (p.free==null ? "-" : nf(p.free)) + '</b>' +
+       '<small>剩餘 / ' + nf(p.cap) + ' 位</small>' +
+       '<span style="margin-left:auto;font-size:15px;font-weight:600;color:' + ramp(r) + '">' + pct(r) + '</span></div>';
+  h += '<div class="track"><i style="width:' + Math.round((r||0)*100) + '%;background:' + ramp(r) + '"></i></div>';
+  h += '<div class="rows">';
+  if(p.occ!=null) h += '<div><em>使用中</em><span>' + nf(p.occ) + ' 位</span></div>';
+  if(p.pk!=null)  h += '<div><em>每週高峰</em><span>' + esc(p.pkw||"") + ' ' +
+                        String(p.pkh==null?"":p.pkh).replace(/^(\d)$/,"0$1") + ':00 · ' + pct(p.pk) + '</span></div>';
+  if(p.addr)      h += '<div><em>位置</em><span>' + esc(p.addr) + '</span></div>';
+  if(p.tel)       h += '<div><em>電話</em><span>' + esc(p.tel) + '</span></div>';
+  h += '</div>';
+  h += '<div class="chip">' + esc(mLabel()) + '車位 <b>' + nf(p.cap) + '</b> 個</div>';
+  h += '</div>';
+  return h;
+}
+
+function showInfo(id, pos, fly){
+  var p = parkById(id);
+  if(!p) return;
+  if(!iw){
+    iw = new TMap.InfoWindow({
+      map: map, position: pos, enableCustom: true,
+      offset: { x: 0, y: -10 }, zIndex: 30
+    });
+  }
+  iw.setPosition(pos);
+  iw.setContent(infoHTML(p));
+  iw.open();
+  if(fly) map.easeTo({ center: pos, zoom: Math.max(map.getZoom(), 15) }, { duration: 520 });
+  highlight(id);
+}
+
+function highlight(id){
+  var rows = $("sheetbody").querySelectorAll(".cp");
+  for(var i=0;i<rows.length;i++) rows[i].classList.toggle("hl", rows[i].getAttribute("data-id")===id);
+}
+
+/* ---- HUD 內容 ---- */
+function renderSegs(){
+  var sm = $("seg-mode"), sl = $("seg-layer"), sc = $("seg-crs");
+  sm.innerHTML = '<span class="lab">車種</span>';
+  MODES.forEach(function(mid){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = (D.modes[mid].label||mid);
+    if(mid===mode) b.className = "on";
+    b.onclick = function(){ setMode(mid); };
+    sm.appendChild(b);
+  });
+  var LAYERS = [["both","熱力＋圓點"],["heat","純熱力"],["dot","純圓點"]];
+  sl.innerHTML = '<span class="lab">顯示</span>';
+  LAYERS.forEach(function(o){
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = o[1];
+    if(o[0]===layer) b.className = "on";
+    b.onclick = function(){ layer = o[0]; renderSegs(); rebuild(); };
+    sl.appendChild(b);
+  });
+  var CRSS = [["gcj","騰訊"],["wgs","衛星"]];
+  sc.innerHTML = '<span class="lab">座標</span>';
+  CRSS.forEach(function(o){
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = o[1];
+    if(o[0]===crs) b.className = "on";
+    b.onclick = function(){ crs = o[0]; renderSegs(); rebuild(); closeInfo(); };
+    sc.appendChild(b);
+  });
+}
+
+function renderStats(){
+  var m = M(); if(!m) return;
+  var o = m;
+  var full = 0, parks = m.parks||[];
+  parks.forEach(function(p){ if(p.rate!=null && p.rate>=0.9) full++; });
+  $("s-rate").textContent = pct(o.rate);
+  $("s-rate").style.color = ramp(o.rate);
+  $("s-ratel").textContent = mLabel() + "使用率";
+  $("s-free").textContent = nf(o.free);
+  $("s-cap").textContent  = nf(o.capacity);
+  $("s-cnt").textContent  = nf(parks.length);
+  $("s-full").textContent = nf(full);
+  $("s-full").style.color = full ? "#F04438" : "var(--tx)";
+
+  $("lg-title").textContent = mLabel() + "使用率";
+  $("lg-dot").style.background = ramp(o.rate);
+  $("lg-fttx").textContent = layer==="heat"
+    ? "熱力強度＝該場使用率"
+    : "圓點大小＝該場車位數";
+}
+
+function renderSheet(){
+  var m = M(); if(!m) return;
+  var parks = (m.parks||[]).slice().sort(function(a,b){ return (b.rate||0)-(a.rate||0); });
+  var shown = parks.slice(0, 40);
+  $("sh-sub").textContent = shown.length + " / " + parks.length + " 場 · 由最擠排起";
+  $("sheetbody").innerHTML = shown.map(function(p){
+    var r = p.rate;
+    return '<div class="cp" data-id="' + esc(p.id) + '">' +
+      '<span class="dot" style="background:' + ramp(r) + '"></span>' +
+      '<span class="nm">' + esc(p.n) + '</span>' +
+      '<span class="fr">剩 <b>' + (p.free==null?"-":p.free) + '</b>/' + (p.cap==null?"-":p.cap) + '</span>' +
+      '<span class="bar"><i style="width:' + Math.round((r||0)*100) + '%;background:' + ramp(r) + '"></i></span>' +
+      '<span class="rt" style="color:' + ramp(r) + '">' + pct(r) + '</span>' +
+    '</div>';
+  }).join("");
+  var rows = $("sheetbody").querySelectorAll(".cp");
+  for(var i=0;i<rows.length;i++){
+    (function(row){
+      row.onclick = function(){
+        var id = row.getAttribute("data-id");
+        var p = parkById(id); if(!p) return;
+        var c = pt(p);
+        showInfo(id, new TMap.LatLng(c[0], c[1]), true);
+      };
+    })(rows[i]);
+  }
+}
+
+function renderHead(){
+  $("agen").textContent = (D.last_snapshot || D.generated_at || "--").slice(5,16);
+  $("asub").innerHTML = '數據來源 交通事務局 DSAT · 每 30 分鐘自動採集 · ' +
+    '<b>' + nf(D.snapshots) + '</b> 筆快照 / <b>' + nf(D.days_covered) + '</b> 天' +
+    ' · 產生於 ' + esc(D.generated_at||"--");
+}
+
+function closeInfo(){ if(iw) iw.close(); }
+
+function rebuild(){
+  document.body.className = "mode-" + mode;
+  buildHeat();
+  buildDot();
+  renderStats();
+  renderSheet();
+}
+
+function setMode(m){
+  if(MODES.indexOf(m) < 0) return;
+  mode = m; closeInfo();
+  renderSegs(); rebuild();
+}
+
+/* ---- 事件 ---- */
+$("zin").onclick  = function(){ map.setZoom(Math.min(19, map.getZoom()+1)); };
+$("zout").onclick = function(){ map.setZoom(Math.max(11, map.getZoom()-1)); };
+$("zfit").onclick = function(){
+  closeInfo();
+  map.easeTo({ center: new TMap.LatLng(CENTER[0], CENTER[1]), zoom: 13 }, { duration: 460 });
+};
+$("sheethd").onclick = function(){ $("sheetcard").classList.toggle("collapsed"); };
+
+/* ---- 啟動 ---- */
+rebuildIndex();
+renderSegs();
+renderHead();
+rebuild();
+
+})();
+</script>
+</body>
+</html>
