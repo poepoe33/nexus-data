@@ -70,6 +70,38 @@ except Exception:  # pragma: no cover
 
 MODES = [("car", "私家車"), ("motor", "電單車")]
 
+WEEKDAYS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
+HOURS = 24
+TZ = "Asia/Macau"
+
+_B36 = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+
+def encode_heatmap(grid) -> str:
+    """Pack a 7x24 weekday×hour grid into a compact string.
+
+    The grid is 168 slots of float-or-None. Sent as JSON that is ~1.4 KB per
+    carpark, which would double the page size for data that is 81% empty and
+    changes slowly. Instead:
+
+        None  -> "."            (1 char, and '.' is not a base-36 digit so the
+                                 stream stays unambiguous when parsed greedily)
+        value -> two base-36 chars encoding round(rate*100), i.e. 0..100
+
+    So 1% precision, exact, and a fully-populated grid costs 336 chars.
+    """
+    if not grid:
+        return ""
+    out = []
+    for row in grid:
+        for v in row:
+            if v is None:
+                out.append(".")
+            else:
+                n = max(0, min(100, int(round(float(v) * 100))))
+                out.append(_B36[n // 36] + _B36[n % 36])
+    return "".join(out)
+
 
 def load_coords() -> dict[str, dict]:
     if not COORDS_CSV.exists():
@@ -191,6 +223,8 @@ def main() -> int:
                 "addr": meta_row.get("addr", ""),
                 "tel": meta_row.get("tel", ""),
                 "gov": co["gov_name"],
+                # 7x24 weekday×hour 歷史平均（見 encode_heatmap）
+                "hm": encode_heatmap(c.get("heatmap")),
             })
         parks.sort(key=lambda p: -(p["rate"] or 0))
         o = m["overall"]
@@ -212,6 +246,10 @@ def main() -> int:
         "center": [22.1875, 113.5495],
         "mode_order": [m for m, _ in MODES if m in modes],
         "modes": modes,
+        # 「星期 × 小時」查詢用：標籤與時區都給前端，避免兩邊各自硬編碼
+        "weekdays": dash.get("weekdays") or WEEKDAYS,
+        "hours": HOURS,
+        "tz": TZ,
     }
 
     if not TEMPLATE.exists():

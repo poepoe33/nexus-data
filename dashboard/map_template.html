@@ -10,6 +10,7 @@
   --bg:#0B0E14; --card:rgba(20,26,36,.92); --card2:#1A2230; --line:#232E3E;
   --tx:#E6EDF3; --tx2:#9AA7B8; --tx3:#6B7889; --accent:#4C8DFF;
   --shadow:0 8px 28px rgba(0,0,0,.46);
+  color-scheme:dark;   /* 讓原生 <select> 下拉也走深色 */
 }
 body.mode-motor{--accent:#F0A33C}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -32,21 +33,31 @@ body{
 
 /* ---------- top bar ---------- */
 #top{top:0;left:0;right:0;padding:10px 12px 0;display:flex;justify-content:center}
-#topcard{width:100%;max-width:760px;padding:11px 13px 12px}
-.trow1{display:flex;align-items:baseline;gap:8px}
-.trow1 h1{margin:0;font-size:16.5px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
-.trow1 .live{
-  font-size:10px;color:var(--tx3);border:1px solid var(--line);border-radius:20px;
-  padding:1px 7px;white-space:nowrap;margin-left:auto;display:flex;align-items:center;gap:5px
+#topcard{width:100%;max-width:760px;padding:11px 13px 12px;transition:padding .18s}
+#topcard.collapsed{padding:8px 12px}
+.trow1{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.trow1 h1{
+  margin:0;font-size:16.5px;font-weight:600;letter-spacing:.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0
 }
-.trow1 .live i{width:6px;height:6px;border-radius:50%;background:#2EA043;display:block}
+.chip{
+  font-size:10.5px;color:var(--tx2);background:#1E2A3A;border-radius:20px;
+  padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;
+  margin-left:auto;flex:0 0 auto
+}
+.chip i{width:6px;height:6px;border-radius:50%;background:#2EA043;display:none}
+.chip.live i{display:block}
+.chev{color:var(--tx3);font-size:13px;transition:.2s;flex:0 0 auto}
+#topcard.collapsed .chev{transform:rotate(180deg)}
+#topcard.collapsed #topbody{display:none}
+
 .sub{margin-top:3px;font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub b{color:var(--tx2);font-weight:500}
 .backlink{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:600;
   color:var(--accent);text-decoration:none}
 .backlink:hover{text-decoration:underline}
 
-.segs{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.segs{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center}
 .seg{display:flex;background:#0F1520;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
 .seg button{
   border:0;background:transparent;color:var(--tx3);font:inherit;font-size:12px;font-weight:500;
@@ -55,7 +66,15 @@ body{
 .seg button:hover{color:var(--tx2)}
 .seg button.on{background:var(--accent);color:#08101E;font-weight:600}
 body.mode-motor .seg button.on{color:#1B1204}
+.seg button.wd{padding:6px 8px;min-width:29px}
+/* 即時模式下標出「今天是星期幾」，但用底線區隔，不要跟「已選取」的實心塊混淆 */
+.seg button.now{color:var(--tx2);box-shadow:inset 0 -2px 0 rgba(154,167,184,.55)}
 .seg .lab{font-size:10.5px;color:var(--tx3);align-self:center;padding:0 5px 0 7px;white-space:nowrap}
+.sel{
+  background:#0F1520;border:1px solid var(--line);border-radius:11px;color:var(--tx);
+  font:inherit;font-size:12px;padding:6px 8px;cursor:pointer;outline:none
+}
+.sel:disabled{opacity:.45;cursor:default}
 
 .stats{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
 .st{background:var(--card2);border-radius:9px;padding:6px 9px;min-width:0}
@@ -88,6 +107,7 @@ body.mode-motor .seg button.on{color:#1B1204}
   display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;user-select:none;
   border-bottom:1px solid var(--line)
 }
+#sheetcard.collapsed .sheet-hd{border-bottom:0}
 .sheet-hd b{font-size:13px;font-weight:600}
 .sheet-hd span{font-size:10.5px;color:var(--tx3)}
 .sheet-hd .chev{margin-left:auto;color:var(--tx3);transition:.2s;font-size:13px}
@@ -129,6 +149,7 @@ body.mode-motor .seg button.on{color:#1B1204}
 .iw .rows span{flex:1;color:var(--tx2);word-break:break-word}
 .iw .chip{display:inline-block;background:#1E2A3A;border-radius:7px;padding:3px 7px;font-size:10.5px;color:var(--tx2);margin-top:8px}
 .iw .chip b{color:var(--tx)}
+.iw .hist{background:#22303F;color:#B9C7D8}
 
 /* ---------- misc ---------- */
 #fail{
@@ -143,6 +164,8 @@ body.mode-motor .seg button.on{color:#1B1204}
   .trow1 h1{font-size:15px}
   #sheetbody{max-height:29vh}
   #legend{bottom:calc(29vh + 16px)}
+  .seg button{padding:6px 9px}
+  .seg button.wd{padding:6px 6px;min-width:26px}
 }
 </style>
 <script type="text/javascript">
@@ -177,26 +200,35 @@ body.mode-motor .seg button.on{color:#1B1204}
 <div id="map"></div>
 
 <div class="hud" id="top">
-  <div class="panel" id="topcard">
-    <div class="trow1">
+  <div class="panel collapsed" id="topcard">
+    <div class="trow1" id="tophd">
       <h1>澳門公共停車場 · 使用率地圖</h1>
-      <div class="live"><i></i><span id="agen">--</span></div>
-    </div>
-    <div class="sub" id="asub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集</div>
-    <a class="backlink" href="index.html">← 回實時車位列表</a>
-
-    <div class="segs">
-      <div class="seg" id="seg-mode"><span class="lab">車種</span></div>
-      <div class="seg" id="seg-layer"><span class="lab">顯示</span></div>
-      <div class="seg" id="seg-crs"><span class="lab">座標</span></div>
+      <span class="chip" id="slotchip">即時</span>
+      <span class="chev">▾</span>
     </div>
 
-    <div class="stats">
-      <div class="st"><b id="s-rate">--</b><span id="s-ratel">全澳使用率</span></div>
-      <div class="st"><b id="s-free">--</b><span>剩餘車位</span></div>
-      <div class="st"><b id="s-cap">--</b><span>總車位</span></div>
-      <div class="st"><b id="s-cnt">--</b><span>停車場數</span></div>
-      <div class="st"><b id="s-full">--</b><span>≥90% 場數</span></div>
+    <div id="topbody">
+      <div class="sub" id="asub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集</div>
+      <a class="backlink" href="index.html">← 回實時車位列表</a>
+
+      <div class="segs">
+        <div class="seg" id="seg-when"><span class="lab">時段</span></div>
+        <select class="sel" id="sel-hour" title="小時"></select>
+      </div>
+
+      <div class="segs">
+        <div class="seg" id="seg-mode"><span class="lab">車種</span></div>
+        <div class="seg" id="seg-layer"><span class="lab">顯示</span></div>
+        <div class="seg" id="seg-crs"><span class="lab">座標</span></div>
+      </div>
+
+      <div class="stats">
+        <div class="st"><b id="s-rate">--</b><span id="s-ratel">全澳使用率</span></div>
+        <div class="st"><b id="s-free">--</b><span id="s-freel">剩餘車位</span></div>
+        <div class="st"><b id="s-cap">--</b><span>總車位</span></div>
+        <div class="st"><b id="s-cnt">--</b><span id="s-cntl">停車場數</span></div>
+        <div class="st"><b id="s-full">--</b><span>≥90% 場數</span></div>
+      </div>
     </div>
   </div>
 </div>
@@ -217,7 +249,7 @@ body.mode-motor .seg button.on{color:#1B1204}
 </div>
 
 <div class="hud" id="sheet">
-  <div class="panel" id="sheetcard">
+  <div class="panel collapsed" id="sheetcard">
     <div class="sheet-hd" id="sheethd">
       <b id="sh-title">最擠的停車場</b>
       <span id="sh-sub"></span>
@@ -237,6 +269,10 @@ body.mode-motor .seg button.on{color:#1B1204}
 
 var D = window.__MAPDATA__ || {modes:{}, mode_order:[]};
 var MODES = (D.mode_order && D.mode_order.length) ? D.mode_order : Object.keys(D.modes||{});
+var WD   = D.weekdays || ["週一","週二","週三","週四","週五","週六","週日"];
+var HRS  = D.hours || 24;
+var TZ   = D.tz || "Asia/Macau";
+
 var mode  = MODES[0] || "car";
 var layer = "both";     // heat | dot | both
 var crs   = "gcj";      // gcj（高德底圖用的火星座標）| wgs（原始衛星座標）
@@ -251,6 +287,7 @@ var esc = function(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
 var nf = function(n){ return (n==null||isNaN(n)) ? "--" : Number(n).toLocaleString("en-US"); };
 var pct = function(r){ return (r==null||isNaN(r)) ? "--" : Math.round(r*100)+"%"; };
+var pad2 = function(n){ return (n<10?"0":"") + n; };
 
 /* ---- 色階：天氣圖式（藍＝空 → 紅＝滿），紅代表擠 ---- */
 var STOPS = [[0,"#2C7BE5"],[0.25,"#1FB6C9"],[0.5,"#35C46A"],
@@ -277,6 +314,60 @@ STOPS.forEach(function(s){
   var c = h2r(s[1]);
   GRADIENT[s[0]] = "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
 });
+
+/* ---- 時段（星期 × 小時）---- */
+/* WHEN === "live" 代表即時；否則 {wd:0-6, hr:0-23} 代表該時段的歷史平均。 */
+var WHEN = "live";
+var NOW = null;          // 澳門當下時段，開頁時算一次
+function nowInTz(){
+  try{
+    var f = new Intl.DateTimeFormat("en-US",
+      { timeZone: TZ, weekday: "short", hour: "2-digit", hour12: false });
+    var o = {};
+    f.formatToParts(new Date()).forEach(function(p){ o[p.type] = p.value; });
+    var wd = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].indexOf(o.weekday);
+    var hr = parseInt(o.hour, 10) % 24;   // 有些實作午夜會回 "24"
+    if(wd < 0 || isNaN(hr)) throw new Error("bad");
+    return { wd: wd, hr: hr };
+  }catch(e){
+    var d = new Date();                    // 退路：用瀏覽器本地時間
+    return { wd: (d.getDay() + 6) % 7, hr: d.getHours() };
+  }
+}
+NOW = nowInTz();
+function isLive(){ return WHEN === "live"; }
+function slotIdx(){ return WHEN.wd * HRS + WHEN.hr; }
+function slotLabel(){ return isLive() ? "即時" : (WD[WHEN.wd] + " " + pad2(WHEN.hr) + ":00"); }
+
+/* 7x24 網格壓縮成字串：null → "."（1 字元），值 → 2 個 base-36 字元（0..100）。
+   因為 "." 不是 base-36 字元，所以可以貪婪地逐段解析而不會歧義。 */
+function decHeat(s){
+  var out = [], i = 0, p = 0, n = s ? s.length : 0;
+  while(p < n){
+    if(s.charAt(p) === "."){ out[i++] = null; p += 1; }
+    else { out[i++] = parseInt(s.substr(p, 2), 36) / 100; p += 2; }
+  }
+  return out;
+}
+function heatOf(p){
+  if(p._h === undefined) p._h = p.hm ? decHeat(p.hm) : [];
+  return p._h;
+}
+
+/* 目前要顯示的使用率：即時 → 快照值；歷史 → 該時段平均（可能沒有資料 = null） */
+function curRate(p){
+  if(isLive()) return (p.rate == null ? null : p.rate);
+  var v = heatOf(p)[slotIdx()];
+  return (v === undefined || v === null) ? null : v;
+}
+/* 歷史模式沒有真實剩餘車位，用 容量 ×(1-使用率) 估算 */
+function curFree(p){
+  if(isLive()) return p.free;
+  var r = curRate(p);
+  if(r == null || p.cap == null) return null;
+  return Math.round(p.cap * (1 - r));
+}
+function hasSlot(p){ return curRate(p) != null; }
 
 /* ---- 資料存取 ---- */
 function M(){ return (D.modes||{})[mode] || null; }
@@ -331,6 +422,14 @@ function buildHeat(){
   clearHeat();
   if(layer==="dot") return;
   var m = M(); if(!m) return;
+  var pts = [];
+  (m.parks||[]).forEach(function(p){
+    var r = curRate(p);
+    if(r == null) return;              // 該時段沒有資料 → 不進熱力圖，免得畫出假的熱區
+    var c = pt(p);
+    pts.push({ lng: c[1], lat: c[0], count: Math.round(r*100) });
+  });
+  if(!pts.length) return;
   heat = new AMap.HeatMap(map, {
     radius: 62,            // 單位 pixel（官方預設 30）
     opacity: [0, 0.76],    // 注意：高德是「區間陣列」，不是單一數值
@@ -339,13 +438,7 @@ function buildHeat(){
     zIndex: 120,
     visible: true
   });
-  heat.setDataSet({
-    data: (m.parks||[]).map(function(p){
-      var c = pt(p);
-      return { lng: c[1], lat: c[0], count: Math.round((p.rate||0)*100) };
-    }),
-    max: 100
-  });
+  heat.setDataSet({ data: pts, max: 100 });
 }
 
 function buildDot(){
@@ -354,6 +447,7 @@ function buildDot(){
   var m = M(); if(!m) return;
   dots = [];
   (m.parks||[]).forEach(function(p){
+    var r = curRate(p);
     var c = pt(p);
     var cap = p.cap||0;
     /* 半徑用車位數開根號，避免大場把小場完全蓋住。CircleMarker 半徑單位是 px（上限 64）。 */
@@ -364,8 +458,10 @@ function buildDot(){
       strokeColor: "rgba(6,10,18,.62)",
       strokeWeight: 1,
       strokeOpacity: 1,
-      fillColor: ramp(p.rate),
-      fillOpacity: 0.85,
+      /* 該時段沒有資料 → 中性灰。仍然看得到位置、也點得開，
+         但不會被誤讀成「很空」（畫成 0% 藍色是錯的）。 */
+      fillColor: (r == null ? "#39465A" : ramp(r)),
+      fillOpacity: (r == null ? 0.55 : 0.85),
       zIndex: 120,
       cursor: "pointer"
     });
@@ -379,23 +475,29 @@ function buildDot(){
 
 /* ---- 資訊窗 ---- */
 function infoHTML(p){
-  var r = p.rate;
+  var r = curRate(p), free = curFree(p), live = isLive();
   var h = '<div class="iw">';
   h += '<div class="t">' + esc(p.n) + '</div>';
   if(p.gov && p.gov !== p.n) h += '<div class="g">政府登記：' + esc(p.gov) + '</div>';
   h += '<div class="big"><b style="color:' + ramp(r) + '">' +
-       (p.free==null ? "-" : nf(p.free)) + '</b>' +
-       '<small>剩餘 / ' + nf(p.cap) + ' 位</small>' +
+       (free==null ? "-" : nf(free)) + '</b>' +
+       '<small>' + (live ? "剩餘" : "預估剩餘") + ' / ' + nf(p.cap) + ' 位</small>' +
        '<span style="margin-left:auto;font-size:15px;font-weight:600;color:' + ramp(r) + '">' + pct(r) + '</span></div>';
   h += '<div class="track"><i style="width:' + Math.round((r||0)*100) + '%;background:' + ramp(r) + '"></i></div>';
   h += '<div class="rows">';
-  if(p.occ!=null) h += '<div><em>使用中</em><span>' + nf(p.occ) + ' 位</span></div>';
+  if(!live){
+    h += '<div><em>時段</em><span>' + esc(slotLabel()) + ' 的歷史平均</span></div>';
+  } else {
+    if(p.occ!=null) h += '<div><em>使用中</em><span>' + nf(p.occ) + ' 位</span></div>';
+  }
   if(p.pk!=null)  h += '<div><em>每週高峰</em><span>' + esc(p.pkw||"") + ' ' +
-                        String(p.pkh==null?"":p.pkh).replace(/^(\d)$/,"0$1") + ':00 · ' + pct(p.pk) + '</span></div>';
+                        pad2(p.pkh==null?"":p.pkh) + ':00 · ' + pct(p.pk) + '</span></div>';
   if(p.addr)      h += '<div><em>位置</em><span>' + esc(p.addr) + '</span></div>';
   if(p.tel)       h += '<div><em>電話</em><span>' + esc(p.tel) + '</span></div>';
   h += '</div>';
-  h += '<div class="chip">' + esc(mLabel()) + '車位 <b>' + nf(p.cap) + '</b> 個</div>';
+  h += '<div class="chip' + (live ? '' : ' hist') + '">' +
+       (live ? '' : esc(slotLabel()) + ' · ') +
+       esc(mLabel()) + '車位 <b>' + nf(p.cap) + '</b> 個</div>';
   h += '</div>';
   return h;
 }
@@ -422,6 +524,54 @@ function highlight(id){
 }
 
 /* ---- HUD 內容 ---- */
+function renderChip(){
+  var c = $("slotchip");
+  if(isLive()){
+    c.className = "chip live";
+    c.innerHTML = "<i></i>即時";
+  } else {
+    c.className = "chip";
+    c.textContent = slotLabel();
+  }
+}
+
+function renderWhen(){
+  var sw = $("seg-when");
+  sw.innerHTML = '<span class="lab">時段</span>';
+
+  var b = document.createElement("button");
+  b.type = "button"; b.textContent = "即時";
+  if(isLive()) b.className = "on";
+  b.onclick = function(){ setWhen("live"); };
+  sw.appendChild(b);
+
+  WD.forEach(function(label, i){
+    var w = document.createElement("button");
+    w.type = "button";
+    w.textContent = label.replace(/^週/, "");
+    var isToday = isLive() && NOW.wd === i;
+    w.title = label + (isToday ? "（今天）" : "");
+    w.className = "wd" + ((!isLive() && WHEN.wd === i) ? " on" : (isToday ? " now" : ""));
+    w.onclick = function(){ setWhen({ wd: i, hr: isLive() ? NOW.hr : WHEN.hr }); };
+    sw.appendChild(w);
+  });
+
+  var sel = $("sel-hour");
+  sel.value = String(isLive() ? NOW.hr : WHEN.hr);
+  sel.disabled = isLive();
+}
+
+function buildHourOptions(){
+  var sel = $("sel-hour"), html = "";
+  for(var h=0; h<HRS; h++) html += '<option value="' + h + '">' + pad2(h) + ':00</option>';
+  sel.innerHTML = html;
+  sel.onchange = function(){
+    var h = parseInt(sel.value, 10);
+    if(isNaN(h)) return;
+    setWhen({ wd: isLive() ? NOW.wd : WHEN.wd, hr: h });
+  };
+}
+
 function renderSegs(){
   var sm = $("seg-mode"), sl = $("seg-layer"), sc = $("seg-crs");
   sm.innerHTML = '<span class="lab">車種</span>';
@@ -455,36 +605,64 @@ function renderSegs(){
 
 function renderStats(){
   var m = M(); if(!m) return;
-  var o = m;
-  var full = 0, parks = m.parks||[];
-  parks.forEach(function(p){ if(p.rate!=null && p.rate>=0.9) full++; });
-  $("s-rate").textContent = pct(o.rate);
-  $("s-rate").style.color = ramp(o.rate);
-  $("s-ratel").textContent = mLabel() + "使用率";
-  $("s-free").textContent = nf(o.free);
-  $("s-cap").textContent  = nf(o.capacity);
-  $("s-cnt").textContent  = nf(parks.length);
+  var parks = m.parks||[];
+  var live = isLive();
+  var rate, free, cap, cnt, full = 0;
+
+  if(live){
+    rate = m.rate; free = m.free; cap = m.capacity; cnt = parks.length;
+    parks.forEach(function(p){ if(p.rate!=null && p.rate>=0.9) full++; });
+  } else {
+    /* 歷史模式：只統計「該時段有資料」的場，容量加權平均 */
+    var capSum = 0, freeSum = 0, cov = 0;
+    parks.forEach(function(p){
+      var r = curRate(p);
+      if(r == null) return;
+      cov++;
+      capSum += (p.cap||0);
+      freeSum += (p.cap||0) * (1 - r);
+      if(r >= 0.9) full++;
+    });
+    rate = capSum ? (1 - freeSum/capSum) : null;
+    free = capSum ? Math.round(freeSum) : null;
+    cap = m.capacity; cnt = cov;
+  }
+
+  $("s-rate").textContent = pct(rate);
+  $("s-rate").style.color = ramp(rate);
+  $("s-ratel").textContent = live ? (mLabel() + "使用率") : (slotLabel() + " 平均");
+  $("s-free").textContent = nf(free);
+  $("s-freel").textContent = live ? "剩餘車位" : "預估剩餘";
+  $("s-cap").textContent  = nf(cap);
+  $("s-cnt").textContent  = nf(cnt);
+  $("s-cntl").textContent = live ? "停車場數" : "有資料場數";
   $("s-full").textContent = nf(full);
   $("s-full").style.color = full ? "#F04438" : "var(--tx)";
 
-  $("lg-title").textContent = mLabel() + "使用率";
-  $("lg-dot").style.background = ramp(o.rate);
+  $("lg-title").textContent = live ? (mLabel() + "使用率") : (slotLabel() + " 平均使用率");
+  $("lg-dot").style.background = ramp(rate);
   var ft = layer==="heat" ? "熱力強度＝該場使用率" : "圓點大小＝該場車位數";
   if(IS_TOUCH) ft += "（高德熱力圖暫不支援手機，建議用「純圓點」）";
   $("lg-fttx").textContent = ft;
+
+  renderChip();
 }
 
 function renderSheet(){
   var m = M(); if(!m) return;
-  var parks = (m.parks||[]).slice().sort(function(a,b){ return (b.rate||0)-(a.rate||0); });
+  var live = isLive();
+  var parks = (m.parks||[]).filter(hasSlot).sort(function(a,b){
+    return (curRate(b)||0) - (curRate(a)||0);
+  });
   var shown = parks.slice(0, 40);
+  $("sh-title").textContent = live ? "最擠的停車場" : (slotLabel() + " 最擠");
   $("sh-sub").textContent = shown.length + " / " + parks.length + " 場 · 由最擠排起";
   $("sheetbody").innerHTML = shown.map(function(p){
-    var r = p.rate;
+    var r = curRate(p), f = curFree(p);
     return '<div class="cp" data-id="' + esc(p.id) + '">' +
       '<span class="dot" style="background:' + ramp(r) + '"></span>' +
       '<span class="nm">' + esc(p.n) + '</span>' +
-      '<span class="fr">剩 <b>' + (p.free==null?"-":p.free) + '</b>/' + (p.cap==null?"-":p.cap) + '</span>' +
+      '<span class="fr">' + (live ? "剩" : "估") + ' <b>' + (f==null?"-":f) + '</b>/' + (p.cap==null?"-":p.cap) + '</span>' +
       '<span class="bar"><i style="width:' + Math.round((r||0)*100) + '%;background:' + ramp(r) + '"></i></span>' +
       '<span class="rt" style="color:' + ramp(r) + '">' + pct(r) + '</span>' +
     '</div>';
@@ -502,10 +680,10 @@ function renderSheet(){
 }
 
 function renderHead(){
-  $("agen").textContent = (D.last_snapshot || D.generated_at || "--").slice(5,16);
+  var ts = (D.last_snapshot || D.generated_at || "--").slice(5,16);
   $("asub").innerHTML = '數據來源 交通事務局 DSAT · 每 30 分鐘自動採集 · ' +
     '<b>' + nf(D.snapshots) + '</b> 筆快照 / <b>' + nf(D.days_covered) + '</b> 天' +
-    ' · 產生於 ' + esc(D.generated_at||"--");
+    ' · 最後更新 ' + esc(ts);
 }
 
 function closeInfo(){ if(iw) iw.close(); }
@@ -549,6 +727,20 @@ function setLayer(l){
   renderSegs(); applyVisibility(); renderStats();
 }
 
+/* 時段切換：一律重建圖層，因為要換的是「資料」不是「可見度」 */
+function setWhen(w){
+  if(w === "live"){
+    if(isLive()) return;
+    WHEN = "live";
+  } else {
+    if(!isLive() && WHEN.wd === w.wd && WHEN.hr === w.hr) return;
+    WHEN = { wd: w.wd, hr: w.hr };
+  }
+  closeInfo();
+  renderWhen();
+  rebuild();
+}
+
 /* ---- 事件 ---- */
 $("zin").onclick  = function(){ map.setZoom(Math.min(19, map.getZoom()+1)); };
 $("zout").onclick = function(){ map.setZoom(Math.max(11, map.getZoom()-1)); };
@@ -557,10 +749,13 @@ $("zfit").onclick = function(){
   map.setZoomAndCenter(13, MAPCENTER, false, 460);
 };
 $("sheethd").onclick = function(){ $("sheetcard").classList.toggle("collapsed"); };
+$("tophd").onclick   = function(){ $("topcard").classList.toggle("collapsed"); };
 
 /* ---- 啟動 ---- */
 rebuildIndex();
+buildHourOptions();
 renderSegs();
+renderWhen();
 renderHead();
 rebuild();
 
