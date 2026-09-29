@@ -103,6 +103,27 @@ def encode_heatmap(grid) -> str:
     return "".join(out)
 
 
+# 推薦功能要判斷「這個時段的平均值有多可信」，所以需要樣本數。
+# 但 UI 只需要知道信心等級，不需要精確到個位 —— 每格 1 個字元就夠：
+#     "."      = 完全沒有樣本（該時段無資料）
+#     "1".."7" = 實際樣本數
+#     "8"      = 8 筆或以上（也就是「高信心」那條線，之後不必再細分）
+# 一年下來每個格子最多也只累積到 ~52 筆，但 8 筆已經足夠下判斷。
+SAMPLE_CAP = 8
+
+
+def encode_samples(grid) -> str:
+    """把 7x24 的樣本數網格壓成每格 1 字元的字串（見上方說明）。"""
+    if not grid:
+        return ""
+    out = []
+    for row in grid:
+        for v in row:
+            n = int(v or 0)
+            out.append("." if n <= 0 else str(min(n, SAMPLE_CAP)))
+    return "".join(out)
+
+
 def load_coords() -> dict[str, dict]:
     if not COORDS_CSV.exists():
         print(f"[map] 缺少 {COORDS_CSV}，先跑 scripts/fetch_carpark_coords.py", file=sys.stderr)
@@ -179,6 +200,9 @@ def main() -> int:
     dash = json.loads(DATA_JSON.read_text(encoding="utf-8"))
     coords = load_coords()
     meta = load_meta()
+    # 澳門半島 / 離島。推薦功能靠它排除「直線很近但隔住個海」的結果 ——
+    # 澳門三條橋，直線 800 米可以係對岸。zone 由 build_dashboard.py 算好。
+    zone_by_id = {c.get("id"): c.get("zone") for c in dash.get("carparks", [])}
 
     # Duplicate government POIs (two entrances, one POI) — nudge them apart so
     # both circles stay clickable. ~45 m ring, deterministic by index.
@@ -225,6 +249,9 @@ def main() -> int:
                 "gov": co["gov_name"],
                 # 7x24 weekday×hour 歷史平均（見 encode_heatmap）
                 "hm": encode_heatmap(c.get("heatmap")),
+                # 對應的樣本數（見 encode_samples），推薦功能用來標示信心
+                "sm": encode_samples(c.get("samples")),
+                "zone": zone_by_id.get(pid) or "",
             })
         parks.sort(key=lambda p: -(p["rate"] or 0))
         o = m["overall"]

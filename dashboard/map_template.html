@@ -32,7 +32,7 @@ body{
 }
 
 /* ---------- top bar ---------- */
-#top{top:0;left:0;right:0;padding:10px 12px 0;display:flex;justify-content:center}
+#top{top:0;left:0;right:0;padding:10px 12px 0;display:flex;flex-direction:column;align-items:center;gap:8px}
 #topcard{width:100%;max-width:760px;padding:11px 13px 12px;transition:padding .18s}
 #topcard.collapsed{padding:8px 12px}
 .trow1{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
@@ -126,6 +126,54 @@ body.mode-motor .seg button.on{color:#1B1204}
 .cp .bar i{display:block;height:100%;border-radius:3px}
 .cp .rt{font-size:12px;font-weight:600;width:38px;text-align:right;flex:0 0 38px;letter-spacing:-.2px}
 
+/* ---------- 推薦：搜尋列 ---------- */
+#searchcard{width:100%;max-width:760px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;gap:7px;align-items:center}
+#q{
+  flex:1;min-width:0;border:1px solid var(--line);background:#0F1520;color:var(--tx);
+  font:inherit;font-size:13px;padding:9px 11px;border-radius:10px;outline:none
+}
+#q:focus{border-color:var(--accent)}
+#q::placeholder{color:var(--tx3)}
+#qbtn{
+  border:0;background:var(--accent);color:#08101E;font:inherit;font-size:12.5px;font-weight:600;
+  padding:9px 14px;border-radius:10px;cursor:pointer;white-space:nowrap
+}
+#qbtn[disabled]{opacity:.45;cursor:default}
+.shint{font-size:11px;color:var(--tx3);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shint a{color:var(--accent);cursor:pointer;text-decoration:none}
+.shint a:hover{text-decoration:underline}
+.shint .orig{color:var(--tx2);font-weight:500}
+
+/* ---------- 推薦：底部面板分頁 ---------- */
+.tabs{display:flex;gap:2px;margin-left:auto;background:#0F1520;border:1px solid var(--line);border-radius:9px;padding:2px}
+.tabs button{
+  border:0;background:transparent;color:var(--tx3);font:inherit;font-size:11.5px;font-weight:500;
+  padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap
+}
+.tabs button.on{background:var(--accent);color:#08101E;font-weight:600}
+
+/* ---------- 推薦：結果列 ---------- */
+.rc{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;cursor:pointer;transition:.12s}
+.rc:hover{background:var(--card2)}
+.rc .rk{
+  flex:0 0 20px;height:20px;border-radius:6px;background:#1E2A3A;color:var(--tx2);
+  font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center
+}
+.rc.first .rk{background:var(--accent);color:#08101E}
+.rc .bd{flex:1;min-width:0}
+.rc .nm{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc .mt{font-size:10.5px;color:var(--tx3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc .rs{text-align:right;flex:0 0 auto}
+.rc .rs b{font-size:14px;font-weight:600;letter-spacing:-.3px}
+.rc .rs span{display:block;font-size:10px;color:var(--tx3)}
+.cf{display:inline-block;border-radius:5px;padding:1px 5px;font-size:9.5px;margin-left:5px;vertical-align:1px}
+.cf.hi{background:#16341F;color:#5FD98A}
+.cf.mid{background:#3A3016;color:#E8C25A}
+.cf.lo{background:#3A1F1F;color:#E88A8A}
+.warn{margin:2px 8px 9px;padding:7px 9px;border-radius:9px;background:#3A3016;color:#E8C25A;font-size:11px;line-height:1.55}
+.rnote{margin:0 8px 6px;font-size:11px;color:var(--tx3);line-height:1.5}
+
 /* ---------- info window ---------- */
 /* 高德自訂窗體（isCustom）沒有自帶外框，這裡自己畫，並補一個朝下的小箭頭。 */
 .iw{min-width:196px;max-width:250px;background:#141A24;border:1px solid var(--line);
@@ -202,6 +250,15 @@ body.sheet-open #zoom{bottom:calc(31vh + 58px)}
 <div id="map"></div>
 
 <div class="hud" id="top">
+  <!-- 推薦功能的起點：地點 → 座標。打字走高德搜尋，點地圖則完全不耗額度。 -->
+  <div class="panel" id="searchcard">
+    <div class="srow">
+      <input id="q" type="text" autocomplete="off" placeholder="輸入地點，例如：大三巴、氹仔碼頭">
+      <button id="qbtn" type="button" disabled>查</button>
+    </div>
+    <div class="shint" id="qhint">輸入地點或直接<b>點地圖</b>選位置</div>
+  </div>
+
   <div class="panel collapsed" id="topcard">
     <div class="trow1" id="tophd">
       <h1>澳門公共停車場 · 使用率地圖</h1>
@@ -255,6 +312,10 @@ body.sheet-open #zoom{bottom:calc(31vh + 58px)}
     <div class="sheet-hd" id="sheethd">
       <b id="sh-title">最擠的停車場</b>
       <span id="sh-sub"></span>
+      <div class="tabs" id="shtabs">
+        <button type="button" id="tab-rec">推薦</button>
+        <button type="button" id="tab-busy" class="on">最擠</button>
+      </div>
       <span class="chev">▾</span>
     </div>
     <div id="sheetbody"></div>
@@ -371,6 +432,78 @@ function curFree(p){
 }
 function hasSlot(p){ return curRate(p) != null; }
 
+/* ================= 推薦：樣本數 / 距離 / 預測 ================= */
+
+/* 樣本數網格（每格 1 字元）："." = 0 筆，"1".."7" = 實際筆數，"8" = 8 筆以上。
+   編碼見 scripts/build_map.py 的 encode_samples。 */
+function decSamples(s){
+  var out = [], n = s ? s.length : 0;
+  for(var i=0;i<n;i++){
+    var c = s.charAt(i);
+    out[i] = (c === "." ? 0 : parseInt(c, 10));
+  }
+  return out;
+}
+function samplesOf(p){
+  if(p._s === undefined) p._s = p.sm ? decSamples(p.sm) : [];
+  return p._s;
+}
+
+/* 信心等級。目前歷史只有幾天，大部分時段格子只有 1~3 筆樣本 ——
+   必須老實標示，否則用戶會把「2 次觀察的平均」當成可靠預測。 */
+function confOf(n){
+  if(n >= 8) return {k:"hi",  t:"高信心", d:"8 次以上觀察"};
+  if(n >= 4) return {k:"mid", t:"中信心", d:n + " 次觀察"};
+  if(n >= 1) return {k:"lo",  t:"低信心", d:"只有 " + n + " 次觀察"};
+  return null;
+}
+
+/* 兩點直線距離（公尺）。刻意自己算：高德的距離測量會耗「基礎LBS」額度，
+   而 91 個停車場 × 每次查詢會即刻把額度燒光。 */
+function hav(a, b){
+  var R = 6371000, rad = Math.PI / 180;
+  var dLat = (b[0] - a[0]) * rad, dLng = (b[1] - a[1]) * rad;
+  var la1 = a[0] * rad, la2 = b[0] * rad;
+  var h = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/* 目標時段（即時 = 現在）。 */
+function targetWd(){ return isLive() ? (NOW ? NOW.wd : 0) : WHEN.wd; }
+function targetHr(){ return isLive() ? (NOW ? NOW.hr : 0) : WHEN.hr; }
+
+/* 該時段的預測使用率，附樣本數與來源。
+   階梯式退路：該時段平均 → 該星期平均 → 全週平均 → 沒有資料。
+   退路一定要標明，否則用戶會誤以為那是「該時段的實測值」。 */
+function predict(p){
+  var hm = heatOf(p), sm = samplesOf(p), i = targetWd() * HRS + targetHr();
+  if(hm[i] != null) return { rate: hm[i], n: (sm[i] || 0), src: "slot" };
+
+  var s = 0, c = 0, h, base = targetWd() * HRS;
+  for(h = 0; h < HRS; h++){
+    if(hm[base + h] != null){ s += hm[base + h]; c++; }
+  }
+  if(c) return { rate: s / c, n: 0, src: "weekday", cov: c };
+
+  s = 0; c = 0;
+  for(h = 0; h < hm.length; h++){
+    if(hm[h] != null){ s += hm[h]; c++; }
+  }
+  if(c) return { rate: s / c, n: 0, src: "all", cov: c };
+  return null;
+}
+
+/* 要排的是「有幾個空位」，不是「幾成滿」：
+   1000 位 90% 滿仍然有 100 個位，50 位 90% 滿只剩 5 個。
+   即時模式直接用實際剩餘數，比任何預測都準。 */
+function predFree(p){
+  if(isLive()) return (p.free == null ? null : { free: p.free, rate: p.rate, n: null, src: "live" });
+  var r = predict(p);
+  if(!r || p.cap == null) return null;
+  return { free: Math.round(p.cap * (1 - r.rate)), rate: r.rate, n: r.n, src: r.src, cov: r.cov };
+}
+
 /* ---- 資料存取 ---- */
 function M(){ return (D.modes||{})[mode] || null; }
 function mLabel(){ var m=M(); return m ? (m.label||mode) : ""; }
@@ -468,7 +601,10 @@ function buildDot(){
       cursor: "pointer"
     });
     (function(id, pos){
-      cm.on("click", function(){ showInfo(id, pos, false); });
+      cm.on("click", function(){
+        lastMarkerClick = Date.now();     // 見 map.on("click") 的說明
+        showInfo(id, pos, false);
+      });
     })(p.id, ll(c));
     cm.setMap(map);
     dots.push(cm);
@@ -650,7 +786,115 @@ function renderStats(){
   renderChip();
 }
 
+/* ================= 推薦：地點 → 篩選 → 排序 ================= */
+
+var ORIGIN = null;        // {lat, lng, name, zone}
+var SHEET_TAB = "busy";   // busy | rec
+var RADII = [800, 1500, 3000];
+
+function nearestPark(o){
+  var parks = (M() || {}).parks || [], best = null, bd = Infinity;
+  for(var i=0;i<parks.length;i++){
+    var d = hav(o, pt(parks[i]));
+    if(d < bd){ bd = d; best = parks[i]; }
+  }
+  return best;
+}
+
+/* 推薦的核心。澳門三條橋，直線距離跨得過海 —— 所以先用 zone 把
+   「直線很近但係對岸」排除，再逐級放寬半徑，最後才允許跨區並警告。 */
+function recommend(){
+  if(!ORIGIN) return null;
+  var m = M(); if(!m) return null;
+  var o = [ORIGIN.lat, ORIGIN.lng];
+  var ozone = ORIGIN.zone;
+  if(!ozone){ var np = nearestPark(o); ozone = np ? (np.zone || "") : ""; }
+
+  var all = [];
+  (m.parks || []).forEach(function(p){
+    var f = predFree(p);
+    if(!f || f.free == null) return;
+    all.push({ p: p, d: hav(o, pt(p)), free: f.free, rate: f.rate, n: f.n, src: f.src, cov: f.cov });
+  });
+  if(!all.length) return { list: [], zone: ozone };
+
+  var sz = all.filter(function(x){ return (x.p.zone || "") === ozone; });
+  for(var i=0;i<RADII.length;i++){
+    var lim = RADII[i];
+    var hit = sz.filter(function(x){ return x.d <= lim; });
+    if(hit.length >= 3) return { list: hit, radius: lim, zone: ozone, cross: false };
+  }
+  if(sz.length) return { list: sz, radius: null, zone: ozone, cross: false };
+  return { list: all, radius: null, zone: ozone, cross: true };
+}
+
+function recRow(x, i){
+  var p = x.p, cf = (x.src === "live") ? null : confOf(x.n);
+  var badge = cf ? '<span class="cf ' + cf.k + '" title="' + esc(cf.d) + '">' + cf.t + '</span>'
+                 : (x.src === "live" ? '<span class="cf hi">即時</span>' : '<span class="cf lo">推算</span>');
+  var src = x.src === "live"    ? "即時讀數"
+          : x.src === "slot"    ? "該時段平均"
+          : x.src === "weekday" ? "該時段無資料 → 用該星期平均"
+                                : "該時段無資料 → 用全週平均";
+  var dist = x.d < 1000 ? Math.round(x.d) + " m" : (x.d / 1000).toFixed(2) + " km";
+  return '<div class="rc' + (i === 0 ? " first" : "") + '" data-id="' + esc(p.id) + '">' +
+    '<span class="rk">' + (i + 1) + '</span>' +
+    '<span class="bd">' +
+      '<span class="nm">' + esc(p.n) + '</span>' +
+      '<span class="mt">' + dist + ' · ' + src + badge + '</span>' +
+    '</span>' +
+    '<span class="rs"><b style="color:' + ramp(x.rate) + '">' + nf(x.free) + '</b><span>預估空位</span></span>' +
+  '</div>';
+}
+
+function renderRec(){
+  var body = $("sheetbody");
+  if(!ORIGIN){
+    body.innerHTML = '<div class="warn">先在上面輸入地點，或直接<b>點地圖</b>選一個位置。' +
+      '系統會用該時段的歷史平均，算出附近最可能有空位的停車場。</div>';
+    return;
+  }
+  var res = recommend();
+  if(!res || !res.list.length){
+    body.innerHTML = '<div class="warn">這個位置附近找不到有資料的停車場。</div>';
+    return;
+  }
+  var list = res.list.slice().sort(function(a, b){ return b.free - a.free; }).slice(0, 5);
+
+  var note;
+  if(res.cross){
+    note = '<div class="warn">' + esc(res.zone) + ' 沒有有資料的停車場，以下是跨區結果 —— ' +
+           '澳門跨海要過橋，實際車程會比直線距離遠得多。</div>';
+  } else if(res.radius){
+    note = '<div class="rnote">' + esc(res.zone) + ' · ' + res.radius + ' 公尺內 ' +
+           res.list.length + ' 個場，以下為預估空位最多的 5 個</div>';
+  } else {
+    note = '<div class="rnote">' + esc(res.zone) + ' · 3 公里內沒有場，已列出全區結果</div>';
+  }
+  body.innerHTML = note + list.map(recRow).join("");
+
+  var rows = body.querySelectorAll(".rc");
+  for(var i=0;i<rows.length;i++){
+    (function(row){
+      row.onclick = function(){
+        var p = parkById(row.getAttribute("data-id"));
+        if(p) showInfo(p.id, ll(pt(p)), true);
+      };
+    })(rows[i]);
+  }
+}
+
 function renderSheet(){
+  $("tab-rec").className  = (SHEET_TAB === "rec")  ? "on" : "";
+  $("tab-busy").className = (SHEET_TAB === "busy") ? "on" : "";
+
+  if(SHEET_TAB === "rec"){
+    $("sh-title").textContent = "推薦停車場";
+    $("sh-sub").textContent = ORIGIN ? (ORIGIN.name || "已選位置") : "未選位置";
+    renderRec();
+    return;
+  }
+
   var m = M(); if(!m) return;
   var live = isLive();
   var parks = (m.parks||[]).filter(hasSlot).sort(function(a,b){
@@ -759,6 +1003,163 @@ $("sheethd").onclick = function(){
   document.body.classList.toggle("sheet-open", sheetOpen());
 };
 $("tophd").onclick   = function(){ $("topcard").classList.toggle("collapsed"); };
+
+/* 推薦：搜尋框 */
+$("q").addEventListener("input", function(){
+  $("qbtn").disabled = $("q").value.trim().length < 2;
+});
+$("q").addEventListener("keydown", function(e){
+  if(e.key === "Enter" || e.keyCode === 13){ e.preventDefault(); doSearch($("q").value); }
+});
+$("qbtn").onclick = function(){ doSearch($("q").value); };
+
+/* 分頁：按鈕在 sheethd 裡面，所以要阻止冒泡，否則會一併把面板收起 */
+$("tab-rec").onclick  = function(e){ e.stopPropagation(); SHEET_TAB = "rec";  renderSheet(); };
+$("tab-busy").onclick = function(e){ e.stopPropagation(); SHEET_TAB = "busy"; renderSheet(); };
+
+/* 點地圖選位置。點停車場圓點時地圖的 click 也會觸發，
+   所以用時間差把「剛剛點過標記」的情況濾掉。 */
+map.on("click", function(e){
+  if(Date.now() - lastMarkerClick < 400) return;
+  var L = e.lnglat;
+  setOrigin({ lat: L.lat, lng: L.lng, name: "地圖選點" });
+});
+
+/* ---- 推薦：地點輸入 ---- */
+var omark = null;
+var hitCache = {};        // 同一個關鍵字不重複打高德（省「基礎搜索」額度）
+var lastMarkerClick = 0;  // 用來分辨「點地圖」與「點圓點」
+
+function openSheet(){
+  $("sheetcard").classList.remove("collapsed");
+  document.body.classList.add("sheet-open");
+}
+
+function setOrigin(hit){
+  ORIGIN = { lat: hit.lat, lng: hit.lng, name: hit.name || "" };
+  var np = nearestPark([ORIGIN.lat, ORIGIN.lng]);
+  ORIGIN.zone = np ? (np.zone || "") : "";
+
+  if(!omark) omark = new AMap.Marker({ zIndex: 200 });
+  omark.setPosition(new AMap.LngLat(ORIGIN.lng, ORIGIN.lat));
+  omark.setMap(map);
+
+  $("qhint").innerHTML = '位置：<span class="orig">' +
+    esc(ORIGIN.name || (ORIGIN.lat.toFixed(4) + ", " + ORIGIN.lng.toFixed(4))) + '</span>' +
+    ' · ' + esc(ORIGIN.zone || "未知區域") + ' · <a id="qclr">清除</a>';
+  $("qclr").onclick = clearOrigin;
+
+  SHEET_TAB = "rec";
+  openSheet();
+  renderSheet();
+  map.setZoomAndCenter(Math.max(map.getZoom(), 15),
+                       new AMap.LngLat(ORIGIN.lng, ORIGIN.lat), false, 420);
+}
+
+function clearOrigin(){
+  ORIGIN = null;
+  if(omark) omark.setMap(null);
+  $("qhint").innerHTML = '輸入地點或直接<b>點地圖</b>選位置';
+  SHEET_TAB = "busy";
+  renderSheet();
+}
+
+function qbtn(busy, text){
+  var b = $("qbtn");
+  b.disabled = !!busy;
+  b.textContent = text || "查";
+}
+
+/* 高德搜尋外掛是「按需要才載入」的：地圖本身完全不依賴它，
+   所以就算外掛載入失敗（網路、key 權限），地圖仍然正常運作。 */
+var PS = null, psLoading = false, psQueue = [];
+
+function ensureSearch(cb){
+  if(PS){ cb(true); return; }
+  psQueue.push(cb);
+  if(psLoading) return;
+  psLoading = true;
+  var done = false;
+  var settle = function(ok){
+    if(done) return;
+    done = true;
+    psLoading = false;
+    var q = psQueue; psQueue = [];
+    q.forEach(function(f){ f(ok); });
+  };
+  setTimeout(function(){ settle(!!PS); }, 9000);   // 逾時就放棄，不要卡住 UI
+  if(typeof AMap.plugin !== "function"){ settle(false); return; }
+  try{
+    AMap.plugin(["AMap.PlaceSearch"], function(){
+      try{
+        /* city 用澳門 adcode；citylimit:false 讓它不會因為行政區邊界而漏掉結果 */
+        PS = new AMap.PlaceSearch({ city: "820000", citylimit: false, pageSize: 8, extensions: "base" });
+        settle(true);
+      }catch(e){ settle(false); }
+    });
+  }catch(e){ settle(false); }
+}
+
+function showHits(list){
+  SHEET_TAB = "rec";
+  openSheet();
+  $("tab-rec").className = "on";
+  $("tab-busy").className = "";
+  $("sh-title").textContent = "選擇地點";
+  $("sh-sub").textContent = list.length + " 個符合";
+  $("sheetbody").innerHTML = list.map(function(h, i){
+    return '<div class="rc" data-i="' + i + '">' +
+      '<span class="rk">' + (i + 1) + '</span>' +
+      '<span class="bd"><span class="nm">' + esc(h.name) + '</span>' +
+      '<span class="mt">' + esc(h.addr || "") + '</span></span></div>';
+  }).join("");
+  var rows = $("sheetbody").querySelectorAll(".rc");
+  for(var i=0;i<rows.length;i++){
+    (function(row){
+      row.onclick = function(){ setOrigin(list[+row.getAttribute("data-i")]); };
+    })(rows[i]);
+  }
+}
+
+function doSearch(kw){
+  kw = (kw || "").trim();
+  if(kw.length < 2) return;
+  if(hitCache[kw]){ setOrigin(hitCache[kw][0]); return; }
+
+  qbtn(true, "查詢中…");
+  ensureSearch(function(ok){
+    if(!ok){
+      qbtn(false);
+      $("qhint").innerHTML = '搜尋服務載入失敗（可能是 key 權限或網路），請直接<b>點地圖</b>選位置';
+      return;
+    }
+    PS.search(kw, function(status, result){
+      qbtn(false);
+      /* status 有三種：complete（有結果）/ no_data（查無結果）/
+         error（服務本身出錯 —— 例如 INVALID_USER_DOMAIN 域名白名單不符、
+         額度用完、網路問題）。error 一定要跟「查無結果」分開講，
+         否則用戶會以為係自己打錯字。 */
+      if(status === "error"){
+        var info = (result && result.info) ? ('（' + esc(result.info) + '）') : '';
+        $("qhint").innerHTML = '搜尋服務無法使用' + info +
+          ' · 請直接<b>點地圖</b>選位置（地圖與推薦不受影響）';
+        return;
+      }
+      var pois = (status === "complete" && result && result.poiList && result.poiList.pois) || [];
+      if(!pois.length){
+        $("qhint").innerHTML = '找不到「' + esc(kw) + '」 · 換個關鍵字或<b>點地圖</b>選位置';
+        return;
+      }
+      var hits = pois.map(function(p){
+        var L = p.location;   // AMap.LngLat
+        return { lat: L.lat, lng: L.lng, name: p.name, addr: p.address };
+      });
+      hitCache[kw] = hits;
+      if(hits.length === 1) setOrigin(hits[0]);
+      else showHits(hits);     // 多個符合 → 讓用戶自己揀，不要擅自揀第一個
+    });
+  });
+}
 
 /* ---- 啟動 ---- */
 rebuildIndex();
