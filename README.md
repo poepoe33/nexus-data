@@ -281,6 +281,21 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 失敗時顯示「搜尋服務載入失敗…請直接點地圖選位置」，
 **地圖與推薦完全不受影響**（點地圖這條路不需要任何外掛）。
 
+**⚠️ 但「外掛載入完」不等於「可以用」。** 高德內部的授權握手
+（`FlyDataAuthTask`）是非同步的 —— 外掛 JS 載完了，拿 token 的流程可能還沒跑完。
+實測（部署後的線上頁面）：
+
+> 在 `AMap.plugin` 的 callback 裡**立刻**搜尋 → `TIMEOUT` / `status = "error"`。
+> 等 4 秒後，同樣的三個關鍵字各跑兩次 → **6/6 全部成功**。
+
+所以搜尋本身另外做了兩件事：
+
+- **逾時 12 秒**：服務不回應時按鈕不會永遠卡在「查詢中…」，
+  逾時後走同一條錯誤路徑（引導改為點地圖）。
+- **error／逾時自動重試一次**（間隔 1.2 秒）：救回冷啟動；**兩次都失敗才報錯**，
+  所以不會把真正的故障藏起來。逾時後才姍姍來遲的舊回呼會被丟棄，
+  不會出現「先顯示錯誤、又被覆蓋成結果」的鬼影。
+
 > **陷阱：外掛名字打錯不會報錯。** `AMap.plugin(["AMap.PlaceSearch2"])` 不會回
 > HTTP 錯誤、也不會讓 bundle 變大，只是 callback 拿到的物件沒有 `search` ——
 > **靜默失敗**。正確的名字（已用真實 key 以 HTTP 探測 bundle 確認）是
@@ -342,6 +357,10 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 > 只有**搜索**會失敗 —— 所以症狀看起來像「地圖沒問題但搜不到地點」。
 > 若要在本機瀏覽器測搜索，記得把 `127.0.0.1` 也加進白名單。
 >
+> ✅ **線上（`poepoe33.github.io`）已實測正常**（2026-09-30）：用真人 Chrome 跑
+> 「大三巴 / 澳門旅遊塔 / 氹仔碼頭」，各兩次共 **6/6 全部成功** 並回傳正確的澳門 POI。
+> 所以白名單已涵蓋正式網域，`INVALID_USER_DOMAIN` 只會出現在本機測試。
+>
 > 也要知道：地圖要能用，key 就**必然**會出現在公開的 `map.html` 裡（這是 JS API 的
 > 設計，不是洩漏）。真正的保護是域名白名單。
 >
@@ -384,7 +403,7 @@ scripts/scrape.py                    採集器（三種模式）
 scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
 scripts/bench_dashboard.py           合成歷史，量測 build_dashboard.py 的時間/記憶體
 scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦）
-scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，136 條斷言
+scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，143 條斷言
 scripts/test_map_live.js             真人瀏覽器測試（puppeteer-core + 本機 Chrome）
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
