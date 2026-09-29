@@ -138,11 +138,31 @@ body.mode-motor .seg button.on{color:#1B1204}
 }
 </style>
 <script type="text/javascript">
-  window._TMapSecurityConfig = {
-    serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__',
-  };
+  /* WorkBuddy 預覽環境會把 __WB_HTTP_PORT__ / __WB_TMAP_SECRET__ 換成真實代理位址；
+     公開網站（GitHub Pages）不會替換，所以先偵測「佔位符還在不在」。
+     用字串探針判斷，因為替換是對整份 HTML 做文字取代。 */
+  var WB_PROBE = '__WB_HTTP_PORT__';
+  window.__PROXY_OK__ = WB_PROBE.indexOf('__WB') === -1;
+
+  if (window.__PROXY_OK__) {
+    window._TMapSecurityConfig = {
+      serviceHost: 'http://127.0.0.1:__WB_HTTP_PORT__/_TMapService/_wbt/__WB_TMAP_SECRET__',
+    };
+  }
 </script>
-<script src="https://map.qq.com/api/gljs?v=1.exp&libraries=visualization"></script>
+<script type="text/javascript">
+  /* 用 document.write 同步載入，確保 TMap 在下面的主程式之前就定義好。
+     代理可用 → 不帶 key（金鑰由 WorkBuddy 後端保管）。
+     公開網站 → 帶「自備 key」佔位符，使用者換成自己的即可。 */
+  (function () {
+    var KEY_PLACEHOLDER = '請自行到騰訊位置服務開放平台（lbs.qq.com）申請 key 並替換此處';
+    var src = 'https://map.qq.com/api/gljs?v=1.exp&libraries=visualization';
+    if (!window.__PROXY_OK__) {
+      src += '&key=' + encodeURIComponent(KEY_PLACEHOLDER);
+    }
+    document.write('<script charset="utf-8" src="' + src + '"><\/script>');
+  })();
+</script>
 </head>
 <body>
 
@@ -258,7 +278,15 @@ function pt(p){ return crs==="gcj" ? p.g : p.w; }
 
 /* ---- 地圖 ---- */
 if(typeof TMap === "undefined"){
-  $("fail").style.display = "flex";
+  var f = $("fail");
+  if(!window.__PROXY_OK__ && f.firstChild){
+    f.firstChild.innerHTML = '<b>需要自備騰訊地圖 key</b>' +
+      '本頁正在公開網站上執行，無法使用本機金鑰代理。<br>' +
+      '請到 <b>lbs.qq.com</b> 申請 WebService key，' +
+      '填入 <code>dashboard/map_template.html</code> 的 KEY_PLACEHOLDER 後重新建置；' +
+      '或直接用 WorkBuddy 預覽開啟本頁（會自動走代理）。';
+  }
+  f.style.display = "flex";
   return;
 }
 var CENTER = D.center || [22.1875,113.5495];
