@@ -84,7 +84,7 @@ case "$HTTP" in
       echo "    fine-grained PAT → 此 repo 的 'Actions: Read and write'" >&2
     fi ;;
   404)
-    echo "→ repo 或 workflow 檔名錯（$REPO / $WORKFLOW）" >&2 ;;
+    echo "→ repo 或 workflow 檔名錯（${REPO} / ${WORKFLOW}）" >&2 ;;
   422)
     echo "→ body 缺 ref，或 JSON 格式錯（要 -d '{\"ref\":\"main\"}'）" >&2 ;;
 esac
