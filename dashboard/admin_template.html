@@ -93,6 +93,10 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .hint{margin-top:14px;padding:11px 12px;border-radius:10px;font-size:11.5px;line-height:1.7;
   background:#FAEEDA;border:1px solid rgba(138,106,21,.3);color:#6E5411;text-align:left}
 .hint b{font-weight:600}
+.hintToggle{margin-top:12px;font-size:11.5px}
+.hintToggle a{color:var(--tx3);text-decoration:none;border-bottom:1px dashed var(--line);
+  padding-bottom:1px;cursor:pointer}
+.hintToggle a:hover{color:var(--accent);border-bottom-color:var(--accent)}
 .hint code{background:rgba(255,255,255,.7);border-radius:4px;padding:1px 5px;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
 .signed{display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -138,8 +142,12 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
       <div id="gbtn"></div>
       <div class="who">僅限 <code id="allow"></code></div>
       <div id="gateMsg"></div>
+      <div class="hintToggle">
+        <a href="#" id="hintToggle">登入按鈕沒反應？</a>
+      </div>
       <div id="originHint" class="hint hidden">
-        <b>登入按鈕沒有出現或無法使用？</b><br>
+        <b>這個網域還沒被 OAuth client 授權。</b><br>
+        Google 的登入按鈕在未授權的網域上不會報錯，只是按了沒反應。
         這個 OAuth client 目前只授權 <code>cashflow.ebeesnet.com</code>。
         請到 Google Cloud Console → API 和服務 → 憑證 → 這個 OAuth 2.0 用戶端 ID →
         <b>已授權的 JavaScript 來源</b>，加入：<br>
@@ -168,6 +176,34 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
 
 <!-- Google Identity Services。用 async defer，所以下面的 boot() 會先跑，
      initGsi() 用重試等它載入完成（最多約 8 秒）。 -->
+
+<!-- 這一小段排在 GSI 之前，攔 console 當作「盡力而為」的訊號。
+     ⚠️ 但它抓不到真正的 GSI 錯誤 —— 2026-10-01 實測（puppeteer 印出訊息來源）：
+     那行 GSI_LOGGER 是由 accounts.google.com/gsi/button 這個「跨來源 iframe」
+     裡的 credential_button_library 印的，父頁面碰不到它的 console。
+     （同一個 hook 對父頁面自己呼叫的 console.error 是有效的，對照組已驗證。）
+     所以自動偵測只能當加分，真正可靠的是下面那個「登入按鈕沒反應？」連結 ——
+     它永遠在，不依賴任何偵測。 -->
+<script>
+(function(){
+  function hook(level){
+    var orig = console[level];
+    console[level] = function(){
+      try{
+        var s = Array.prototype.map.call(arguments, String).join(" ");
+        if(/GSI_LOGGER/.test(s) && /origin is not allowed/i.test(s)){
+          window.__GSI_ORIGIN_BLOCKED__ = true;
+          if(typeof window.__onGsiOriginBlocked === "function")
+            window.__onGsiOriginBlocked();
+        }
+      }catch(e){}
+      return orig.apply(console, arguments);
+    };
+  }
+  hook("error"); hook("warn");
+})();
+</script>
+
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <!--DATA-->
@@ -349,11 +385,25 @@ function onCredential(resp){
 }
 
 let gsiTries = 0;
+
+/* 把「為什麼登入不能用」講清楚。
+   這條 gate 最怕的就是靜默失敗：按鈕看起來好好的，按下去卻毫無反應，
+   使用者完全無從判斷是網路、是帳號、還是設定問題。
+   三個地方都會叫這裡，但它們的可靠度差很多：
+   ① 使用者自己點「登入按鈕沒反應？」—— 唯一可靠的，永遠有效
+   ② console 攔截 —— 盡力而為，實測抓不到跨來源 iframe 裡的 GSI 訊息
+   ③ iframe 一直沒生出來 —— 盡力而為，未授權時 iframe 其實照樣會生出來 */
+function revealOriginHint(){
+  const h = document.getElementById("originHint");
+  if(h) h.classList.remove("hidden");
+}
+window.__onGsiOriginBlocked = revealOriginHint;
+
 function initGsi(){
   const box = document.getElementById("gbtn");
   if(!box || !box.offsetParent) return;
   if(!(window.google && google.accounts && google.accounts.id)){
-    if(++gsiTries > 40){ document.getElementById("originHint").classList.remove("hidden"); return; }
+    if(++gsiTries > 40){ revealOriginHint(); return; }
     return setTimeout(initGsi, 200);
   }
   try{
@@ -363,15 +413,26 @@ function initGsi(){
       locale: "zh_TW", width: 268
     });
   }catch(e){
-    document.getElementById("originHint").classList.remove("hidden");
+    revealOriginHint();
     return;
   }
-  /* 來源沒被授權時 GIS 不會丟錯，只是按鈕生不出來 —— 所以用「有沒有 iframe」判斷。 */
+  /* 次要訊號：來源沒被授權時 GIS 不會丟錯，按鈕有可能完全生不出來。 */
   setTimeout(()=>{
-    if(box && !box.querySelector("iframe"))
-      document.getElementById("originHint").classList.remove("hidden");
+    if(box && !box.querySelector("iframe")) revealOriginHint();
   }, 2500);
+  /* console 攔截有可能比這裡早跑（GSI 是 async），補一次檢查。 */
+  if(window.__GSI_ORIGIN_BLOCKED__) revealOriginHint();
 }
+
+(function wireHintToggle(){
+  const t = document.getElementById("hintToggle");
+  if(!t) return;
+  t.addEventListener("click", e=>{
+    e.preventDefault();
+    const h = document.getElementById("originHint");
+    if(h) h.classList.toggle("hidden");
+  });
+})();
 
 (function boot(){
   document.getElementById("allow").textContent = ADMIN_EMAIL;
