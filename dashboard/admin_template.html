@@ -72,7 +72,7 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .hrow b{font-weight:500;color:var(--tx2)}
 .hbars{margin-top:11px}
 .hbars svg{display:block;width:100%;height:auto;overflow:visible}
-.gtxt{fill:#7C937F;font-size:9px}
+.gtxt{fill:#6E846F;font-size:11px}
 .srcrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;
   padding-top:10px;border-top:1px solid var(--line);text-align:center}
 .srcrow b{display:block;font-size:16px;font-weight:600;letter-spacing:-.3px}
@@ -90,6 +90,8 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .ghrow .t{font-variant-numeric:tabular-nums;color:var(--tx2);font-weight:500;min-width:44px}
 .ghrow .s{flex:1}
 .ghrow .r{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--tx3)}
+.ghrow .r a{color:var(--tx3);text-decoration:none;border-bottom:1px dotted var(--line)}
+.ghrow .r a:hover{color:var(--accent);border-bottom-color:var(--accent)}
 .tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;
   white-space:nowrap}
 .tag-sched{background:rgba(46,139,98,.15);color:#1F7A46}
@@ -140,6 +142,15 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
 </style>
 </head>
 <body>
+<noscript>
+  <div class="wrap"><div class="card">
+    <b>這個頁面需要 JavaScript。</b>
+    <div style="margin-top:6px;font-size:12.5px;color:var(--tx3)">
+      採集狀態是瀏覽器即時算出來的（例如「距離上次採集幾分鐘」），
+      所以關掉 JavaScript 之後沒有東西可以顯示。
+    </div>
+  </div></div>
+</noscript>
 <div class="wrap">
   <header>
     <h1>澳門車位 · 管理員</h1>
@@ -236,6 +247,10 @@ const CLIENT_ID = "415316527661-s7o9j6o8kh4ffbhjs1lhevp7shcfu4hv.apps.googleuser
 const ADMIN_EMAIL = "paul.ccp@gmail.com";
 const STORE_KEY = "nexus.admin.cred";
 
+/* 每一筆 GitHub 採集都帶著 run_id。做成連結就能直接跳到那一次執行 ——
+   要查「那次為什麼失敗」時，省掉「去 Actions 頁面按時間撈」這一步。 */
+const RUN_BASE = "https://github.com/poepoe33/nexus-data/actions/runs/";
+
 const nf = n => n==null ? "--" : n.toLocaleString("en-US");
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -244,8 +259,11 @@ function minsAgo(ts){
   const p = ts.split(" ");
   if(p.length < 2) return null;
   const d = p[0].split("-").map(Number), t = p[1].split(":").map(Number);
-  const then = new Date(d[0], d[1]-1, d[2], t[0], t[1], t[2]||0);
-  return (Date.now() - then.getTime()) / 60000;
+  /* ⚠️ 資料是澳門時間（UTC+8），而 new Date(y,m,d,...) 會用「檢視者的時區」解讀它。
+     在澳門看剛好對，但在其他時區看，所有「幾分鐘前」都會偏掉整整一個時差。
+     這裡明確用 UTC+8 解讀 —— 對澳門的使用者結果完全相同，對其他人則從錯的變成對的。 */
+  const then = Date.UTC(d[0], d[1]-1, d[2], t[0], t[1], t[2]||0) - 8*3600*1000;
+  return (Date.now() - then) / 60000;
 }
 
 function hourBars(counts, perHour){
@@ -293,10 +311,21 @@ function agoText(m){
 /* 每日 GitHub 採集：一天兩根，綠＝自行排程、黃＝被觸發。
    兩者一定要分開畫 —— 只看總數會誤以為 GitHub 很活躍，
    實際上大部分是被 Mac 的看門狗叫起來的。 */
-function gdayBars(byDay){
+/* 每日長條只畫最近這麼多天。為什麼一定要有上限：
+   每天兩根，各佔 bw 寬、中間留 1px，所以一天最少需要 2*bw+2 的橫向空間。
+   圖寬固定 332px（340 扣掉左右各 4），所以大約 33 天之後 slot 就會小於
+   長條的實際佔寬，長條開始互相重疊、變成一團糊。
+   專案每天都在累積資料，這是必然會發生的事，不是理論風險。 */
+const GH_WINDOW_DAYS = 28;
+
+function gdayBars(byDayAll){
+  const byDay = (byDayAll||[]).slice(-GH_WINDOW_DAYS);
   const W=340,H=78,pL=4,pR=4,pT=8,pB=17;
   const pw=W-pL-pR, ph=H-pT-pB, n=Math.max(1,byDay.length);
-  const slot=pw/n, bw=Math.max(4, Math.min(14, slot*0.26));
+  const slot=pw/n;
+  /* bw 由 slot 推導，而不是給一個固定下限 —— 這樣即使有人把 GH_WINDOW_DAYS
+     調大，長條也只會變細，不會重疊。 */
+  const bw=Math.max(2, Math.min(14, slot*0.30));
   const top=Math.max(1, ...byDay.map(d=>Math.max(d.schedule,d.dispatch)));
   const every=Math.max(1, Math.ceil(n/8));
   let g="";
@@ -339,7 +368,9 @@ function githubBlock(){
       <span class="t">${esc((r.at||"").slice(11,16))}</span>
       <span class="s"><span class="tag ${isS?'tag-sched':'tag-disp'}">${isS?'自行排程':'被觸發'}</span>
         <span style="margin-left:6px">${esc((r.at||"").slice(5,10))} · ${esc(agoText(minsAgo(r.at)))}</span></span>
-      <span class="r">${r.run ? "#"+esc(r.run) : "—"}</span>
+      <span class="r">${r.run
+        ? `<a href="${RUN_BASE}${encodeURIComponent(r.run)}" target="_blank" rel="noopener" title="在 GitHub 開啟這次執行">#${esc(r.run)}</a>`
+        : "—"}</span>
     </div>`;
   }).join("");
 
@@ -385,7 +416,7 @@ function githubBlock(){
     <div class="hbars">${gdayBars(G.by_day||[])}
       <div class="legend"><span><i style="background:#2E8B62"></i>自行排程</span>
         <span><i style="background:#B07D0E"></i>被觸發</span>
-        <span style="margin-left:auto">每日 GitHub 採集次數</span></div>
+        <span style="margin-left:auto">每日 GitHub 採集次數（最近 ${GH_WINDOW_DAYS} 天）</span></div>
     </div>
 
     <div class="ghlist">
@@ -594,6 +625,9 @@ function initGsi(){
 })();
 
 setInterval(()=>{
+  /* 分頁在背景時不要重繪 —— 沒人看得到，只是白燒 CPU。
+     回到前景時最多晚 60 秒就會更新，不影響使用。 */
+  if(document.hidden) return;
   const p = loadCred();
   if(p && checkToken(p)){ clearCred(); showGate("登入已過期，請重新登入"); initGsi(); }
   else if(p) renderHealth();

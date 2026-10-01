@@ -406,6 +406,7 @@ scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦�
 scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，184 條斷言
 scripts/test_map_live.js             真人瀏覽器測試（puppeteer-core + 本機 Chrome）
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務）
+scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
 scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
@@ -419,6 +420,8 @@ worker/dispatch-cron.gs              Google Apps Script：同一件事，免部�
 worker/wrangler.toml                 Worker 設定（crons / vars）
 dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
 dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
+dashboard/admin_template.html        管理員版型（含 <!--DATA--> 標記 + 登入 gate）
+dashboard/admin.html                 產出：管理員頁面（只內嵌營運指標，見 ADMIN_KEYS）
 dashboard/map_template.html          地圖版型（含 <!--MAPDATA--> 標記）
 dashboard/map.html                   產出：使用率地圖（單檔自包含）
 dashboard/data.json                  聚合結果（每次 snapshot 自動重建）

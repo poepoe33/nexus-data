@@ -34,6 +34,7 @@ import csv
 import gzip
 import heapq
 import json
+import re
 import statistics
 import sys
 from datetime import datetime, timedelta, timezone
@@ -66,6 +67,23 @@ MODES = [
     ("car", "私家車", "car", "car"),
     ("motor", "電單車", "motor", "motor"),
 ]
+
+# 管理員頁面真正會讀的鍵。它是營運面板，不需要逐場逐小時的熱力圖資料。
+#
+# 為什麼要拆開注入：原本兩頁共用同一份 blob，但 2026-10-01 實測
+#   完整 payload 333,599 bytes
+#   管理頁用到的只有   1,858 bytes  ← 0.6%
+# 其中 `modes` 一個鍵就佔 291,591 bytes（87%），`carparks` 再佔 40,058。
+# 也就是 admin.html 有 99.4% 的內嵌資料是它永遠不會讀的。
+ADMIN_KEYS = (
+    "generated_at",
+    "days_covered",
+    "snapshots",
+    "last_snapshot",
+    "collection",
+    "sources",
+    "github",
+)
 
 # 地址/名稱關鍵字 → 區域（僅供篩選，屬推估值）
 ISLAND_KEYS = ("氹仔", "路氹", "路環", "澳門大學", "橫琴", "蓮花", "柯維納", "運動場")
@@ -669,7 +687,8 @@ def main() -> int:
         (OUT_DIR / "index.html").write_text(
             html.replace("<!--DATA-->", embedded), encoding="utf-8")
 
-    # 管理員頁面。與 index.html 共用同一份 payload，只差在版型與登入 gate。
+    # 管理員頁面。只注入它真正讀的鍵（見 ADMIN_KEYS）—— 原本與 index.html
+    # 共用同一份完整 blob，但那份有 99.4% 是管理頁永遠不會讀的熱力圖資料。
     # 它是次要產物：模板不在就跳過，不要讓主線（index.html）跟著失敗。
     atpl = OUT_DIR / "admin_template.html"
     admin_line = "            (admin_template.html 不存在，略過管理頁面)"
@@ -680,9 +699,23 @@ def main() -> int:
                   file=sys.stderr)
             admin_line = "            (admin_template.html 缺少標記，略過管理頁面)"
         else:
+            admin_payload = {k: payload[k] for k in ADMIN_KEYS if k in payload}
+
+            # 安全網：模板若引用了沒被注入的鍵，前端只會安靜地顯示 "--"，
+            # 而且症狀是「某個數字變成 --」，非常難追。建置時就出聲。
+            referenced = set(re.findall(r"\bD\.([A-Za-z_][A-Za-z0-9_]*)", ahtml))
+            missing = sorted(referenced - set(admin_payload))
+            if missing:
+                print(f"[dashboard] ⚠ admin_template.html 引用了未注入的鍵："
+                      f"{', '.join(missing)} → 請加進 ADMIN_KEYS", file=sys.stderr)
+
+            admin_blob = json.dumps(admin_payload, ensure_ascii=False,
+                                    separators=(",", ":"))
+            admin_embedded = ("<script>window.__DATA__ = " + admin_blob + ";</script>")
             (OUT_DIR / "admin.html").write_text(
-                ahtml.replace("<!--DATA-->", embedded), encoding="utf-8")
-            admin_line = f"            -> {OUT_DIR / 'admin.html'}"
+                ahtml.replace("<!--DATA-->", admin_embedded), encoding="utf-8")
+            admin_line = (f"            -> {OUT_DIR / 'admin.html'}"
+                          f"  ({len(admin_blob):,} bytes；完整版 {len(blob):,})")
 
     for mid, label, _, _ in MODES:
         o = modes[mid]["overall"]
