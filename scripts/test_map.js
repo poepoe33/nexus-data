@@ -400,6 +400,70 @@ $("tophd").onclick();
 ok(!$("topcard").classList.contains("collapsed"), "點頂部標題可展開");
 $("tophd").onclick();
 ok($("topcard").classList.contains("collapsed"), "再點一次可收起");
+
+/* ---------------- 返回鍵與「控制」展開鈕 ---------------- */
+/* 迴歸守門：返回鍵必須落在 #topbody 之外。
+   它原本在裡面，而 `#topcard.collapsed #topbody{display:none}` 會把整塊藏掉 ——
+   面板預設又是收合的，於是整個頁面找不到回車位列表的路。
+   用「標記出現的順序」把這件事鎖住：只要有人把返回鍵搬回 #topbody 裡，這裡就會紅。 */
+const iBack = HTML.indexOf('class="backbtn"');
+const iTopBody = HTML.indexOf('id="topbody"');
+ok(iBack > -1, "標題列有返回鍵");
+/* iBack > -1 必須寫進同一個條件：找不到時 indexOf 回 -1，
+   而 -1 < iTopBody 恆真 —— 少了這個檢查，元素根本不存在也會「通過」。 */
+ok(iBack > -1 && iTopBody > -1 && iBack < iTopBody,
+   "返回鍵在 #topbody 之外（收合時才不會被一起藏掉）",
+   `backbtn@${iBack} topbody@${iTopBody}`);
+ok(/class="backbtn"[^>]*href="index\.html"/.test(HTML), "返回鍵指向 index.html");
+ok(!/class="backlink"/.test(HTML), "舊的 .backlink 已移除（不留第二個返回入口）");
+
+ok(/<button class="expander" id="topexp" type="button"/.test(HTML),
+   "「控制」是真正的 button，不是裝飾用的 span（鍵盤／螢幕閱讀器要用）");
+ok(/id="topexp"[\s\S]{0,140}aria-controls="topbody"/.test(HTML),
+   "展開鈕用 aria-controls 指向內容區");
+ok(/#topcard:not\(\.collapsed\) \.chev\{transform:rotate\(180deg\)\}/.test(HTML),
+   "箭頭方向正確：收合朝下、展開朝上（舊版剛好相反）");
+ok(/@media \(min-width:640px\)\{\s*\.backbtn \.btx\{display:inline\}/.test(HTML),
+   "桌面上返回鍵會補回文字");
+ok(/\.backbtn\{height:44px;min-width:44px/.test(HTML),
+   "手機上返回鍵是 44px 的手指尺寸");
+
+/* 標題長短兩版：手機這一列要塞返回鍵＋時段＋「控制」，
+   長標題只會被截成「澳門公共停車場 · 使…」，所以手機改用短標題。 */
+ok(/<h1><span class="tfull">[^<]+<\/span><span class="tmini">[^<]+<\/span><\/h1>/.test(HTML),
+   "標題長短兩版都在 DOM 裡（用 CSS 切換，不靠 JS）");
+ok(/\.tmini\{display:none\}/.test(HTML), "短標題預設隱藏（桌面維持完整標題）");
+const mobileCss = HTML.slice(HTML.indexOf("@media (max-width:639px)"));
+ok(mobileCss.length > 0 && /\.tfull\{display:none\}[\s\S]*?\.tmini\{display:inline\}/.test(mobileCss),
+   "手機媒體查詢內切換成長短標題（否則會截成半個詞）");
+
+/* 按鈕與整列 onclick 都會 toggle —— 按鈕少了 stopPropagation 就會切兩次，
+   使用者看到的是「按了沒反應」。用假的 event 驗證它真的擋掉冒泡。
+
+   先確認有綁定再互動：沒綁定時直接呼叫會讓整個 harness 拋錯中斷，
+   其他斷言的結果就全部看不到了（失敗清單比 stack trace 有用）。 */
+const topExp = $("topexp");
+const topExpBound = typeof topExp.onclick === "function";
+ok(topExpBound, "「控制」按鈕有綁定 onclick");
+if (topExpBound) {
+  let bubbled = 0;
+  const fakeEv = { stopPropagation() { bubbled++; } };
+  ok($("topcard").classList.contains("collapsed"), "前置：目前是收合");
+  topExp.onclick(fakeEv);
+  ok(bubbled === 1, "「控制」按鈕有 stopPropagation（避免雙重切換）", bubbled);
+  ok(!$("topcard").classList.contains("collapsed"), "按「控制」可展開");
+  ok(topExp.getAttribute("aria-expanded") === "true", "展開後 aria-expanded=true",
+     topExp.getAttribute("aria-expanded"));
+  ok($("topexlab").textContent === "收起", "展開後標籤變「收起」", $("topexlab").textContent);
+  topExp.onclick(fakeEv);
+  ok($("topcard").classList.contains("collapsed"), "再按一次收起");
+  ok(topExp.getAttribute("aria-expanded") === "false", "收起後 aria-expanded=false",
+     topExp.getAttribute("aria-expanded"));
+  ok($("topexlab").textContent === "控制", "收起後標籤變回「控制」", $("topexlab").textContent);
+  ok(bubbled === 2, "兩次點擊都各自擋掉一次冒泡", bubbled);
+  ok($("topcard").classList.contains("collapsed"), "收合狀態已還原（不影響後續斷言）");
+}
+
 ok(!doc.body.classList.contains("sheet-open"), "底部收起時 body 沒有 sheet-open");
 $("sheethd").onclick();
 ok(!$("sheetcard").classList.contains("collapsed"), "點底部標題可展開");

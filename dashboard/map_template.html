@@ -69,8 +69,29 @@ body{
 #top{top:0;left:0;right:0;padding:10px 12px 0;display:flex;flex-direction:column;align-items:center;gap:8px}
 #topcard{width:100%;max-width:760px;padding:11px 13px 12px;transition:padding .18s}
 #topcard.collapsed{padding:8px 12px}
-.trow1{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
-.trow1 h1{
+/* 標題列 = 返回鍵 + 可展開區。兩者是「兄弟」而不是父子：
+   可點的元素裡面不該再包一個連結（鍵盤與螢幕閱讀器會壞掉）。 */
+.trow1{display:flex;align-items:center;gap:8px;user-select:none}
+
+/* 返回鍵刻意放在這一列 —— 它在 #topbody 之外，所以面板收合時仍然看得到。
+   舊版放在 #topbody 裡，被下面的 `#topcard.collapsed #topbody{display:none}`
+   一起藏掉，整個頁面就找不到回車位列表的路。 */
+.backbtn{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  height:30px;min-width:30px;padding:0 8px;border-radius:9px;
+  background:var(--card2);border:1px solid var(--line);
+  color:var(--accent);text-decoration:none;font-size:12px;font-weight:600;transition:.15s
+}
+.backbtn:hover{background:var(--line)}
+.backbtn svg{flex:0 0 auto;display:block}
+/* 手機只留箭頭，把寬度讓給標題；≥640px 有空間才顯示文字（見響應式段落）。 */
+.backbtn .btx{display:none}
+
+/* 標題兩版：手機用短的。桌面寬度夠，維持完整標題。 */
+.tmini{display:none}
+
+.thit{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0;cursor:pointer}
+.thit h1{
   margin:0;font-size:16.5px;font-weight:600;letter-spacing:.3px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0
 }
@@ -82,14 +103,25 @@ body{
 .chip i{width:6px;height:6px;border-radius:50%;background:#2E9E5B;display:none}
 .chip.live i{display:block}
 .chev{color:var(--tx3);font-size:13px;transition:.2s;flex:0 0 auto}
-#topcard.collapsed .chev{transform:rotate(180deg)}
+/* 箭頭方向＝「按下去會往哪長」。頂部卡的內容長在標題列下方，所以收合時要朝下（▾），
+   展開時才轉上去。舊版剛好相反，等於在叫使用者往錯的方向按。
+   （底部面板的規則在 #sheetcard：它往上長，原本的方向是對的，不要跟著改。） */
+#topcard:not(.collapsed) .chev{transform:rotate(180deg)}
 #topcard.collapsed #topbody{display:none}
+
+/* 「控制」藥丸：把「這一列可以展開」變成看得見的事。
+   只有一個小箭頭的話，多數人不會知道那可以按 —— 這是舊版最大的可發現性問題。 */
+.expander{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;
+  font:inherit;font-size:11px;font-weight:600;color:var(--tx2);cursor:pointer;
+  background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:4px 9px;
+  white-space:nowrap;transition:.15s
+}
+#topcard:not(.collapsed) .expander{background:var(--accent);border-color:var(--accent);color:var(--accent-tx)}
+#topcard:not(.collapsed) .expander .chev{color:var(--accent-tx)}
 
 .sub{margin-top:3px;font-size:11px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sub b{color:var(--tx2);font-weight:500}
-.backlink{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:600;
-  color:var(--accent);text-decoration:none}
-.backlink:hover{text-decoration:underline}
 
 .segs{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center}
 .seg{display:flex;background:#F4F8F1;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
@@ -264,6 +296,14 @@ body.sheet-open #zoom{
    二來測試用的 DOM stub 沒有 matchMedia，加了會讓測試掛掉。
    ============================================================ */
 
+/* ---------- 桌機／平板：返回鍵補回文字 ---------- */
+/* 手機寬度吃緊，只留箭頭；≥640px 有空間就把「回實時車位列表」寫出來 ——
+   純圖示對不熟悉的人還是有門檻。 */
+@media (min-width:640px){
+  .backbtn .btx{display:inline}
+  .backbtn{padding:0 11px}
+}
+
 /* ---------- 平板（640–1023px）---------- */
 @media (min-width:640px) and (max-width:1023px){
   :root{--sheet-max:42vh;--sheet-head:58px}   /* 抓握條 14px + 標題列 44px */
@@ -310,8 +350,20 @@ body.sheet-open #zoom{
   .rc .rs b{font-size:16px}
 
   /* 收起的標題列仍要顯示時段，但字級放大到可讀 */
-  .trow1 h1{font-size:15.5px}
+  .thit h1{font-size:15.5px}
   .chip{font-size:11.5px;padding:3px 10px}
+
+  /* 返回鍵與「控制」藥丸都是主要控制項 → 照本段規則給到 44px 的手指尺寸。
+     代價是頂部變高，所以同時把「收合時」的卡片內距縮小抵回來。 */
+  #topcard.collapsed{padding:6px 10px}
+  .trow1{gap:9px}
+  .backbtn{height:44px;min-width:44px;padding:0 11px;border-radius:12px}
+  .expander{height:44px;padding:0 12px;border-radius:22px;font-size:12px}
+
+  /* 手機上這一列要塞返回鍵＋時段＋「控制」，長標題只會被截成「澳門公共停車場 · 使…」。
+     改用短標題；「澳門公共停車場」這層脈絡使用者從列表頁帶過來了，不必重複。 */
+  .tfull{display:none}
+  .tmini{display:inline}
 
   /* 縮放：手機用雙指縮放最自然，所以只留「回到全澳」一顆大按鈕 */
   #zin,#zout{display:none}
@@ -374,15 +426,31 @@ body.sheet-open #zoom{
   </div>
 
   <div class="panel collapsed" id="topcard">
-    <div class="trow1" id="tophd">
-      <h1>澳門公共停車場 · 使用率地圖</h1>
-      <span class="chip" id="slotchip">即時</span>
-      <span class="chev">▾</span>
+    <!-- 返回鍵放在標題列，不在 #topbody 裡 —— 面板預設收合，而 #topbody 收合時是
+         display:none，放在裡面的話這個頁面就完全沒有回到車位列表的路。 -->
+    <div class="trow1">
+      <a class="backbtn" href="index.html" title="回實時車位列表" aria-label="回實時車位列表">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 5L8 12l7 7"/>
+        </svg>
+        <span class="btx">回實時車位列表</span>
+      </a>
+
+      <!-- 整列可點（#tophd 的 onclick），但無障礙操作交給裡面那顆真正的 button。
+           兩者是父子，按鈕必須 stopPropagation，否則會切兩次、看起來像沒反應。 -->
+      <div class="thit" id="tophd">
+        <h1><span class="tfull">澳門公共停車場 · 使用率地圖</span><span class="tmini">使用率地圖</span></h1>
+        <span class="chip" id="slotchip">即時</span>
+        <button class="expander" id="topexp" type="button"
+                aria-expanded="false" aria-controls="topbody">
+          <span id="topexlab">控制</span><span class="chev" aria-hidden="true">▾</span>
+        </button>
+      </div>
     </div>
 
     <div id="topbody">
       <div class="sub" id="asub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集</div>
-      <a class="backlink" href="index.html">← 回實時車位列表</a>
 
       <div class="segs">
         <div class="seg" id="seg-when"><span class="lab">時段</span></div>
@@ -1168,7 +1236,36 @@ $("sheethd").onclick = function(){
   $("sheetcard").classList.toggle("collapsed");
   document.body.classList.toggle("sheet-open", sheetOpen());
 };
-$("tophd").onclick   = function(){ $("topcard").classList.toggle("collapsed"); };
+/* 頂部控制卡：整列可點（手機上好按），但無障礙操作交給裡面那顆真 button。
+   兩顆都會 toggle，所以按鈕要 stopPropagation —— 不然會連外層的 onclick
+   一起觸發，切兩次等於沒切，使用者只會覺得「按了沒反應」。 */
+function toggleTop(){
+  var c = $("topcard");
+  c.classList.toggle("collapsed");
+  var open = !c.classList.contains("collapsed");
+  $("topexp").setAttribute("aria-expanded", open ? "true" : "false");
+  $("topexlab").textContent = open ? "收起" : "控制";
+}
+$("tophd").onclick   = toggleTop;
+$("topexp").onclick  = function(e){ e.stopPropagation(); toggleTop(); };
+
+/* 系統返回鍵：回到車位列表，而不是離開整個網站。
+   直接開 map.html（書籤、分享出去的連結）時 history 裡沒有上一頁，
+   按返回會直接跳出網站。這裡補推一筆自己的 entry，返回時若 popstate 的
+   state 不是我們這一筆，就轉去列表頁；是我們自己（bfcache 還原、按了前進）
+   就不要轉址，否則「前進」也會被彈回列表。
+
+   window.history / location 一律走 window. 前綴，且整段包在 try 裡：
+   測試用的 DOM stub 沒有 history，file:// 底下 pushState 也會直接丟錯。 */
+try {
+  if (window.history && window.history.pushState) {
+    window.history.pushState({ nexusMap: 1 }, "", window.location.href);
+    window.addEventListener("popstate", function(e){
+      if (e && e.state && e.state.nexusMap) return;
+      window.location.replace("index.html");
+    });
+  }
+} catch (err) { /* 不支援就當作沒有這個功能，不影響其他操作 */ }
 
 /* 推薦：搜尋框 */
 $("q").addEventListener("input", function(){
