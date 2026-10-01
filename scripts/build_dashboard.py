@@ -460,6 +460,16 @@ def github_stats() -> dict:
     sched_per_day = round(len(sched) / n_days, 1)
     return {
         "total": len(gh),
+        # 全部快照的分母。少了它，這一頁最容易被誤讀：只列 GitHub 自己的數字
+        # （累計 25、自行排程 11）會讓人以為 GitHub 一直在正常採集，
+        # 但 139 筆裡其實有 113 筆是 Mac 採的。
+        # 2026-10-01 的誤解就是這樣來的 —— 使用者看到 09-29/09-30 的長條全是
+        # 「自行排程」，以為 GitHub 排程恢復了；真相是那兩天 GitHub 只跑了
+        # 4~5 次，其餘 41~43 次是本機看門狗自己採的，而本機的採集
+        # 根本不會出現在「GitHub 採集」這張圖上。
+        "all_total": len(rows),
+        "local_total": len(rows) - len(gh),
+        "share_pct": round(len(gh) / len(rows) * 100, 1),
         "schedule": len(sched),
         "dispatch": len(disp),
         "fallback": len(fallback),

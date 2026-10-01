@@ -365,6 +365,13 @@ function githubBlock(){
       <div><b style="color:#8A6A15">${nf(G.dispatch)}</b><span>被觸發</span></div>
     </div>
 
+    ${G.all_total ? `<div class="ghlead" style="margin:10px 0 0">
+      但 GitHub 只佔全部 <b>${nf(G.all_total)}</b> 筆快照的
+      <b>${G.share_pct}%</b>；其餘 <b>${nf(G.local_total)}</b> 筆是本機採的。
+      本機採集<b>不會</b>出現在上面那張圖，所以「圖上全是綠色」不等於
+      GitHub 排程正常 —— 很可能只是本機在扛。
+    </div>` : ""}
+
     <div class="hrow" style="margin-top:14px">
       <span>叫 GitHub 之後誰交貨</span>
       <span><b style="color:${dcol}">${dpct==null?"--":dpct+"%"}</b> 由 GitHub 完成</span>
