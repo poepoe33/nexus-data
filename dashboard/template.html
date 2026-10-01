@@ -69,20 +69,6 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 #mb-motor.on{background:linear-gradient(160deg,#C79320,#8A6A15);box-shadow:0 4px 16px rgba(176,125,14,.28)}
 .mhint{font-size:11px;color:var(--tx3);text-align:center;margin:0 0 4px}
 
-/* data progress banner */
-.banner{
-  margin:12px 0 16px;padding:11px 13px;border-radius:12px;
-  background:linear-gradient(90deg,rgba(46,139,98,.12),rgba(46,139,98,.03));
-  border:1px solid rgba(46,139,98,.26);font-size:12px;color:var(--tx2);line-height:1.55
-}
-body.mode-motor .banner{
-  background:linear-gradient(90deg,rgba(176,125,14,.13),rgba(176,125,14,.03));
-  border-color:rgba(176,125,14,.28)
-}
-.banner b{color:var(--accent);font-weight:600}
-.bar{height:5px;border-radius:3px;background:var(--track);margin-top:8px;overflow:hidden}
-.bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
-
 /* overview */
 .ov{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
 .ring{position:relative;width:96px;height:96px;flex:0 0 96px}
@@ -173,18 +159,6 @@ select{
 .seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
   font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
 .seg button.on{background:var(--card2);color:var(--tx);border-color:#C9DFCF}
-.hstat{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.hstat div{background:var(--card2);border-radius:10px;padding:9px 10px}
-.hstat b{display:block;font-size:19px;font-weight:600;letter-spacing:-.3px}
-.hstat span{font-size:11px;color:var(--tx3)}
-.hstat i{font-style:normal;font-size:11px;margin-left:4px}
-.hrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx3);margin-top:9px;gap:8px}
-.hrow b{font-weight:500;color:var(--tx2)}
-.hbars{margin-top:11px}
-.srcrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;
-  padding-top:10px;border-top:1px solid var(--line);text-align:center}
-.srcrow b{display:block;font-size:16px;font-weight:600;letter-spacing:-.3px}
-.srcrow span{display:block;font-size:10.5px;color:var(--tx3);line-height:1.35}
 #cpsel{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
   color:var(--tx);font:inherit;font-size:14px;padding:11px 10px;outline:none;margin-bottom:10px;
   -webkit-appearance:none;appearance:none}
@@ -281,10 +255,6 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
     </button>
   </div>
   <div class="mhint" id="mhint">私家車與電單車車位分開統計，請先選擇你的車種</div>
-
-  <div class="banner" id="banner"></div>
-
-  <div class="chart" id="health" style="margin-top:16px"></div>
 
   <div class="ov">
     <div class="ring">
@@ -534,86 +504,6 @@ function allOver(){
   };
 }
 
-const COL = D.collection || {};
-/* 採集來源統計。舊的 data.json 沒有這個欄位，所以要有預設值，
-   否則整頁會在讀 .github_self 時爆掉。 */
-const SRC = D.sources || {};
-
-/* 採集來源拆解。「GitHub 自行採集」= schedule，這是唯一能回答「GitHub
-   到底有沒有在按排程自己跑」的數字。被觸發的那些是 Mac 叫的 ——
-   兩者混在一起看會高估 GitHub 的自主性，所以刻意分開顯示。 */
-function srcBlock(){
-  const self = SRC.github_self||0, all = SRC.github_all||0;
-  const trig = Math.max(0, all - self), loc = SRC.local_all||0;
-  if(!all && !loc) return "";
-  const fb = SRC.local_fallback||0;
-  return `<div class="srcrow">
-    <div><b style="color:var(--accent)">${nf(self)}</b><span>GitHub 自行採集</span></div>
-    <div><b>${nf(trig)}</b><span>GitHub 被觸發</span></div>
-    <div><b>${nf(loc)}</b><span>本機採集</span></div>
-  </div>` + (fb ? `<div class="hrow" style="margin-top:6px">
-    <span>其中 <b>${nf(fb)}</b> 次是 GitHub 沒交貨、由本機備援接手</span></div>` : "");
-}
-
-function minsAgo(ts){
-  if(!ts) return null;
-  const p = ts.split(" ");
-  if(p.length < 2) return null;
-  const d = p[0].split("-").map(Number), t = p[1].split(":").map(Number);
-  const then = new Date(d[0], d[1]-1, d[2], t[0], t[1], t[2]||0);
-  return (Date.now() - then.getTime()) / 60000;
-}
-
-function hourBars(counts, perHour){
-  const W=340,H=92,pL=4,pR=4,pT=6,pB=17;
-  const pw=W-pL-pR, ph=H-pT-pB, n=counts.length;
-  const slot=pw/n, bw=Math.max(4, slot*0.62);
-  const top=Math.max(perHour, ...counts);
-  let bars="";
-  counts.forEach((c,i)=>{
-    const cx=pL+slot*i+slot/2;
-    const h=c>0 ? Math.max(4, (c/top)*ph) : 3;
-    const y=pT+ph-h;
-    const fill = c===0 ? "#DCE6D4" : (c>=perHour ? "#1F7A46" : "#8A6A15");
-    bars+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"/>`;
-    if(i%3===0) bars+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${H-4}" text-anchor="middle">${i}</text>`;
-  });
-  return `<svg viewBox="0 0 ${W} ${H}" role="img">${bars}</svg>`;
-}
-
-function renderHealth(){
-  const el = document.getElementById("health");
-  if(!el) return;
-  const m = minsAgo(COL.last);
-  /* 目標是每 30 分鐘一次：35 分鐘內算正常，超過 90 分鐘就是真的停了 */
-  const ok = m!=null && m < 35, warn = m!=null && m >= 35 && m < 90;
-  const dot = m==null ? "#7C937F" : (ok ? "#1F7A46" : (warn ? "#8A6A15" : "#C0392B"));
-  const ago = m==null ? "--" : (m < 60 ? `${Math.round(m)} 分鐘前` : `${(m/60).toFixed(1)} 小時前`);
-  const state = m==null ? "無資料" : (ok ? "正常" : (warn ? "偏慢" : "已停擺"));
-  const pctToday = COL.expected_today ? Math.min(100, Math.round(COL.today/COL.expected_today*100)) : 0;
-
-  const gmin = x => x==null ? "--" : (x < 60 ? `${Math.round(x)} 分` : `${(x/60).toFixed(1)} 小時`);
-  const gcol = x => x==null ? "#7C937F" : (x <= 35 ? "#1F7A46" : (x <= 75 ? "#8A6A15" : "#C0392B"));
-  const tgt = COL.target_gap_min || 30;
-
-  el.innerHTML = `
-    <div class="hd"><b>採集狀態</b>
-      <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:5px"></span>${state}</span></div>
-    <div class="hstat">
-      <div><b>${nf(COL.total)}</b><span>累計採集次數</span></div>
-      <div><b style="color:${ok?'#1F7A46':(warn?'#8A6A15':'#C0392B')}">${ago}</b><span>距離上次採集</span></div>
-      <div><b style="color:${gcol(COL.median_gap_min)}">${gmin(COL.median_gap_min)}</b><span>平均採集間隔<i style="color:var(--tx3)">/ ${tgt} 分</i></span></div>
-      <div><b style="color:${gcol(COL.last_gap_min)}">${gmin(COL.last_gap_min)}</b><span>最近一次間隔</span></div>
-      <div><b>${nf(COL.today)}<i style="color:var(--tx3);font-size:12px"> / ${nf(COL.expected_today)}</i></b><span>今日採集（${pctToday}%）</span></div>
-      <div><b>${nf(COL.hours_covered)}<i style="color:var(--tx3);font-size:12px"> / 24</i></b><span>今日有資料的時段</span></div>
-    </div>
-    <div class="hrow"><span>首次 <b>${esc((COL.first||"--").slice(5,16))}</b></span>
-      <span>最近 <b>${esc((COL.last||"--").slice(5,16))}</b></span></div>
-    ${srcBlock()}
-    <div class="hbars">${hourBars(COL.hourly_today||new Array(24).fill(0), COL.expected_per_hour||2)}
-      <div class="hrow" style="margin-top:6px"><span>綠＝該小時採滿 ${COL.expected_per_hour||2} 筆</span>
-      <span>灰＝完全沒採到</span></div></div>`;
-}
 
 function overview(){
   const o = M().overall || {};
@@ -631,15 +521,6 @@ function overview(){
   const fd = document.getElementById("fdesc");
   if(fd) fd.textContent = `使用率 = 1 − 剩餘 ÷ 總車位（${mLabel()}）`;
 
-  const days = D.days_covered || 0;
-  const need = 7;
-  const p = Math.min(100, Math.round(days/need*100));
-  document.getElementById("banner").innerHTML =
-    `<b>週間高峰分析 · 資料累積 ${days} / ${need} 天</b>
-     <div class="bar"><i style="width:${p}%"></i></div>
-     <div style="margin-top:7px">${days < need
-       ? `已有 ${D.snapshots||0} 筆快照。每個「星期 × 小時」格子要累積約 7 天才能判斷穩定的高峰時段，未滿的格子會顯示為空白。`
-       : `樣本已足夠，熱力圖可直接判讀每週高峰時段。`}</div>`;
 }
 
 function heatmapHTML(hm, samples){
@@ -776,11 +657,9 @@ function closeSheet(){
 
 renderModes();
 overview();
-renderHealth();
 initSel(true);
 renderCharts();
 render();
-setInterval(renderHealth, 60000);
 </script>
 </body>
 </html>

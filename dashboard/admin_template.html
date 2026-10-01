@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#EAF2E6">
+<meta name="robots" content="noindex,nofollow">
+<meta name="format-detection" content="telephone=no">
+<title>管理員 · 澳門車位</title>
+<!--
+  管理員頁面。與 index.html 共用同一組淺色色票，兩頁互點不會割裂。
+
+  ⚠️ 這是一道「前端 gate」，不是安全邊界。理由要講清楚：
+     本 repo 是公開的，dashboard/data.json 與 data/*.csv 任何人都讀得到
+     （實測 raw.githubusercontent.com 回 200）。所以這頁能做的只是
+     「把操作面板從公開頁面移走」，**不能保護資料**。
+     任何會繞過前端的人（改 JS、直接抓 data.json）都看得到同樣的數字。
+
+     要真正保護資料，唯一的路是把資料搬出公開 repo 並改由後端驗證
+     Google token 才回傳。目前的架構（純靜態 GitHub Pages）做不到。
+
+  憑證：只用 client_id。**client_secret 絕對不能放在這裡** ——
+     這個 repo 是公開的，而 Google 會主動掃描 GitHub 並撤銷外洩的
+     client secret。純瀏覽器登入（Google Identity Services）本來就
+     只需要 client_id，它是設計上公開的。
+-->
+<style>
+:root{
+  --bg:#EAF2E6; --card:#FFFFFF; --card2:#EDF3E8; --line:#DCE6D4;
+  --tx:#1F3A2C; --tx2:#4B6A55; --tx3:#7C937F;
+  --accent:#2E8B62; --accent-tx:#FFFFFF; --gold:#B07D0E;
+  --ok:#1F7A46; --warn:#8A6A15; --bad:#C0392B;
+  --track:#E4EDDF; --shadow:0 4px 16px rgba(31,58,44,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--tx);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
+  padding-bottom:env(safe-area-inset-bottom); overscroll-behavior:none;
+}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
+header{padding:calc(env(safe-area-inset-top,0px) + 22px) 0 12px}
+h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
+.sub{margin-top:5px;font-size:12px;color:var(--tx3)}
+.sub b{color:var(--tx2);font-weight:500}
+.back{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12.5px;
+  color:var(--tx2);text-decoration:none;border-bottom:1px dashed var(--line);padding-bottom:1px}
+.back:hover{color:var(--accent);border-color:var(--accent)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:16px;box-shadow:var(--shadow);margin-top:16px}
+.card .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.card .hd b{font-size:13.5px;font-weight:600}
+.card .hd span{font-size:11px;color:var(--tx3)}
+
+.banner{margin:0;padding:12px 14px;border-radius:12px;
+  background:linear-gradient(90deg,rgba(46,139,98,.12),rgba(46,139,98,.03));
+  border:1px solid rgba(46,139,98,.26);font-size:12.5px;color:var(--tx2);line-height:1.6}
+.banner b{color:var(--accent);font-weight:600}
+.bar{height:5px;border-radius:3px;background:var(--track);margin-top:9px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
+
+.hstat{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hstat div{background:var(--card2);border-radius:10px;padding:9px 10px}
+.hstat b{display:block;font-size:19px;font-weight:600;letter-spacing:-.3px}
+.hstat span{font-size:11px;color:var(--tx3)}
+.hstat i{font-style:normal;font-size:11px;margin-left:4px}
+.hrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx3);margin-top:9px;gap:8px}
+.hrow b{font-weight:500;color:var(--tx2)}
+.hbars{margin-top:11px}
+.hbars svg{display:block;width:100%;height:auto;overflow:visible}
+.gtxt{fill:#7C937F;font-size:9px}
+.srcrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--line);text-align:center}
+.srcrow b{display:block;font-size:16px;font-weight:600;letter-spacing:-.3px}
+.srcrow span{display:block;font-size:10.5px;color:var(--tx3);line-height:1.35}
+
+/* ---- 登入 gate ---- */
+.gate{text-align:center;padding:26px 18px 24px}
+.gate .lock{width:46px;height:46px;margin:0 auto 14px;border-radius:50%;
+  background:var(--card2);display:flex;align-items:center;justify-content:center}
+.gate h2{margin:0 0 6px;font-size:16px;font-weight:600}
+.gate p{margin:0;font-size:12.5px;color:var(--tx3);line-height:1.65}
+#gbtn{display:flex;justify-content:center;margin:18px 0 0;min-height:44px}
+.who{margin-top:14px;font-size:11.5px;color:var(--tx3)}
+.who code{background:var(--card2);border-radius:5px;padding:2px 6px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--tx2)}
+.msg{margin-top:14px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.6;
+  background:#FCEBEB;border:1px solid rgba(192,57,43,.28);color:#8C2A20;text-align:left}
+.hint{margin-top:14px;padding:11px 12px;border-radius:10px;font-size:11.5px;line-height:1.7;
+  background:#FAEEDA;border:1px solid rgba(138,106,21,.3);color:#6E5411;text-align:left}
+.hint b{font-weight:600}
+.hint code{background:rgba(255,255,255,.7);border-radius:4px;padding:1px 5px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.signed{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:16px;padding:11px 13px;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;font-size:12px;color:var(--tx2)}
+.signed b{color:var(--tx);font-weight:500}
+.signed button{background:transparent;border:1px solid var(--line);border-radius:9px;
+  color:var(--tx2);font:inherit;font-size:12px;padding:7px 13px;cursor:pointer}
+.signed button:hover{border-color:var(--accent);color:var(--accent)}
+.note{margin-top:18px;padding:11px 12px;border-radius:10px;font-size:11px;line-height:1.7;
+  background:var(--card2);color:var(--tx3)}
+.note b{color:var(--tx2);font-weight:600}
+footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-height:1.7}
+.hidden{display:none !important}
+
+@media (min-width:640px){
+  .wrap{max-width:660px;padding:0 18px 48px}
+  header{padding:calc(env(safe-area-inset-top,0px) + 26px) 0 12px}
+  h1{font-size:22px}
+  .hstat{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>澳門車位 · 管理員</h1>
+    <div class="sub">採集營運面板 · <b id="gen"></b></div>
+    <a class="back" href="index.html">← 回到公開儀表板</a>
+  </header>
+
+  <div id="gateView">
+    <div class="card gate">
+      <div class="lock">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4B6A55"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/>
+          <path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>
+        </svg>
+      </div>
+      <h2>需要管理員登入</h2>
+      <p>這個頁面顯示採集營運資訊。<br>請用管理員的 Google 帳號登入。</p>
+      <div id="gbtn"></div>
+      <div class="who">僅限 <code id="allow"></code></div>
+      <div id="gateMsg"></div>
+      <div id="originHint" class="hint hidden">
+        <b>登入按鈕沒有出現或無法使用？</b><br>
+        這個 OAuth client 目前只授權 <code>cashflow.ebeesnet.com</code>。
+        請到 Google Cloud Console → API 和服務 → 憑證 → 這個 OAuth 2.0 用戶端 ID →
+        <b>已授權的 JavaScript 來源</b>，加入：<br>
+        <code id="originNeeded"></code><br>
+        存檔後等 1–2 分鐘再重新整理本頁。
+      </div>
+    </div>
+  </div>
+
+  <div id="adminView" class="hidden">
+    <div class="card" id="health"></div>
+    <div class="card"><div class="banner" id="banner"></div></div>
+    <div class="signed">
+      <span>已登入 <b id="whoEmail"></b></span>
+      <button onclick="signOut()">登出</button>
+    </div>
+    <div class="note">
+      <b>關於這個頁面的保護程度：</b>這是前端 gate，不是安全邊界。
+      本專案的資料放在公開 repo，<code>data.json</code> 與各 CSV 任何人都讀得到，
+      所以這頁只是把營運面板從公開頁面移走，<b>並沒有保護資料本身</b>。
+    </div>
+  </div>
+
+  <footer>澳門公共停車場 · 採集營運面板</footer>
+</div>
+
+<!-- Google Identity Services。用 async defer，所以下面的 boot() 會先跑，
+     initGsi() 用重試等它載入完成（最多約 8 秒）。 -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<!--DATA-->
+<script>
+const D = window.__DATA__ || {};
+const COL = D.collection || {};
+const SRC = D.sources || {};
+
+/* 只用 client_id。client_secret 不在這裡，也不該在任何前端檔案裡。 */
+const CLIENT_ID = "415316527661-s7o9j6o8kh4ffbhjs1lhevp7shcfu4hv.apps.googleusercontent.com";
+const ADMIN_EMAIL = "paul.ccp@gmail.com";
+const STORE_KEY = "nexus.admin.cred";
+
+const nf = n => n==null ? "--" : n.toLocaleString("en-US");
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function minsAgo(ts){
+  if(!ts) return null;
+  const p = ts.split(" ");
+  if(p.length < 2) return null;
+  const d = p[0].split("-").map(Number), t = p[1].split(":").map(Number);
+  const then = new Date(d[0], d[1]-1, d[2], t[0], t[1], t[2]||0);
+  return (Date.now() - then.getTime()) / 60000;
+}
+
+function hourBars(counts, perHour){
+  const W=340,H=92,pL=4,pR=4,pT=6,pB=17;
+  const pw=W-pL-pR, ph=H-pT-pB, n=counts.length;
+  const slot=pw/n, bw=Math.max(4, slot*0.62);
+  const top=Math.max(perHour, ...counts);
+  let bars="";
+  counts.forEach((c,i)=>{
+    const cx=pL+slot*i+slot/2;
+    const h=c>0 ? Math.max(4, (c/top)*ph) : 3;
+    const y=pT+ph-h;
+    const fill = c===0 ? "#DCE6D4" : (c>=perHour ? "#1F7A46" : "#8A6A15");
+    bars+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"/>`;
+    if(i%3===0) bars+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${H-4}" text-anchor="middle">${i}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="今日各小時採集次數">${bars}</svg>`;
+}
+
+function srcBlock(){
+  const self = SRC.github_self||0, all = SRC.github_all||0;
+  const trig = Math.max(0, all - self), loc = SRC.local_all||0;
+  if(!all && !loc) return "";
+  const fb = SRC.local_fallback||0;
+  return `<div class="srcrow">
+    <div><b style="color:var(--accent)">${nf(self)}</b><span>GitHub 自行採集</span></div>
+    <div><b>${nf(trig)}</b><span>GitHub 被觸發</span></div>
+    <div><b>${nf(loc)}</b><span>本機採集</span></div>
+  </div>` + (fb ? `<div class="hrow" style="margin-top:6px">
+    <span>其中 <b>${nf(fb)}</b> 次是 GitHub 沒交貨、由本機備援接手</span></div>` : "");
+}
+
+function renderHealth(){
+  const el = document.getElementById("health");
+  if(!el) return;
+  const m = minsAgo(COL.last);
+  const ok = m!=null && m < 35, warn = m!=null && m >= 35 && m < 90;
+  const dot = m==null ? "#7C937F" : (ok ? "#1F7A46" : (warn ? "#8A6A15" : "#C0392B"));
+  const ago = m==null ? "--" : (m < 60 ? `${Math.round(m)} 分鐘前` : `${(m/60).toFixed(1)} 小時前`);
+  const state = m==null ? "無資料" : (ok ? "正常" : (warn ? "偏慢" : "已停擺"));
+  const pctToday = COL.expected_today ? Math.min(100, Math.round(COL.today/COL.expected_today*100)) : 0;
+  const gmin = x => x==null ? "--" : (x < 60 ? `${Math.round(x)} 分` : `${(x/60).toFixed(1)} 小時`);
+  const gcol = x => x==null ? "#7C937F" : (x <= 35 ? "#1F7A46" : (x <= 75 ? "#8A6A15" : "#C0392B"));
+  const tgt = COL.target_gap_min || 30;
+
+  el.innerHTML = `
+    <div class="hd"><b>採集狀態</b>
+      <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:5px"></span>${state}</span></div>
+    <div class="hstat">
+      <div><b>${nf(COL.total)}</b><span>累計採集次數</span></div>
+      <div><b style="color:${ok?'#1F7A46':(warn?'#8A6A15':'#C0392B')}">${ago}</b><span>距離上次採集</span></div>
+      <div><b style="color:${gcol(COL.median_gap_min)}">${gmin(COL.median_gap_min)}</b><span>平均採集間隔<i style="color:var(--tx3)">/ ${tgt} 分</i></span></div>
+      <div><b style="color:${gcol(COL.last_gap_min)}">${gmin(COL.last_gap_min)}</b><span>最近一次間隔</span></div>
+      <div><b>${nf(COL.today)}<i style="color:var(--tx3);font-size:12px"> / ${nf(COL.expected_today)}</i></b><span>今日採集（${pctToday}%）</span></div>
+      <div><b>${nf(COL.hours_covered)}<i style="color:var(--tx3);font-size:12px"> / 24</i></b><span>今日有資料的時段</span></div>
+    </div>
+    <div class="hrow"><span>首次 <b>${esc((COL.first||"--").slice(5,16))}</b></span>
+      <span>最近 <b>${esc((COL.last||"--").slice(5,16))}</b></span></div>
+    ${srcBlock()}
+    <div class="hbars">${hourBars(COL.hourly_today||new Array(24).fill(0), COL.expected_per_hour||2)}
+      <div class="hrow" style="margin-top:6px"><span>綠＝該小時採滿 ${COL.expected_per_hour||2} 筆</span>
+      <span>灰＝完全沒採到</span></div></div>`;
+}
+
+function renderBanner(){
+  const days = D.days_covered || 0, need = 7;
+  const p = Math.min(100, Math.round(days/need*100));
+  document.getElementById("banner").innerHTML =
+    `<b>週間高峰分析 · 資料累積 ${days} / ${need} 天</b>
+     <div class="bar"><i style="width:${p}%"></i></div>
+     <div style="margin-top:8px">${days < need
+       ? `已有 ${D.snapshots||0} 筆快照。每個「星期 × 小時」格子要累積約 7 天才能判斷穩定的高峰時段，未滿的格子會顯示為空白。`
+       : `樣本已足夠，熱力圖可直接判讀每週高峰時段。`}</div>`;
+}
+
+/* ---------- Google 登入 ---------- */
+function b64url(s){
+  s = s.replace(/-/g,"+").replace(/_/g,"/");
+  while(s.length % 4) s += "=";
+  return s;
+}
+function decodeJwt(t){
+  const part = t.split(".")[1];
+  if(!part) throw new Error("token 格式不對");
+  const bin = atob(b64url(part));
+  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+}
+
+/* 回傳 null 代表通過，否則回傳錯誤訊息。
+   這是**前端**驗證：檢查 token 是不是發給本頁、有沒有過期、email 對不對。
+   它擋得住「拿別的帳號登入」，但擋不住刻意繞過前端的人（見檔頭說明）。 */
+function checkToken(p){
+  const now = Math.floor(Date.now()/1000);
+  if(!p) return "讀不到登入資訊";
+  if(p.aud !== CLIENT_ID) return "這個登入憑證不是發給本頁面的";
+  if(p.iss !== "accounts.google.com" && p.iss !== "https://accounts.google.com")
+    return "登入憑證的簽發者不是 Google";
+  if(!p.exp || p.exp <= now) return "登入已過期，請重新登入";
+  if(!p.email_verified) return "這個 Google 帳號的 email 尚未驗證";
+  if(String(p.email||"").toLowerCase() !== ADMIN_EMAIL)
+    return `這個帳號（${esc(p.email||"未知")}）沒有管理員權限`;
+  return null;
+}
+
+function loadCred(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function saveCred(p){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(p)); }catch(e){}
+}
+function clearCred(){
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+}
+
+function showGate(msg){
+  document.getElementById("adminView").classList.add("hidden");
+  document.getElementById("gateView").classList.remove("hidden");
+  const box = document.getElementById("gateMsg");
+  box.innerHTML = msg ? `<div class="msg">${esc(msg)}</div>` : "";
+}
+
+function showAdmin(p){
+  document.getElementById("gateView").classList.add("hidden");
+  document.getElementById("adminView").classList.remove("hidden");
+  document.getElementById("whoEmail").textContent = p.email;
+  renderHealth();
+  renderBanner();
+}
+
+function signOut(){
+  clearCred();
+  if(window.google && google.accounts && google.accounts.id){
+    try{ google.accounts.id.disableAutoSelect(); }catch(e){}
+  }
+  showGate();
+  initGsi();
+}
+
+function onCredential(resp){
+  let p;
+  try{
+    p = decodeJwt(resp.credential);
+  }catch(e){
+    showGate("登入回應無法解讀，請再試一次。");
+    return;
+  }
+  const err = checkToken(p);
+  if(err){ clearCred(); showGate(err); return; }
+  saveCred(p);
+  showAdmin(p);
+}
+
+let gsiTries = 0;
+function initGsi(){
+  const box = document.getElementById("gbtn");
+  if(!box || !box.offsetParent) return;
+  if(!(window.google && google.accounts && google.accounts.id)){
+    if(++gsiTries > 40){ document.getElementById("originHint").classList.remove("hidden"); return; }
+    return setTimeout(initGsi, 200);
+  }
+  try{
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onCredential });
+    google.accounts.id.renderButton(box, {
+      theme: "outline", size: "large", text: "signin_with",
+      locale: "zh_TW", width: 268
+    });
+  }catch(e){
+    document.getElementById("originHint").classList.remove("hidden");
+    return;
+  }
+  /* 來源沒被授權時 GIS 不會丟錯，只是按鈕生不出來 —— 所以用「有沒有 iframe」判斷。 */
+  setTimeout(()=>{
+    if(box && !box.querySelector("iframe"))
+      document.getElementById("originHint").classList.remove("hidden");
+  }, 2500);
+}
+
+(function boot(){
+  document.getElementById("allow").textContent = ADMIN_EMAIL;
+  document.getElementById("gen").textContent = (D.last_snapshot||D.generated_at||"") + " (UTC+8)";
+  document.getElementById("originNeeded").textContent = location.origin;
+
+  const saved = loadCred();
+  if(saved){
+    const err = checkToken(saved);
+    if(!err){ showAdmin(saved); return; }
+    /* 一定要把 err 傳給 showGate()。少了這行，被拒絕的人只會看到一個
+       空白的登入畫面，完全不知道發生什麼事 —— 而「為什麼被擋」正是
+       這種 gate 最需要講清楚的事。 */
+    clearCred();
+    showGate(err);
+    initGsi();
+    return;
+  }
+  showGate();
+  initGsi();
+})();
+
+setInterval(()=>{
+  const p = loadCred();
+  if(p && checkToken(p)){ clearCred(); showGate("登入已過期，請重新登入"); initGsi(); }
+  else if(p) renderHealth();
+}, 60000);
+</script>
+</body>
+</html>

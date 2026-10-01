@@ -122,9 +122,13 @@ jobs:
           echo "::error::push 失敗 3 次，放棄。資料沒有遺失，下一班會再採。"
           exit 1
 
-      # 只上傳「建置產物」。dashboard/ 裡還有 template.html / map_template.html
-      # 這兩個原始模板（含 <!--DATA--> / <!--MAPDATA--> 佔位標記），
+      # 只上傳「建置產物」。dashboard/ 裡還有 template.html / map_template.html /
+      # admin_template.html 這三個原始模板（含 <!--DATA--> / <!--MAPDATA--> 佔位標記），
       # 直接上傳整個 dashboard/ 會把它們一起公開出去，所以先挑檔到 _site/。
+      #
+      # ⚠️ admin.html 一定要一起複製：每次部署都是「整個 _site 換掉」，
+      #    少複製一個檔就等於把那個頁面從線上刪掉。這支 workflow 每 30 分鐘
+      #    跑一次，漏掉的話 admin.html 會在幾分鐘內消失。
       - name: Stage Pages site
         run: |
           set -e
@@ -135,6 +139,11 @@ jobs:
             cp dashboard/map.html _site/map.html
           else
             echo "::warning::dashboard/map.html 不存在，本次不發布地圖"
+          fi
+          if [ -f dashboard/admin.html ]; then
+            cp dashboard/admin.html _site/admin.html
+          else
+            echo "::warning::dashboard/admin.html 不存在，本次不發布管理頁面"
           fi
           ls -la _site
 

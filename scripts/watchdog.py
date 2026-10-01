@@ -71,6 +71,7 @@ DISPATCH_WAIT_SECONDS = 240
 #   dashboard/data.json    由 build_dashboard.py 聚合產生
 #   dashboard/index.html   由 dashboard/template.html 產生
 #   dashboard/map.html     由 dashboard/map_template.html 產生
+#   dashboard/admin.html   由 dashboard/admin_template.html 產生
 #
 # 為什麼不是 `git add -A data dashboard`：那會連「手寫原始檔」一起掃進來。
 # 2026-10-01 真實事故 —— 改版地圖範本（淺色澳門色調）時看門狗剛好醒來，
@@ -82,6 +83,7 @@ SNAPSHOT_PATHS = (
     "dashboard/data.json",
     "dashboard/index.html",
     "dashboard/map.html",
+    "dashboard/admin.html",
 )
 
 # 原始檔與憑證：永遠不該由看門狗代為提交。
@@ -90,6 +92,7 @@ SNAPSHOT_PATHS = (
 NEVER_STAGE = (
     "dashboard/template.html",
     "dashboard/map_template.html",
+    "dashboard/admin_template.html",
     "dashboard/.amap_key.json",
 )
 
@@ -183,7 +186,26 @@ def stage_snapshot() -> list[str] | None:
     刻意用明確路徑而非 `git add -A data dashboard`：後者會把手寫原始檔
     一起掃進來，讓資料 commit 混入程式改動（見 SNAPSHOT_PATHS 的事故註解）。
     """
-    git("add", "-A", *SNAPSHOT_PATHS)
+    # 只把「真的存在」或「已經被追蹤」的路徑交給 git。
+    # 2026-10-01 實測：`git add -A <不存在的路徑>` 會直接 fatal（exit 128），
+    # 整支看門狗就跟著死。SNAPSHOT_PATHS 是固定清單，但產生物不一定每次都在
+    # ——例如 admin_template.html 缺席時 build_dashboard.py 會跳過 admin.html。
+    # 那種情況下要能照常提交其他產物，而不是整班放棄。
+    present, missing = [], []
+    for p in SNAPSHOT_PATHS:
+        if (ROOT / p).exists() or git("ls-files", "--error-unmatch", p,
+                                      check=False).returncode == 0:
+            present.append(p)
+        else:
+            missing.append(p)
+    if missing:
+        print("[watchdog] 注意：以下產生物不存在，本次不納入提交：", file=sys.stderr)
+        for p in missing:
+            print(f"    {p}", file=sys.stderr)
+    if not present:
+        return []
+
+    git("add", "-A", *present)
     staged = git("diff", "--cached", "--name-only").stdout.split()
 
     bad = [p for p in staged if p in NEVER_STAGE]

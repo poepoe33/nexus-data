@@ -557,12 +557,28 @@ def main() -> int:
         (OUT_DIR / "index.html").write_text(
             html.replace("<!--DATA-->", embedded), encoding="utf-8")
 
+    # 管理員頁面。與 index.html 共用同一份 payload，只差在版型與登入 gate。
+    # 它是次要產物：模板不在就跳過，不要讓主線（index.html）跟著失敗。
+    atpl = OUT_DIR / "admin_template.html"
+    admin_line = "            (admin_template.html 不存在，略過管理頁面)"
+    if atpl.exists():
+        ahtml = atpl.read_text(encoding="utf-8")
+        if "<!--DATA-->" not in ahtml:
+            print("[dashboard] admin_template.html 缺少 <!--DATA--> 標記，略過",
+                  file=sys.stderr)
+            admin_line = "            (admin_template.html 缺少標記，略過管理頁面)"
+        else:
+            (OUT_DIR / "admin.html").write_text(
+                ahtml.replace("<!--DATA-->", embedded), encoding="utf-8")
+            admin_line = f"            -> {OUT_DIR / 'admin.html'}"
+
     for mid, label, _, _ in MODES:
         o = modes[mid]["overall"]
         print(f"[dashboard] {label}: {o['carparks']} 個場 / {o['capacity']} 位 / 使用率 {o['rate']}")
     print(f"            {collection['total']} snapshots ({stats['rows']} rows) | "
           f"{stats['days']} day(s)")
     print(f"            -> {OUT_DIR / 'index.html'}")
+    print(admin_line)
     return 0
 
 
