@@ -406,8 +406,9 @@ scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦�
 scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，184 條斷言
 scripts/test_map_live.js             真人瀏覽器測試（puppeteer-core + 本機 Chrome）
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），96 條斷言
-scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，50 條斷言
+scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，59 條斷言
 scripts/test_collection_source.py    採集來源判定（collection_source / dispatch_origin），42 條斷言
+scripts/test_dashboard_sources.py    採集來源分桶 + 「未標記」切分點（collection_sources），36 條斷言
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
 scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
@@ -773,7 +774,7 @@ admin 頁面最上面那三格要回答的問題是「這次採集是誰叫的�
 | `github-dispatch-apps-script` | Google Apps Script 的觸發器打的 |
 | `github-dispatch-mac-watchdog` | 這台 Mac 的 watchdog 打的 |
 | `github-dispatch-manual` | 人在 GitHub 網頁／API 手動打的 |
-| `github-workflow_dispatch` | 沒帶 `origin` 的 dispatch（含 2026-10-02 之前的**全部**歷史資料） |
+| `github-workflow_dispatch` | 沒帶 `origin` 的 dispatch（2026-10-02 之前**全部**如此；之後若有殘留＝有觸發器還沒更新） |
 | `local-*` | 本機採的（見上表第 1、2 層） |
 
 > ⚠️ **`origin` 必須先宣告在 `scrape.yml` 的 `workflow_dispatch.inputs` 裡。**
@@ -799,6 +800,23 @@ ORIGIN=manual ./scripts/dispatch.sh      # 手動跑時也順手標一下
 
 > 歷史資料（2026-10-02 之前）**沒有**來源標記，所以 admin 頁面會把它們歸在
 > 「未標記來源」。那是預期的 —— 當時根本沒記錄這個資訊，不是資料壞掉。
+
+> 📌 **「未標記來源」那句說明是跟著資料變的，不是寫死的。**
+> 曾經寫死成「2026-10-02 前的資料沒有來源標記」，結果 origin 上線當天
+> （`2026-10-02 00:05:58`，run `36889377314`）就出現了一筆**上線之後**的未標記
+> 資料 —— Apps Script 還沒重貼 —— 畫面卻仍宣稱「都是以前的」。那句話會隨著
+> 每個 30 分鐘的 tick 越來越假，而且**不會有任何東西報錯**。
+>
+> 現在 `collection_sources()` 另外直接數一個 `github_other_recent`
+> （未標記 **且** 時間 ≥ `ORIGIN_CUTOFF`），頁面據此換一句話：
+>
+> | 情況 | 頁面顯示 | 代表什麼 |
+> |---|---|---|
+> | `github_other_recent == 0` | 未標記來源 N（2026-10-02 前的歷史資料） | 沒事 |
+> | `github_other_recent > 0` | 未標記來源 N（含尚未更新、還沒送 origin 的觸發器） | **有東西還沒更新，該去重貼 `.gs`** |
+>
+> 注意 `github_other` 是**減法**算出來的（耐新 origin），但減法算不出
+> 「哪一天之後」，所以 `github_other_recent` 必須另外數一次。
 
 > 📌 另一個容易漏的地方：`build_dashboard.py` 的 `github_stats()` 原本用
 > `== "github-workflow_dispatch"` 數「被觸發」。加了 origin 之後新資料會變成

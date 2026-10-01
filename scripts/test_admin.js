@@ -187,35 +187,46 @@ group("B5. 其他", function () {
 group("B6. 採集來源分得開", function () {
   const KEYS = ["github_apps_script", "github_mac", "github_manual", "github_other"];
   KEYS.forEach((k) => ok(new RegExp("SRC\\." + k).test(tpl), "模板引用 SRC." + k));
+  ok(/SRC\.github_other_recent/.test(tpl),
+     "模板引用 SRC.github_other_recent（用來決定該說哪一句說明）");
 
   /* payload 層面：四桶加起來必須剛好等於 github_all。
      這條是為了擋「以後新增一個 origin 卻忘了加進 buckets」——
      那種錯會讓總數對不上，但每一格看起來都很正常。 */
   if (payload && payload.sources) {
     const s = payload.sources;
-    ["github_self", "github_all", "local_all"].concat(KEYS)
+    ["github_self", "github_all", "local_all", "github_other_recent"].concat(KEYS)
       .forEach((k) => ok(k in s, "payload.sources 有 " + k));
     const sum = (s.github_self || 0) + (s.github_apps_script || 0) + (s.github_mac || 0)
               + (s.github_manual || 0) + (s.github_other || 0);
     ok(sum === (s.github_all || 0),
        "四桶加起來等於 github_all（新增 origin 不會被漏算）",
        `${sum} vs ${s.github_all}`);
+    /* github_other_recent 是 github_other 的子集（上線後的那部分），
+       不可能比它大。這條擋的是「切分點寫錯、把整桶都算成 recent」之類的錯。 */
+    ok((s.github_other_recent || 0) <= (s.github_other || 0),
+       "github_other_recent 不會超過 github_other",
+       `${s.github_other_recent} vs ${s.github_other}`);
   } else {
     ok(false, "payload.sources 不存在（build_dashboard.py 沒注入？）");
   }
 
   /* 行為層面：真的把 srcBlock() 跑起來。只檢查原始碼字串不夠 ——
      那驗不出「數字有沒有被接到對的格子」。 */
-  const uh = /const UNMARKED_HINT = "([^"]*)"/.exec(tpl);
-  ok(uh !== null, "有定義 UNMARKED_HINT（未標記來源的說明文字）");
+  const uhOld = /const UNMARKED_HINT_OLD\s*= "([^"]*)"/.exec(tpl);
+  const uhLive = /const UNMARKED_HINT_LIVE\s*= "([^"]*)"/.exec(tpl);
+  ok(uhOld !== null, "有定義 UNMARKED_HINT_OLD（未標記＝歷史資料）");
+  ok(uhLive !== null, "有定義 UNMARKED_HINT_LIVE（未標記＝還有東西沒更新）");
+  ok(uhOld && uhLive && uhOld[1] !== uhLive[1],
+     "兩種情況的說明文字必須不同，否則等於沒分");
 
   const m = /function srcBlock\(\)\{[\s\S]*?\n\}/.exec(tpl);
   ok(m !== null, "找得到 srcBlock 的原始碼");
-  if (!m || !uh) return;
+  if (!m || !uhOld || !uhLive) return;
 
   /* 用 new Function 而不是 vm：參數就是它的自由變數，不需要另外造一個 realm。 */
-  const mk = (src) => new Function("SRC", "nf", "UNMARKED_HINT",
-      m[0] + "; return srcBlock();")(src, (n) => String(n), uh[1]);
+  const mk = (src) => new Function("SRC", "nf", "UNMARKED_HINT_OLD", "UNMARKED_HINT_LIVE",
+      m[0] + "; return srcBlock();")(src, (n) => String(n), uhOld[1], uhLive[1]);
 
   const a = mk({ github_self: 5, github_all: 20, github_apps_script: 9,
                  github_mac: 6, github_manual: 0, github_other: 0, local_all: 3 });
@@ -229,9 +240,20 @@ group("B6. 採集來源分得開", function () {
      "不再出現「GitHub 被觸發」這種把兩個來源混在一起的標籤");
 
   const b = mk({ github_self: 1, github_all: 100, github_apps_script: 2,
-                 github_mac: 1, github_manual: 0, github_other: 96, local_all: 0 });
+                 github_mac: 1, github_manual: 0, github_other: 96, local_all: 0,
+                 github_other_recent: 0 });
   ok(/未標記來源/.test(b), "有未標記來源時會顯示（不藏起來假裝都分好了）");
   ok(/2026-10-02/.test(b), "未標記來源有附原因，否則看起來像壞掉");
+  ok(b.indexOf(uhOld[1]) !== -1, "未標記全是歷史資料時，說「歷史資料」");
+  ok(b.indexOf(uhLive[1]) === -1, "未標記全是歷史資料時，不該說「還沒更新」");
+
+  /* 這一條對應 2026-10-02 實際踩到的狀況：origin 上線之後還有未標記資料進來，
+     畫面卻仍寫著「2026-10-02 前的資料」。文案必須跟著資料走，不能寫死。 */
+  const b2 = mk({ github_self: 1, github_all: 100, github_apps_script: 2,
+                  github_mac: 1, github_manual: 0, github_other: 96, local_all: 0,
+                  github_other_recent: 3 });
+  ok(b2.indexOf(uhLive[1]) !== -1, "有上線後的未標記資料時，改說「還沒更新」");
+  ok(b2.indexOf(uhOld[1]) === -1, "有上線後的未標記資料時，不再宣稱「都是以前的」");
 
   const c = mk({ github_self: 1, github_all: 1, github_apps_script: 0,
                  github_mac: 0, github_manual: 0, github_other: 0, local_all: 0 });

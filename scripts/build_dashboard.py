@@ -366,6 +366,19 @@ def _collection_stats(stamps_seen, row_count, first_stamp, last_stamp):
     }, len(dates)
 
 
+# origin 這個欄位是 2026-10-02 才上線的。在那之前，每一筆 GitHub 採集都只記到
+# github-workflow_dispatch 為止 ——「誰觸發的」這個資訊當時根本不存在於資料裡。
+ORIGIN_CUTOFF = "2026-10-02"
+
+# 有具名 origin 的四種來源。不在這個集合裡的 github-* 就是「沒帶 origin」。
+NAMED_GITHUB_SOURCES = frozenset({
+    "github-schedule",
+    "github-dispatch-apps-script",
+    "github-dispatch-mac-watchdog",
+    "github-dispatch-manual",
+})
+
+
 def collection_sources() -> dict:
     """統計 data/collections.csv：每一筆快照是「誰」採的。
 
@@ -376,11 +389,20 @@ def collection_sources() -> dict:
     缺失就讓整頁建不出來 —— 沒有它只是少一格統計，不是壞掉。
     """
     counts: dict[str, int] = {}
+    # 「未標記」之中，發生在 origin 上線**之後**的筆數。
+    # 為什麼要單獨數這一格：頁面上「未標記來源」的說明文字如果寫死成
+    # 「2026-10-02 前的資料」，只要上線後還有觸發器沒更新（例如 Apps Script
+    # 還沒重貼），新的未標記資料就會一直進來，那句話就變成假話了。
+    # 實際踩過：2026-10-02 00:05 那筆就是上線後產生的未標記資料。
+    unmarked_recent = 0
     if COLLECTIONS_CSV.exists():
         with COLLECTIONS_CSV.open(encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 src = (row.get("source") or "").strip() or "unknown"
                 counts[src] = counts.get(src, 0) + 1
+                if (src.startswith("github-") and src not in NAMED_GITHUB_SOURCES
+                        and (row.get("scraped_at") or "") >= ORIGIN_CUTOFF):
+                    unmarked_recent += 1
 
     def tally(prefix: str, exclude: tuple[str, ...] = ()) -> int:
         return sum(n for s, n in counts.items()
@@ -406,6 +428,10 @@ def collection_sources() -> dict:
         # 這樣以後多一個沒見過的 origin 也不會被漏算，
         # 而且「三個具名來源 + other」永遠恰好等於 github_all。
         "github_other": max(0, all_n - self_n - apps_n - mac_n - manual_n),
+        # 上面的 other 有多少是**上線之後**才發生的。>0 代表「還有觸發器沒更新」，
+        # 頁面會據此換一句說明（見 admin_template.html 的 UNMARKED_HINT_*）。
+        # 刻意直接數，而不是從 counts 用減法推 —— 減法算不出「哪一天之後」。
+        "github_other_recent": unmarked_recent,
         # local-repair 不是採集（只是把衝突標記裡的資料救回來），不計入。
         "local_all": tally("local-", exclude=("local-repair",)),
         "local_fallback": counts.get("local-watchdog-fallback", 0),
