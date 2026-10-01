@@ -12,8 +12,22 @@ name: probe-inputs
 #
 # 實驗做完就刪掉這個檔案。
 
+# 實驗結果（2026-10-02）：
+#   ① 帶「未宣告」的 inputs → **HTTP 422**
+#      {"message":"Unexpected inputs provided: [\"origin\"]"}
+#      → GitHub 會**拒絕**沒寫在 workflow 檔裡的 input。
+#        「偷偷塞一個 origin 進去、不必改 workflow」這條路是**不通的**。
+#   ② 所以來源標記**必須**先宣告在 workflow 檔裡。
+#      下面的 inputs: 就是用來確認「宣告之後就送得進去」。
+
 on:
   workflow_dispatch:
+    inputs:
+      origin:
+        description: "誰觸發的（apps-script / mac-watchdog / manual）"
+        required: false
+        default: "unspecified"
+        type: string
 
 jobs:
   probe:
@@ -26,5 +40,7 @@ jobs:
           jq -r 'keys[]' "$GITHUB_EVENT_PATH"
           echo "=== .inputs (the answer we care about) ==="
           jq -c '.inputs // "ABSENT"' "$GITHUB_EVENT_PATH"
+          echo "=== .inputs.origin ==="
+          jq -r '.inputs.origin // "ABSENT"' "$GITHUB_EVENT_PATH"
           echo "=== full payload (truncated to 2000 chars) ==="
           head -c 2000 "$GITHUB_EVENT_PATH"
