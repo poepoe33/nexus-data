@@ -3,25 +3,56 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#0B0E14">
+<!-- 淺色主題：瀏覽器 UI／狀態列也跟著用奶油綠，不要深色一條壓在上面 -->
+<meta name="theme-color" content="#EAF2E6">
+<!-- 「像 web app」的關鍵：加到主畫面後用全螢幕開啟，不要有 Safari 的網址列 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="澳門車位">
+<meta name="format-detection" content="telephone=no">
 <title>澳門停車場 · 使用率地圖</title>
 <style>
+/* ============================================================
+   淺色主題：澳門色調（淺綠 + 淺黃）
+   澳門的街景就是這個組合 —— 奶油黃的葡式外牆 + 松綠的窗框與樹。
+   底圖用高德內建 amap://styles/fresh（奶油色陸地 + 淺綠公園與水體），
+   UI 疊在上面用同一組色，看起來是一體的而不是貼上去的。
+
+   顏色語意（不要改）：
+     --accent  = 澳門綠，主要互動色（車種＝私家車時）
+     --gold    = 澳門黃，次要強調（車種＝電單車時的 accent）
+     使用率色階仍是「藍＝空 → 紅＝滿」，紅代表擠，與圖例一致。
+   ============================================================ */
 :root{
-  --bg:#0B0E14; --card:rgba(20,26,36,.92); --card2:#1A2230; --line:#232E3E;
-  --tx:#E6EDF3; --tx2:#9AA7B8; --tx3:#6B7889; --accent:#4C8DFF;
-  --shadow:0 8px 28px rgba(0,0,0,.46);
-  color-scheme:dark;   /* 讓原生 <select> 下拉也走深色 */
+  --bg:#EAF2E6;                      /* 底圖載入前的底色，淺綠白 */
+  --card:rgba(255,255,255,.94);      /* 面板：幾乎不透明白，浮在淺色地圖上 */
+  --card2:#EDF3E8;                   /* 次要區塊／hover：帶綠的淺灰 */
+  --line:#DCE6D4;                    /* 邊線：淺綠灰 */
+  --tx:#1F3A2C;                      /* 主文字：深墨綠（比純黑柔和，仍是高對比） */
+  --tx2:#4B6A55;                     /* 次文字 */
+  --tx3:#7C937F;                     /* 說明文字 */
+  --accent:#2E8B62;                  /* 澳門綠 */
+  --accent-tx:#FFFFFF;               /* 綠底上的文字 */
+  --gold:#B07D0E;                    /* 澳門黃（深一點，白底上才看得清） */
+  --warn-bg:#FCF4D6; --warn-tx:#7E5F0C;
+  --shadow:0 6px 22px rgba(31,58,44,.15);
+  /* 底部面板展開時的高度 —— 圖例與縮放鈕靠它讓位，各斷點各自覆寫 */
+  --sheet-max:34vh;
+  color-scheme:light;   /* 讓原生 <select> 下拉也走淺色 */
 }
-body.mode-motor{--accent:#F0A33C}
+body.mode-motor{--accent:var(--gold);--accent-tx:#FFFFFF}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;height:100%;overflow:hidden}
 body{
   background:var(--bg);color:var(--tx);
   font:14px/1.45 -apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
+  /* 手機上不要有「拉過頭露出白邊」的橡皮筋感 —— 這是 web app 的基本體感 */
+  overscroll-behavior:none;
 }
 
 /* ---------- map ---------- */
-#map{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;background:#0B0E14}
+#map{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;background:var(--bg)}
 
 /* ---------- HUD scaffolding ---------- */
 .hud{position:fixed;z-index:20;pointer-events:none}
@@ -41,11 +72,11 @@ body{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0
 }
 .chip{
-  font-size:10.5px;color:var(--tx2);background:#1E2A3A;border-radius:20px;
+  font-size:10.5px;color:var(--tx2);background:var(--card2);border-radius:20px;
   padding:2px 9px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;
   margin-left:auto;flex:0 0 auto
 }
-.chip i{width:6px;height:6px;border-radius:50%;background:#2EA043;display:none}
+.chip i{width:6px;height:6px;border-radius:50%;background:#2E9E5B;display:none}
 .chip.live i{display:block}
 .chev{color:var(--tx3);font-size:13px;transition:.2s;flex:0 0 auto}
 #topcard.collapsed .chev{transform:rotate(180deg)}
@@ -58,20 +89,19 @@ body{
 .backlink:hover{text-decoration:underline}
 
 .segs{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap;align-items:center}
-.seg{display:flex;background:#0F1520;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.seg{display:flex;background:#F4F8F1;border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
 .seg button{
   border:0;background:transparent;color:var(--tx3);font:inherit;font-size:12px;font-weight:500;
   padding:6px 11px;border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap
 }
 .seg button:hover{color:var(--tx2)}
-.seg button.on{background:var(--accent);color:#08101E;font-weight:600}
-body.mode-motor .seg button.on{color:#1B1204}
+.seg button.on{background:var(--accent);color:var(--accent-tx);font-weight:600}
 .seg button.wd{padding:6px 8px;min-width:29px}
 /* 即時模式下標出「今天是星期幾」，但用底線區隔，不要跟「已選取」的實心塊混淆 */
-.seg button.now{color:var(--tx2);box-shadow:inset 0 -2px 0 rgba(154,167,184,.55)}
+.seg button.now{color:var(--tx2);box-shadow:inset 0 -2px 0 rgba(124,147,127,.6)}
 .seg .lab{font-size:10.5px;color:var(--tx3);align-self:center;padding:0 5px 0 7px;white-space:nowrap}
 .sel{
-  background:#0F1520;border:1px solid var(--line);border-radius:11px;color:var(--tx);
+  background:#F4F8F1;border:1px solid var(--line);border-radius:11px;color:var(--tx);
   font:inherit;font-size:12px;padding:6px 8px;cursor:pointer;outline:none
 }
 .sel:disabled{opacity:.45;cursor:default}
@@ -86,10 +116,11 @@ body.mode-motor .seg button.on{color:#1B1204}
 #legcard{padding:9px 11px 10px}
 .lg-hd{font-size:10.5px;color:var(--tx3);display:flex;justify-content:space-between;gap:10px;margin-bottom:6px}
 .lg-hd b{color:var(--tx2);font-weight:500}
-.lg-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,#2C7BE5,#1FB6C9,#35C46A,#D6C022,#F08A24,#F04438)}
+/* 色階與 JS 的 STOPS 必須一致（見 ramp()）；改一邊就要改另一邊 */
+.lg-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,#2F7FD4,#159FB5,#33A85C,#D2A417,#E8742B,#D93A2F)}
 .lg-lb{display:flex;justify-content:space-between;font-size:9.5px;color:var(--tx3);margin-top:3px}
 .lg-ft{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);font-size:10px;color:var(--tx3);line-height:1.5}
-.lg-ft i{font-style:normal;display:inline-block;border-radius:50%;background:#35C46A;vertical-align:middle;margin-right:4px}
+.lg-ft i{font-style:normal;display:inline-block;border-radius:50%;background:#33A85C;vertical-align:middle;margin-right:4px}
 
 /* ---------- zoom ---------- */
 #zoom{right:12px;bottom:12px;display:flex;flex-direction:column;gap:6px}
@@ -103,6 +134,9 @@ body.mode-motor .seg button.on{color:#1B1204}
 /* ---------- bottom sheet ---------- */
 #sheet{left:0;right:0;bottom:0;display:flex;justify-content:center;padding:0 12px}
 #sheetcard{width:100%;max-width:760px;border-radius:16px 16px 0 0;overflow:hidden;display:flex;flex-direction:column}
+/* 抓握提示條：讓面板「看起來可以拖」。桌面上用不到，由 media query 收起。 */
+.grab{display:none;padding:7px 0 3px;cursor:grab;touch-action:none;flex:0 0 auto}
+.grab span{display:block;width:38px;height:4px;border-radius:3px;background:var(--line);margin:0 auto}
 .sheet-hd{
   display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;user-select:none;
   border-bottom:1px solid var(--line)
@@ -112,17 +146,22 @@ body.mode-motor .seg button.on{color:#1B1204}
 .sheet-hd span{font-size:10.5px;color:var(--tx3)}
 .sheet-hd .chev{margin-left:auto;color:var(--tx3);transition:.2s;font-size:13px}
 #sheetcard.collapsed .chev{transform:rotate(180deg)}
-#sheetbody{max-height:31vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:7px 9px 12px}
+#sheetbody{
+  max-height:var(--sheet-max);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:7px 9px 12px;
+  /* 清單捲到底不要把整頁一起拖動（手機上的關鍵體感） */
+  overscroll-behavior:contain;
+}
 #sheetcard.collapsed #sheetbody{display:none}
 .cp{
   display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:10px;cursor:pointer;transition:.12s
 }
 .cp:hover,.cp.hl{background:var(--card2)}
-.cp .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;box-shadow:0 0 0 2px rgba(255,255,255,.09)}
+.cp .dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;box-shadow:0 0 0 2px rgba(31,58,44,.13)}
 .cp .nm{flex:1;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cp .fr{font-size:10.5px;color:var(--tx3);white-space:nowrap}
 .cp .fr b{color:var(--tx2);font-weight:600}
-.cp .bar{width:52px;height:5px;border-radius:3px;background:#1B2431;overflow:hidden;flex:0 0 52px}
+.cp .bar{width:52px;height:5px;border-radius:3px;background:#E4EBDE;overflow:hidden;flex:0 0 52px}
 .cp .bar i{display:block;height:100%;border-radius:3px}
 .cp .rt{font-size:12px;font-weight:600;width:38px;text-align:right;flex:0 0 38px;letter-spacing:-.2px}
 
@@ -130,13 +169,13 @@ body.mode-motor .seg button.on{color:#1B1204}
 #searchcard{width:100%;max-width:760px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .srow{display:flex;gap:7px;align-items:center}
 #q{
-  flex:1;min-width:0;border:1px solid var(--line);background:#0F1520;color:var(--tx);
+  flex:1;min-width:0;border:1px solid var(--line);background:#F4F8F1;color:var(--tx);
   font:inherit;font-size:13px;padding:9px 11px;border-radius:10px;outline:none
 }
-#q:focus{border-color:var(--accent)}
+#q:focus{border-color:var(--accent);background:#fff}
 #q::placeholder{color:var(--tx3)}
 #qbtn{
-  border:0;background:var(--accent);color:#08101E;font:inherit;font-size:12.5px;font-weight:600;
+  border:0;background:var(--accent);color:var(--accent-tx);font:inherit;font-size:12.5px;font-weight:600;
   padding:9px 14px;border-radius:10px;cursor:pointer;white-space:nowrap
 }
 #qbtn[disabled]{opacity:.45;cursor:default}
@@ -146,42 +185,43 @@ body.mode-motor .seg button.on{color:#1B1204}
 .shint .orig{color:var(--tx2);font-weight:500}
 
 /* ---------- 推薦：底部面板分頁 ---------- */
-.tabs{display:flex;gap:2px;margin-left:auto;background:#0F1520;border:1px solid var(--line);border-radius:9px;padding:2px}
+.tabs{display:flex;gap:2px;margin-left:auto;background:#F4F8F1;border:1px solid var(--line);border-radius:9px;padding:2px}
 .tabs button{
   border:0;background:transparent;color:var(--tx3);font:inherit;font-size:11.5px;font-weight:500;
   padding:4px 10px;border-radius:7px;cursor:pointer;white-space:nowrap
 }
-.tabs button.on{background:var(--accent);color:#08101E;font-weight:600}
+.tabs button.on{background:var(--accent);color:var(--accent-tx);font-weight:600}
 
 /* ---------- 推薦：結果列 ---------- */
 .rc{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;cursor:pointer;transition:.12s}
 .rc:hover{background:var(--card2)}
 .rc .rk{
-  flex:0 0 20px;height:20px;border-radius:6px;background:#1E2A3A;color:var(--tx2);
+  flex:0 0 20px;height:20px;border-radius:6px;background:var(--card2);color:var(--tx2);
   font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center
 }
-.rc.first .rk{background:var(--accent);color:#08101E}
+.rc.first .rk{background:var(--accent);color:var(--accent-tx)}
 .rc .bd{flex:1;min-width:0}
 .rc .nm{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rc .mt{font-size:10.5px;color:var(--tx3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rc .rs{text-align:right;flex:0 0 auto}
 .rc .rs b{font-size:14px;font-weight:600;letter-spacing:-.3px}
 .rc .rs span{display:block;font-size:10px;color:var(--tx3)}
+/* 信心標籤：淺底深字，在白卡上仍然清楚 */
 .cf{display:inline-block;border-radius:5px;padding:1px 5px;font-size:9.5px;margin-left:5px;vertical-align:1px}
-.cf.hi{background:#16341F;color:#5FD98A}
-.cf.mid{background:#3A3016;color:#E8C25A}
-.cf.lo{background:#3A1F1F;color:#E88A8A}
-.warn{margin:2px 8px 9px;padding:7px 9px;border-radius:9px;background:#3A3016;color:#E8C25A;font-size:11px;line-height:1.55}
+.cf.hi{background:#DFF3E4;color:#1F7A46}
+.cf.mid{background:#FBF0CF;color:#8A6A15}
+.cf.lo{background:#FBE3E1;color:#A83A32}
+.warn{margin:2px 8px 9px;padding:7px 9px;border-radius:9px;background:var(--warn-bg);color:var(--warn-tx);font-size:11px;line-height:1.55}
 .rnote{margin:0 8px 6px;font-size:11px;color:var(--tx3);line-height:1.5}
 
 /* ---------- info window ---------- */
 /* 高德自訂窗體（isCustom）沒有自帶外框，這裡自己畫，並補一個朝下的小箭頭。 */
-.iw{min-width:196px;max-width:250px;background:#141A24;border:1px solid var(--line);
-  border-radius:13px;padding:11px 12px 12px;color:var(--tx);box-shadow:0 10px 30px rgba(0,0,0,.6);
+.iw{min-width:196px;max-width:250px;background:#fff;border:1px solid var(--line);
+  border-radius:13px;padding:11px 12px 12px;color:var(--tx);box-shadow:0 10px 30px rgba(31,58,44,.26);
   position:relative}
 .iw::after{
   content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;margin-left:-6px;
-  background:#141A24;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:#fff;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
   transform:rotate(45deg)
 }
 .iw .t{font-size:14px;font-weight:600;line-height:1.35;padding-right:14px}
@@ -189,15 +229,15 @@ body.mode-motor .seg button.on{color:#1B1204}
 .iw .big{display:flex;align-items:baseline;gap:7px;margin-top:9px}
 .iw .big b{font-size:26px;font-weight:600;letter-spacing:-1px;line-height:1}
 .iw .big small{font-size:11.5px;color:var(--tx3)}
-.iw .track{height:7px;border-radius:4px;background:#1B2431;overflow:hidden;margin-top:8px}
+.iw .track{height:7px;border-radius:4px;background:#E4EBDE;overflow:hidden;margin-top:8px}
 .iw .track i{display:block;height:100%;border-radius:4px}
 .iw .rows{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
 .iw .rows div{display:flex;gap:8px;font-size:11.5px}
 .iw .rows em{font-style:normal;color:var(--tx3);flex:0 0 52px}
 .iw .rows span{flex:1;color:var(--tx2);word-break:break-word}
-.iw .chip{display:inline-block;background:#1E2A3A;border-radius:7px;padding:3px 7px;font-size:10.5px;color:var(--tx2);margin-top:8px}
+.iw .chip{display:inline-block;background:var(--card2);border-radius:7px;padding:3px 7px;font-size:10.5px;color:var(--tx2);margin-top:8px}
 .iw .chip b{color:var(--tx)}
-.iw .hist{background:#22303F;color:#B9C7D8}
+.iw .hist{background:#EAF3E7;color:#3F6B4E}
 
 /* ---------- misc ---------- */
 #fail{
@@ -205,18 +245,85 @@ body.mode-motor .seg button.on{color:#1B1204}
   background:var(--bg);padding:24px;text-align:center;font-size:13px;color:var(--tx2);line-height:1.7
 }
 #fail b{display:block;color:var(--tx);font-size:15px;margin-bottom:8px}
-#fail code{background:#1A2230;border-radius:5px;padding:1px 5px;font-size:12px;color:var(--tx2)}
-/* 底部面板展開時，把圖例與縮放鈕推上去，否則會被面板蓋住 */
+#fail code{background:var(--card2);border-radius:5px;padding:1px 5px;font-size:12px;color:var(--tx2)}
+/* 底部面板展開時，把圖例與縮放鈕推上去，否則會被面板蓋住。
+   高度由 --sheet-max 決定，所以三個斷點只要改那一個變數。 */
 body.sheet-open #legend,
-body.sheet-open #zoom{bottom:calc(31vh + 58px)}
+body.sheet-open #zoom{bottom:calc(var(--sheet-max) + 58px)}
 
-@media (max-width:560px){
-  #legend .lg-ft{display:none}
-  .trow1 h1{font-size:15px}
-  #sheetbody{max-height:29vh}
-  .seg button{padding:6px 9px}
-  .seg button.wd{padding:6px 6px;min-width:26px}
+/* ============================================================
+   響應式：手機 / 平板 / 桌面
+   全部用 CSS 做，不在 JS 裡讀 matchMedia —— 一來不需要，
+   二來測試用的 DOM stub 沒有 matchMedia，加了會讓測試掛掉。
+   ============================================================ */
+
+/* ---------- 平板（640–1023px）---------- */
+@media (min-width:640px) and (max-width:1023px){
+  :root{--sheet-max:42vh}
+  #topcard,#searchcard{max-width:660px}
+  #sheetcard{max-width:660px}
+  .grab{display:block}                 /* 觸控裝置 → 顯示抓握條 */
+  #top{padding:12px 16px 0}
+  #sheet{padding:0 16px}
+  #sheetbody{max-height:var(--sheet-max)}
 }
+
+/* ---------- 手機（<640px）---------- */
+@media (max-width:639px){
+  :root{--sheet-max:56vh}              /* 要看清單時給足高度 */
+
+  /* 瀏海／動態島：所有貼邊的面板都要吃 safe-area，否則會被切掉 */
+  #top{padding:calc(env(safe-area-inset-top,0px) + 8px) 8px 0;gap:6px}
+  #sheet{padding:0}
+  #legend{left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+  #zoom{right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+  #sheetbody{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px)}
+
+  /* 面板貼滿寬度、貼齊底部 —— 這是 app 的樣子，不是「浮在頁面上的卡片」 */
+  #topcard,#searchcard{max-width:none;border-radius:14px}
+  #sheetcard{
+    max-width:none;border-radius:18px 18px 0 0;
+    box-shadow:0 -6px 24px rgba(31,58,44,.16)
+  }
+  .grab{display:block;padding:9px 0 4px}
+  .grab span{width:44px;height:5px}
+
+  /* 手指尺寸：主要控制項一律 ≥44px */
+  #q{font-size:16px;padding:12px 13px;border-radius:12px}  /* 16px 才不會被 iOS 自動放大 */
+  #qbtn{font-size:14px;padding:12px 18px;border-radius:12px;min-width:56px}
+  .srow{gap:8px}
+  .shint{font-size:12px}
+  .sheet-hd{padding:12px 14px;min-height:48px}
+  .sheet-hd b{font-size:14.5px}
+  .tabs button{padding:7px 13px;font-size:12.5px}
+  .cp,.rc{padding:11px 9px;border-radius:12px;min-height:48px}
+  .cp .nm,.rc .nm{font-size:13.5px}
+  .cp .fr,.rc .mt{font-size:11.5px}
+  .cp .bar{width:44px;flex-basis:44px}
+  .rc .rs b{font-size:16px}
+
+  /* 收起的標題列仍要顯示時段，但字級放大到可讀 */
+  .trow1 h1{font-size:15.5px}
+  .chip{font-size:11.5px;padding:3px 10px}
+
+  /* 縮放：手機用雙指縮放最自然，所以只留「回到全澳」一顆大按鈕 */
+  #zin,#zout{display:none}
+  #zoom button{width:44px;height:44px;border-radius:14px;font-size:16px}
+
+  /* 圖例：手機上縮到最小，只留色階與標題（詳細說明在標題列展開後看得到） */
+  #legend{max-width:190px}
+  #legcard{padding:7px 9px 8px}
+  #legend .lg-ft{display:none}
+  #legend .lg-lb span:nth-child(2){display:none}
+  .lg-bar{height:7px}
+}
+
+/* 平板與手機：觸控裝置不需要 hover 效果（hover 會黏在最後點過的項目上） */
+@media (hover:none){
+  .cp:hover,.rc:hover{background:transparent}
+  .cp.hl{background:var(--card2)}
+}
+
 </style>
 <script type="text/javascript">
   /* 高德地圖 JS API 2.0。
@@ -309,6 +416,8 @@ body.sheet-open #zoom{bottom:calc(31vh + 58px)}
 
 <div class="hud" id="sheet">
   <div class="panel collapsed" id="sheetcard">
+    <!-- 抓握條：觸控裝置才顯示（見 media query）。它與標題列都可拖曳。 -->
+    <div class="grab" id="grab" aria-hidden="true"><span></span></div>
     <div class="sheet-hd" id="sheethd">
       <b id="sh-title">最擠的停車場</b>
       <span id="sh-sub"></span>
@@ -352,12 +461,15 @@ var nf = function(n){ return (n==null||isNaN(n)) ? "--" : Number(n).toLocaleStri
 var pct = function(r){ return (r==null||isNaN(r)) ? "--" : Math.round(r*100)+"%"; };
 var pad2 = function(n){ return (n<10?"0":"") + n; };
 
-/* ---- 色階：天氣圖式（藍＝空 → 紅＝滿），紅代表擠 ---- */
-var STOPS = [[0,"#2C7BE5"],[0.25,"#1FB6C9"],[0.5,"#35C46A"],
-             [0.7,"#D6C022"],[0.85,"#F08A24"],[1,"#F04438"]];
+/* ---- 色階：天氣圖式（藍＝空 → 紅＝滿），紅代表擠 ----
+   這組值必須與 CSS 的 .lg-bar 漸層一致；改一邊就要改另一邊。
+   淺色底圖上要稍微加深、加飽和，否則 0% 的藍會糊在奶油色地圖裡。 */
+var STOPS = [[0,"#2F7FD4"],[0.25,"#159FB5"],[0.5,"#33A85C"],
+             [0.7,"#D2A417"],[0.85,"#E8742B"],[1,"#D93A2F"]];
+var NEUTRAL = "#9AA79C";   /* 該時段沒有資料：中性灰綠，不要畫成 0%（會被誤讀成「很空」） */
 function h2r(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
 function ramp(r){
-  if(r==null||isNaN(r)) return "#5C6879";
+  if(r==null||isNaN(r)) return NEUTRAL;
   r = r<0?0:(r>1?1:r);
   for(var i=1;i<STOPS.length;i++){
     if(r<=STOPS[i][0]){
@@ -541,7 +653,8 @@ var map = new AMap.Map("map", {
   center: MAPCENTER,
   zoom: 13,
   viewMode: "2D",                    // 預設是 3D，這裡固定 2D
-  mapStyle: "amap://styles/dark",    // 官方內建深色底圖（幻影黑），免申請自訂樣式
+  mapStyle: "amap://styles/fresh",   // 官方內建淺色底圖：奶油色陸地 + 淺綠公園與水體
+                                     // （就是澳門的奶油黃外牆 + 松綠窗框），免申請自訂樣式
   zooms: [11, 19],                   // 注意：高德用 zooms:[min,max]，不是 minZoom/maxZoom
   resizeEnable: true
 });
@@ -567,7 +680,8 @@ function buildHeat(){
   if(!pts.length) return;
   heat = new AMap.HeatMap(map, {
     radius: 62,            // 單位 pixel（官方預設 30）
-    opacity: [0, 0.76],    // 注意：高德是「區間陣列」，不是單一數值
+    opacity: [0, 0.60],    // 注意：高德是「區間陣列」，不是單一數值。
+                           // 淺色底圖上調低一點，讓奶油色街廓透出來，不然會糊成一片。
     gradient: GRADIENT,    // key 為 0~1 的間隔位置
     zooms: [11, 19],
     zIndex: 120,
@@ -590,13 +704,15 @@ function buildDot(){
     var cm = new AMap.CircleMarker({
       center: ll(c),
       radius: rad,
-      strokeColor: "rgba(6,10,18,.62)",
-      strokeWeight: 1,
+      /* 淺色底圖上用「白色光暈」而不是深色描邊 —— 深色邊在奶油色地圖上會像污點，
+         白色邊則讓每個圓點都清楚浮起來（尤其是綠色圓點落在綠色公園上時）。 */
+      strokeColor: "rgba(255,255,255,.92)",
+      strokeWeight: 1.5,
       strokeOpacity: 1,
       /* 該時段沒有資料 → 中性灰。仍然看得到位置、也點得開，
          但不會被誤讀成「很空」（畫成 0% 藍色是錯的）。 */
-      fillColor: (r == null ? "#39465A" : ramp(r)),
-      fillOpacity: (r == null ? 0.55 : 0.85),
+      fillColor: (r == null ? NEUTRAL : ramp(r)),
+      fillOpacity: (r == null ? 0.5 : 0.88),
       zIndex: 120,
       cursor: "pointer"
     });
@@ -775,7 +891,7 @@ function renderStats(){
   $("s-cnt").textContent  = nf(cnt);
   $("s-cntl").textContent = live ? "停車場數" : "有資料場數";
   $("s-full").textContent = nf(full);
-  $("s-full").style.color = full ? "#F04438" : "var(--tx)";
+  $("s-full").style.color = full ? "#D93A2F" : "var(--tx)";
 
   $("lg-title").textContent = live ? (mLabel() + "使用率") : (slotLabel() + " 平均使用率");
   $("lg-dot").style.background = ramp(rate);
@@ -998,7 +1114,50 @@ $("zfit").onclick = function(){
   closeInfo();
   map.setZoomAndCenter(13, MAPCENTER, false, 460);
 };
+/* 底部面板：點一下切換，拖曳也可以。
+   手機上「往上拉展開、往下甩收起」是直覺動作，只能點會讓人覺得不像 app。
+   拖曳距離要超過門檻才算拖曳，否則會跟點擊互相搶。 */
+var suppressSheetClick = false;
+
+function collapseSheet(){
+  $("sheetcard").classList.add("collapsed");
+  document.body.classList.remove("sheet-open");
+}
+
+(function bindSheetDrag(){
+  var y0 = 0, moved = 0, dragging = false, dragged = false;
+  function start(e){
+    if(!e.touches || !e.touches.length) return;
+    y0 = e.touches[0].clientY; moved = 0; dragging = true; dragged = false;
+  }
+  function move(e){
+    if(!dragging || !e.touches || !e.touches.length) return;
+    moved = e.touches[0].clientY - y0;
+    if(Math.abs(moved) > 8){
+      dragged = true;
+      if(e.cancelable) e.preventDefault();   // 拖面板時不要順便捲動頁面
+    }
+  }
+  function end(){
+    if(!dragging) return;
+    dragging = false;
+    if(!dragged) return;                     // 沒真的拖動 → 交給 click 處理
+    if(moved < -30) openSheet();             // 往上拉 → 展開
+    else if(moved > 30) collapseSheet();     // 往下甩 → 收起
+    /* 拖曳結束後瀏覽器仍會補送一個 click；不擋掉的話會再切換一次，看起來像沒反應 */
+    suppressSheetClick = true;
+    setTimeout(function(){ suppressSheetClick = false; }, 350);
+  }
+  [$("grab"), $("sheethd")].forEach(function(n){
+    n.addEventListener("touchstart", start, {passive:true});
+    n.addEventListener("touchmove", move, {passive:false});
+    n.addEventListener("touchend", end);
+    n.addEventListener("touchcancel", end);
+  });
+})();
+
 $("sheethd").onclick = function(){
+  if(suppressSheetClick) return;
   $("sheetcard").classList.toggle("collapsed");
   document.body.classList.toggle("sheet-open", sheetOpen());
 };
