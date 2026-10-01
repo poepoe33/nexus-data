@@ -62,9 +62,10 @@ async function dispatch(env) {
     });
 
     const text = await res.text();
-    // 成功 = 204 且 body 為空
+    // 這個端點歷史上回 204（無 body），官方文件現在寫 200（回傳 run id 與 url）。
+    // 兩者都代表已排入佇列，所以都算成功。
     return {
-      ok: res.status === 204,
+      ok: res.status === 200 || res.status === 204,
       status: res.status,
       at: new Date().toISOString(),
       repo,

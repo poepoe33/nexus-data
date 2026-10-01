@@ -40,10 +40,14 @@ HTTP=$(curl -sS -o /tmp/dispatch-resp.txt -w '%{http_code}' \
   "https://api.github.com/repos/$REPO/actions/workflows/$WORKFLOW/dispatches" \
   -d "{\"ref\":\"$REF\"}")
 
-if [ "$HTTP" = "204" ]; then
-  echo "dispatch: OK → $REPO/$WORKFLOW @ $REF"
-  exit 0
-fi
+# GitHub 這個端點歷史上回 204（無 body），但官方文件現在寫 200（回傳 run id 與 url）。
+# 兩者都代表「已排入佇列」，所以兩個都當成功 —— 只認 204 的話，
+# API 一改版就會把成功誤報成失敗（而且會走進下面的錯誤診斷，給出誤導的建議）。
+case "$HTTP" in
+  200|204)
+    echo "dispatch: OK ($HTTP) → $REPO/$WORKFLOW @ $REF"
+    exit 0 ;;
+esac
 
 echo "dispatch: 失敗 HTTP $HTTP" >&2
 cat /tmp/dispatch-resp.txt >&2
