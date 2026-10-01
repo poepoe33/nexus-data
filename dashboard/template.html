@@ -40,22 +40,23 @@ body{
   padding-bottom:env(safe-area-inset-bottom);
   overscroll-behavior:none;
 }
-.wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
+/* 底部留白要扣掉浮動地圖鈕（52px + 16px 邊距），否則最後一張卡片會被蓋住 */
+.wrap{max-width:520px;margin:0 auto;padding:0 14px calc(84px + env(safe-area-inset-bottom))}
 
 /* header */
 header{padding:calc(env(safe-area-inset-top,0px) + 22px) 0 12px}
 h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .sub{margin-top:5px;font-size:12px;color:var(--tx3)}
-.navmap{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 14px;
-  border-radius:10px;background:var(--accent);color:var(--accent-tx);text-decoration:none;
-  font-size:13px;font-weight:600;box-shadow:0 3px 10px rgba(46,139,98,.28)}
-.navmap:hover{filter:brightness(1.07)}
-/* 管理員入口。刻意做成「外框線」而不是實心：公開頁的主要動作是看地圖，
-   管理頁是少數人用的後台，不該搶走視覺焦點，但也不能藏到找不到。 */
-.navadmin{display:inline-flex;align-items:center;gap:5px;margin-top:10px;margin-left:8px;
-  padding:8px 13px;border-radius:10px;background:transparent;border:1px solid var(--line);
-  color:var(--tx2);text-decoration:none;font-size:13px;font-weight:600}
-.navadmin:hover{border-color:var(--accent);color:var(--accent)}
+/* 地圖入口：浮動按鈕固定在右下角，不佔頁面高度。
+   原本是 header 裡的文字按鈕，但「切去地圖」是隨時都可能想做的動作，
+   固定在視窗右下比塞在標題底下更好按，也不會把 header 撐高。
+   z-index 刻意低於 .mask(40)：開詳細面板時它應該被遮住，不該浮在上面。 */
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+  width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--accent-tx);text-decoration:none;z-index:30;
+  box-shadow:0 6px 20px rgba(46,139,98,.40);transition:transform .15s}
+.fab:active{transform:scale(.93)}
+.fab:hover{filter:brightness(1.07)}
 .sub b{color:var(--tx2);font-weight:500}
 
 /* ---- 頂部兩大分類 ---- */
@@ -107,30 +108,50 @@ select{
   font:inherit;font-size:13px;padding:10px 8px;outline:none
 }
 
-/* carpark cards */
-.list{display:flex;flex-direction:column;gap:9px}
-.cp{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
+/* ---- 停車場卡片 ----
+   改成「一格一停車場」的網格：手機 2 欄、平板 3 欄、桌機 4 欄。
+   卡片縮小之後一頁能放更多，剩下的長度問題交給「載入更多」處理 ——
+   而不是靠一直縮字級，那樣最後會變成沒人看得清楚。 */
+.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.cp{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 11px;
+  cursor:pointer;transition:.15s;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:7px;min-width:0}
 .cp:active{background:var(--card2)}
-.cp .top{display:flex;align-items:baseline;gap:8px}
-.cp .nm{font-size:15px;font-weight:500;flex:1;line-height:1.35}
-.cp .zn{font-size:10px;color:var(--tx3);border:1px solid var(--line);border-radius:5px;padding:1px 5px;white-space:nowrap}
-.cp .mid{display:flex;align-items:center;gap:10px;margin-top:9px}
-.cp .num{font-size:13px;color:var(--tx2);white-space:nowrap}
-.cp .num b{font-size:19px;font-weight:600;color:var(--tx);letter-spacing:-.3px}
-.track{flex:1;height:7px;border-radius:4px;background:var(--track);overflow:hidden}
-.track i{display:block;height:100%;border-radius:4px}
-.cp .ft{margin-top:7px;font-size:11px;color:var(--tx3);display:flex;justify-content:space-between;gap:8px}
+.cp .top{display:flex;align-items:flex-start;gap:5px;min-width:0}
+/* 兩行截斷：停車場名稱長度差很多，不截斷的話同一列的卡片高度會被拉開 */
+.cp .nm{font-size:12.5px;font-weight:500;flex:1;min-width:0;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cp .zn{font-size:9px;color:var(--tx3);border:1px solid var(--line);border-radius:4px;
+  padding:1px 4px;white-space:nowrap;flex:0 0 auto;margin-top:1px}
+/* margin-top:auto 讓數字列沉到卡片底部，同一列不同高度的卡片才會對齊 */
+.cp .mid{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:auto}
+.cp .num{font-size:10.5px;color:var(--tx3);white-space:nowrap}
+.cp .num b{font-size:15px;font-weight:600;color:var(--tx);letter-spacing:-.3px}
+.cp .rt{font-size:15px;font-weight:600;letter-spacing:-.3px;white-space:nowrap}
+.track{height:5px;border-radius:3px;background:var(--track);overflow:hidden}
+.track i{display:block;height:100%;border-radius:3px}
 
-/* peak row */
-.pk{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
+/* ---- 每週高峰卡片：同一套網格，內容不同 ---- */
+.pk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 11px;
+  cursor:pointer;display:flex;flex-direction:column;gap:5px;box-shadow:var(--shadow);min-width:0}
 .pk:active{background:var(--card2)}
-.pk .l{flex:1;min-width:0}
-.pk .l .n{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pk .l .p{font-size:11.5px;color:var(--tx3);margin-top:3px}
-.pk .l .p b{font-weight:600}
-.pk .r{text-align:right;flex:0 0 auto}
-.pk .r b{display:block;font-size:17px;font-weight:600;letter-spacing:-.3px}
-.pk .r span{font-size:10px;color:var(--tx3)}
+.pk .n{font-size:12.5px;font-weight:500;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pk .p{font-size:10px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk .p b{font-weight:600}
+.pk .r{margin-top:auto;display:flex;align-items:baseline;gap:4px}
+.pk .r b{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.pk .r span{font-size:9.5px;color:var(--tx3)}
+
+/* 「載入更多」：橫跨整個網格寬度 */
+.more{grid-column:1/-1;margin-top:3px;background:var(--card2);border:1px solid #C9DFCF;
+  color:var(--accent);font:inherit;font-size:13px;font-weight:600;padding:11px 0;
+  border-radius:11px;cursor:pointer;transition:.15s}
+.more:active{background:#DFEBD9}
+.more span{font-weight:400;color:var(--tx3);font-size:11px;margin-left:6px}
+/* 全澳總計那張是「表頭」、分隔線與空狀態也是 —— 都橫跨整個網格。
+   網格現在每一種寬度都成立，所以這條要放在基礎層，不能只寫在桌機 media query 裡。 */
+.pdiv,.phead,.empty{grid-column:1/-1}
 
 /* heatmap */
 .hm{margin-top:14px}
@@ -207,24 +228,29 @@ select{
 .kv span{flex:1;color:var(--tx2);word-break:break-word}
 .empty{text-align:center;color:var(--tx3);font-size:13px;padding:34px 0}
 footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-height:1.7}
+/* 管理員入口放在頁尾：它是少數人用的後台，不需要出現在主要動線上，
+   但也不該藏到找不到 —— 頁尾是「找設定」時最自然會看的地方。 */
+.fadmin{margin-top:14px}
+.fadmin a{display:inline-flex;align-items:center;gap:5px;color:var(--tx3);
+  text-decoration:none;font-size:11px;border:1px solid var(--line);border-radius:9px;
+  padding:6px 12px;transition:.15s}
+.fadmin a:hover{border-color:var(--accent);color:var(--accent)}
 
-/* ---- 平板：欄寬放開一點，別讓卡片擠在手機寬度裡 ---- */
+/* ---- 平板：三欄 ---- */
 @media (min-width:640px){
-  .wrap{max-width:660px;padding:0 18px 48px}
+  .wrap{max-width:720px;padding:0 18px calc(92px + env(safe-area-inset-bottom))}
   header{padding:calc(env(safe-area-inset-top,0px) + 26px) 0 12px}
   h1{font-size:22px}
-  .cp,.pk{padding:14px 15px}
+  .list{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 }
-/* ---- 桌面：兩欄。520px 的單欄在寬螢幕上會變成一條窄窄的電話 ---- */
+/* ---- 桌面：四欄。520px 的單欄在寬螢幕上會變成一條窄窄的電話 ---- */
 @media (min-width:900px){
-  .wrap{max-width:880px}
-  .list{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
-  /* 全澳總計那張是「表頭」，橫跨兩欄才不會旁邊空一格 */
-  .pdiv,.phead,.empty{grid-column:1/-1}
+  .wrap{max-width:980px}
+  .list{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 }
 /* ---- 手機：手指尺寸、安全區、iOS 不放大字 ---- */
 @media (max-width:639px){
-  .wrap{padding:0 12px calc(28px + env(safe-area-inset-bottom))}
+  .wrap{padding:0 12px calc(80px + env(safe-area-inset-bottom))}
   header{padding:calc(env(safe-area-inset-top,0px) + 18px) 0 10px}
   /* 16px 以下 iOS 會自動放大整個頁面，輸入框一定要 16px */
   input[type=search],select,#cpsel{font-size:16px}
@@ -239,14 +265,6 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
   <header>
     <h1>澳門公共停車場 · 實時車位</h1>
     <div class="sub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集 · <b id="gen"></b></div>
-    <a class="navmap" href="map.html">查看使用率地圖（熱力圖）</a>
-    <a class="navadmin" href="admin.html" title="採集營運面板（需管理員登入）">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/>
-        <path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>
-      </svg>管理員
-    </a>
   </header>
 
   <div class="modes">
@@ -297,8 +315,8 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
   </div>
 
   <div class="tools">
-    <input type="search" id="q" placeholder="搜尋停車場名稱…" oninput="render()">
-    <select id="sort" onchange="render()">
+    <input type="search" id="q" placeholder="搜尋停車場名稱…" oninput="onFilter()">
+    <select id="sort" onchange="onFilter()">
       <option value="rate">使用率</option>
       <option value="free">剩餘少</option>
       <option value="name">名稱</option>
@@ -311,8 +329,26 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
   <footer>
     <span id="fdesc">使用率 = 1 − 剩餘 ÷ 總車位（私家車）</span><br>
     時段為澳門時間 UTC+8 · 顏色越紅代表越滿
+    <div class="fadmin">
+      <a href="admin.html" title="採集營運面板（需管理員登入）">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/>
+          <path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>
+        </svg>管理員登入
+      </a>
+    </div>
   </footer>
 </div>
+
+<!-- 浮動地圖鈕。放在 .wrap 之外，因為它是 fixed 定位、不屬於內容流。 -->
+<a class="fab" href="map.html" title="查看使用率地圖（熱力圖）" aria-label="查看使用率地圖（熱力圖）">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M9 3.6L3.8 5.9v14.5L9 18.1l6 2.3 5.2-2.3V3.6L15 5.9 9 3.6z"/>
+    <path d="M9 3.6v14.5M15 5.9v14.5"/>
+  </svg>
+</a>
 
 <div class="mask" id="mask" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
@@ -381,6 +417,7 @@ function setMode(m){
   overview();
   initSel(true);
   renderCharts();
+  resetPage();
   render();
   window.scrollTo({top:0, behavior:"smooth"});
 }
@@ -558,6 +595,25 @@ function heatmapHTML(hm, samples){
   return h;
 }
 
+/* ---- 分頁 ----
+   卡片縮小成一格一停車場之後，一頁放 24 張大約是 6 列，剛好一兩個螢幕高。
+   剩下的用「載入更多」展開，而不是把 80 幾個停車場一次鋪完。 */
+const PAGE_SIZE = 24;
+/* 兩個分頁各自記住展開到第幾筆。用陣列而不是單一數字：切到「每週高峰」
+   再切回來時，「即時車位」不該被重置回第一頁。 */
+const shown = [PAGE_SIZE, PAGE_SIZE];
+
+/* 篩選條件（關鍵字、排序）與車種都會同時改變兩個分頁的結果集，
+   所以一次重置兩個 —— 否則搜尋「A」展開到 100 筆、再改搜「B」時，
+   會以為結果只有 3 筆，其實只是沒有重新展開。
+   切換分頁本身不重置：兩個分頁各有各的計數，位置應該被保留。 */
+function resetPage(){ shown[0] = PAGE_SIZE; shown[1] = PAGE_SIZE; }
+function onFilter(){ resetPage(); render(); }
+function loadMore(){ shown[tab] += PAGE_SIZE; render(); }
+
+const moreBtn = (n, t) =>
+  `<button class="more" onclick="loadMore()">載入更多<span>已顯示 ${n} / ${t}</span></button>`;
+
 function render(){
   const q = (document.getElementById("q").value||"").trim();
   const sort = document.getElementById("sort").value;
@@ -569,36 +625,38 @@ function render(){
       if(sort==="free") return (a.free??1e9)-(b.free??1e9);
       return (b.rate??-1)-(a.rate??-1);
     });
-    document.getElementById("list").innerHTML = rows.length ? rows.map(r=>{
-      const r8 = r.rate;
-      return `<div class="cp" onclick="openSheet('${r.id}')">
-        <div class="top"><div class="nm">${esc(r.name)}</div><div class="zn">${esc(r.zone)}</div></div>
-        <div class="mid">
-          <div class="num">剩 <b style="color:${colText(r8)}">${r.free==null?"-":r.free}</b> / ${r.cap==null?"-":r.cap}</div>
+    const total = rows.length, vis = rows.slice(0, shown[0]);
+    document.getElementById("list").innerHTML = total ? (
+      vis.map(r=>{
+        const r8 = r.rate;
+        return `<div class="cp" onclick="openSheet('${r.id}')">
+          <div class="top"><div class="nm">${esc(r.name)}</div><div class="zn">${esc(r.zone)}</div></div>
+          <div class="mid">
+            <span class="num">剩 <b>${r.free==null?"-":r.free}</b>/${r.cap==null?"-":r.cap}</span>
+            <span class="rt" style="color:${colText(r8)}">${pct(r8)}</span>
+          </div>
           <div class="track"><i style="width:${Math.round((r8||0)*100)}%;background:${colText(r8)}"></i></div>
-          <div class="num" style="flex:0 0 auto;color:${colText(r8)}">${pct(r8)}</div>
-        </div>
-        <div class="ft"><span>${esc(mLabel())}位 ${nf(r.cap)} 個</span>
-        <span>更新 ${esc((r.updated_at||"").slice(11,16)||"--:--")}</span></div>
-      </div>`;
-    }).join("") : `<div class="empty">找不到符合的停車場</div>`;
+        </div>`;
+      }).join("") + (total > vis.length ? moreBtn(vis.length, total) : "")
+    ) : `<div class="empty">找不到符合的停車場</div>`;
   } else {
     rows = rows.filter(r => r.peak);
     rows.sort((a,b)=> (b.peak?b.peak.rate:0) - (a.peak?a.peak.rate:0));
     const card = (c, cls) => {
       const p = c.peak;
       return `<div class="pk${cls ? " " + cls : ""}" onclick="openSheet('${c.id}')">
-        <div class="l"><div class="n">${esc(c.name)}</div>
-          <div class="p">高峰 <b style="color:${colText(p.rate)}">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00</b>
-          ${p.samples?`· ${p.samples} 筆樣本`:""}</div></div>
+        <div class="n">${esc(c.name)}</div>
+        <div class="p">高峰 <b style="color:${colText(p.rate)}">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00</b></div>
         <div class="r"><b style="color:${colText(p.rate)}">${pct(p.rate)}</b><span>使用率</span></div>
       </div>`;
     };
     const ao = allOver();
-    /* 桌面兩欄時這張橫跨整列（.phead）。注意不能寫 rows.map(card)——
+    /* 桌面多欄時這張橫跨整列（.phead）。注意不能寫 rows.map(card)——
        map 會把 index 當第二個參數傳進來，index>=1 就會被當成 class 名稱。 */
     const head = (!q && ao.peak) ? card(ao, "phead") : "";
-    const body = rows.length ? rows.map(c => card(c)).join("")
+    const total = rows.length, vis = rows.slice(0, shown[1]);
+    const body = total ? vis.map(c => card(c)).join("")
+        + (total > vis.length ? moreBtn(vis.length, total) : "")
       : `<div class="empty">尚無足夠資料判斷${mLabel()}高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
     document.getElementById("plist").innerHTML =
       (head ? head + `<div class="pdiv" style="height:1px;background:var(--line);margin:10px 2px"></div>` : "") + body;
