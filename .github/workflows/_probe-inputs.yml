@@ -1,0 +1,30 @@
+name: probe-inputs
+
+# ⚠️ 這是一個**暫時的**實驗檔，用來回答一個問題：
+#   workflow_dispatch 的 API 若帶一個「沒有寫在 workflow 檔的 inputs:」，
+#   GitHub 會 (a) 拒絕、還是 (b) 接受並放進 GITHUB_EVENT_PATH 的 payload？
+#
+# 為什麼要問這個：我們想在 admin 頁面分辨「誰觸發了這次採集」
+#   （GitHub 自己的 schedule / Google Apps Script / 本機 Mac watchdog）。
+#   如果 (b) 成立，scrape.py 只要讀 GITHUB_EVENT_PATH 就能拿到來源標記，
+#   **完全不必改 .github/workflows/scrape.yml** —— 而那個檔案開頭有一條
+#   「改它會讓 GitHub 重新註冊排程」的警告，能不動最好。
+#
+# 實驗做完就刪掉這個檔案。
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump the event payload GitHub actually delivered
+        run: |
+          echo "=== GITHUB_EVENT_NAME = $GITHUB_EVENT_NAME ==="
+          echo "=== top-level keys of GITHUB_EVENT_PATH ==="
+          jq -r 'keys[]' "$GITHUB_EVENT_PATH"
+          echo "=== .inputs (the answer we care about) ==="
+          jq -c '.inputs // "ABSENT"' "$GITHUB_EVENT_PATH"
+          echo "=== full payload (truncated to 2000 chars) ==="
+          head -c 2000 "$GITHUB_EVENT_PATH"
