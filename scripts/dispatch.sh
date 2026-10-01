@@ -22,13 +22,29 @@ REF="${REF:-main}"
 TOKEN_FILE="${TOKEN_FILE:-$HOME/.config/nexus-data/gh-token}"
 
 TOKEN="${GITHUB_TOKEN:-}"
-if [ -z "$TOKEN" ] && [ -r "$TOKEN_FILE" ]; then
-  TOKEN="$(tr -d ' \t\n\r' < "$TOKEN_FILE")"
+if [ -z "$TOKEN" ] && [ -r "${TOKEN_FILE}" ]; then
+  TOKEN="$(tr -d ' \t\n\r' < "${TOKEN_FILE}")"
 fi
 if [ -z "$TOKEN" ]; then
-  echo "dispatch: 找不到 token（設 \$GITHUB_TOKEN 或寫入 $TOKEN_FILE）" >&2
+  echo "dispatch: 找不到 token（設 \$GITHUB_TOKEN 或寫入 ${TOKEN_FILE}）" >&2
   exit 2
 fi
+
+# 先驗形狀再打 API。真的踩過：把「安裝指令」整段複製到剪貼簿，
+# 然後跑 `pbpaste | tr -d ' \n' > ${TOKEN_FILE}`，於是檔案裡是那段指令的文字
+# （空格與換行被 tr 吃掉，變成 umask077pbpaste|tr-d...）。
+# 沒有這道檢查的話，會直接打 API 拿到 401，然後印出
+# 「token 無效、過期，或根本沒帶」——把「複製錯東西」誤診成「憑證過期」。
+# 只印前 4 個字元，不洩漏內容。
+case "$TOKEN" in
+  ghp_*|github_pat_*|ghs_*|gho_*) ;;
+  *)
+    printf 'dispatch: token 形狀不對（應以 ghp_ / github_pat_ 開頭，實際開頭是「%s…」，長度 %s）\n' \
+      "$(printf '%s' "$TOKEN" | cut -c1-4)" "${#TOKEN}" >&2
+    echo "  → 檢查 ${TOKEN_FILE}：很可能寫進了別的東西（例如整段指令文字），不是 token" >&2
+    echo "  → 驗證剪貼簿：pbpaste | cut -c1-11  應該印出 github_pat_" >&2
+    exit 2 ;;
+esac
 
 HTTP=$(curl -sS -o /tmp/dispatch-resp.txt -w '%{http_code}' \
   -X POST \
@@ -56,7 +72,7 @@ echo >&2
 # 403 有兩種完全不同的成因，body 會直接告訴你是哪一種：
 case "$HTTP" in
   401)
-    echo "→ token 無效、過期，或根本沒帶（檢查 \$GITHUB_TOKEN / $TOKEN_FILE）" >&2 ;;
+    echo "→ token 無效、過期，或根本沒帶（檢查 \$GITHUB_TOKEN / ${TOKEN_FILE}）" >&2 ;;
   403)
     if grep -qi "user-agent" /tmp/dispatch-resp.txt; then
       echo "→ 缺少 User-Agent 標頭。GitHub REST API 強制要求，缺了會回 403（不是 401）。" >&2
