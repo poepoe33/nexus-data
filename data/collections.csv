@@ -157,3 +157,4 @@ scraped_at,source,carparks,with_car,run_id
 2026-10-01 20:35:59,github-workflow_dispatch,92,82,36862811826
 2026-10-01 21:05:58,github-workflow_dispatch,92,82,36866238428
 2026-10-01 21:35:58,github-workflow_dispatch,92,82,36869842364
+2026-10-01 21:51:25,github-schedule,92,82,36871794041
