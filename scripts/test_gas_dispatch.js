@@ -60,6 +60,20 @@ function ok(cond, name, extra) {
   });
 }
 
+/**
+ * 執行 fn，回傳它丟出的例外（沒丟就回 null）。
+ * 為什麼需要：dispatch() 失敗時**故意丟例外**（見 .gs 檔頭），
+ * 直接呼叫會讓整個 section 當場中斷，後面的斷言全部測不到。
+ */
+function expectThrow(fn) {
+  try {
+    fn();
+    return null;
+  } catch (e) {
+    return e || new Error("(threw a falsy value)");
+  }
+}
+
 /* ------------------------------------------------------------------ 假服務 */
 
 function makeProps(initial) {
@@ -172,8 +186,10 @@ const FNS = ["dispatch", "testRun", "diagnose", "saveToken",
 /* --- 1. 沒有 token 時 --- */
 section("沒有 token", function () {
   const t = boot({});
-  const r = t.sandbox.dispatch();
-  ok(r === false, "沒有 token 時 dispatch() 回 false");
+  const err = expectThrow(() => t.sandbox.dispatch());
+  ok(err !== null,
+     "沒有 token 時 dispatch() 丟例外（不能只 return false —— 那樣 Google 不會寄失敗通知）",
+     err ? err.message : "沒有丟例外");
   ok(t.logs.some((l) => /尚未設定 token/.test(l)), "有提示要跑 saveToken()");
   ok(t.fetch.calls.length === 0,
      "沒有 token 時完全不對外發請求（不要送一個註定 401 的請求）",
@@ -218,7 +234,7 @@ section("請求內容", function () {
   ok(payload && payload.ref === "main", "payload 是 {\"ref\":\"main\"}", c.params.payload);
 });
 
-/* --- 4. 每一種失敗都要回 false，而且要給出**正確**的建議 --- */
+/* --- 4. 每一種失敗都要丟例外（才會被告警），而且要給出**正確**的建議 --- */
 section("失敗診斷", function () {
   const CASES = [
     { code: 401, text: '{"message":"Bad credentials"}',
@@ -238,21 +254,44 @@ section("失敗診斷", function () {
   CASES.forEach((c) => {
     const t = boot({ props: { GH_TOKEN: "github_pat_abc" },
                      responder: () => ({ code: c.code, text: c.text }) });
-    const r = t.sandbox.dispatch();
+    const err = expectThrow(() => t.sandbox.dispatch());
     const joined = t.logs.join("\n");
-    ok(r === false, c.name + "：回 false", "HTTP " + c.code);
+    ok(err !== null, c.name + "：丟例外（排程失敗才會寄通知信）", "HTTP " + c.code);
     ok(c.want.test(joined), c.name + "：建議內容正確", joined.slice(0, 120));
+    // 例外訊息本身也要帶著建議 —— 通知信裡只會看到例外訊息，看不到 Logger 輸出。
+    ok(err !== null && c.want.test(err.message),
+       c.name + "：例外訊息本身也含建議（通知信只顯示例外）",
+       err ? err.message.slice(0, 120) : "");
   });
+});
+
+/* --- 4b. 失敗一定要「丟例外」而不是「回 false」---
+   真實風險：Google 的「Summary of failures」只在未捕捉例外時才寄。
+   若失敗時 return false，token 過期會每 30 分鐘靜靜地失敗一次，永遠沒人知道。 */
+section("失敗必須丟例外（否則等於沒有告警）", function () {
+  ok(/throw new Error/.test(SRC),
+     "dispatch() 失敗路徑上有 throw（不是只 return false）");
+  ok(!/^\s*return false;\s*$/m.test(SRC),
+     "整份檔案不再有「return false」的失敗路徑（那條路徑等於沒有告警）");
+  ok(/為什麼失敗/.test(SRC),
+     "檔頭有說明「為什麼失敗一定要丟例外」");
+  ok(/Summary of failures/.test(SRC),
+     "檔頭點名 Google 的失敗通知機制（可被驗證的說法）");
+
+  const t = boot({ props: { GH_TOKEN: "x" }, responder: () => ({ code: 401, text: "bad" }) });
+  const err = expectThrow(() => t.sandbox.dispatch());
+  ok(err !== null && /401/.test(err.message),
+     "例外訊息帶狀態碼（一眼看出是哪種失敗）", err ? err.message : "");
 });
 
 /* --- 5. 兩種 403 必須給出**不同**的建議（這是本檔案存在的理由） --- */
 section("403 的兩種成因", function () {
   const a = boot({ props: { GH_TOKEN: "x" },
                    responder: () => ({ code: 403, text: "...has a User-Agent header" }) });
-  a.sandbox.dispatch();
+  expectThrow(() => a.sandbox.dispatch());
   const b = boot({ props: { GH_TOKEN: "x" },
                    responder: () => ({ code: 403, text: "Resource not accessible by personal access token" }) });
-  b.sandbox.dispatch();
+  expectThrow(() => b.sandbox.dispatch());
 
   const ta = a.logs.join("\n");
   const tb = b.logs.join("\n");
@@ -265,7 +304,7 @@ section("403 的兩種成因", function () {
 section("錯誤 body 截斷", function () {
   const huge = "x".repeat(20000);
   const t = boot({ props: { GH_TOKEN: "x" }, responder: () => ({ code: 500, text: huge }) });
-  t.sandbox.dispatch();
+  expectThrow(() => t.sandbox.dispatch());
   const longest = t.logs.reduce((m, l) => Math.max(m, l.length), 0);
   ok(longest < 2000, "超長 body 會被截斷（不會撐爆執行紀錄）", "最長一行 " + longest + " 字");
 });
@@ -373,7 +412,7 @@ section("Logger 數字格式：HTTP 狀態碼", function () {
   ok(/HTTP 204\b/.test(jok), "成功訊息印的是「HTTP 204」");
 
   const errT = boot({ props: { GH_TOKEN: "x" }, responder: () => ({ code: 500, text: "boom" }) });
-  errT.sandbox.dispatch();
+  expectThrow(() => errT.sandbox.dispatch());
   const jerr = errT.logs.join("\n");
   ok(!/HTTP 500\.0/.test(jerr), "錯誤訊息不會印成「HTTP 500.0」", jerr.replace(/\n/g, " | "));
 });
@@ -399,6 +438,17 @@ section("原始碼事實檢查", function () {
   ok(/20,000 次\/天/.test(SRC), "有寫 URL Fetch 配額 20,000 次/天");
   ok(/poepoe33\/nexus-data/.test(SRC), "目標 repo 正確");
   ok(/scrape\.yml/.test(SRC), "目標 workflow 正確");
+
+  // 時間觸發器「很準」是一個很自然但錯誤的假設。官方文件明講 ±15 分鐘，
+  // 所以「錯開到 :15/:45 就能避開 Mac 的 :00/:30」是做不到的。
+  ok(/plus or minus 15 minutes/.test(SRC),
+     "檔頭引用了官方 nearMinute() 的 ±15 分鐘原文（證明觸發時間本來就不準）");
+  ok(/random minute value is used/.test(SRC),
+     "檔頭引用了「不指定 nearMinute 就用隨機分鐘」");
+  ok(/沒有相位參數/.test(SRC),
+     "檔頭明講 everyMinutes 沒有相位參數（所以無法可靠錯開）");
+  ok(/concurrency group/.test(SRC),
+     "檔頭說明同時觸發不會壞（scrape.yml 的 concurrency group 會排隊）");
 });
 
 /* --- 11. 文件一致性：這兩個字串曾經是錯的，而且真的誤導了人 --- */

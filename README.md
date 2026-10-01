@@ -723,17 +723,24 @@ python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 
 | 層 | 機制 | 實際頻率 | 依賴 | 現況 |
 |---|---|---|---|---|
-| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已裝好，待雙擊啟用 |
+| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已載入並運作中（`runs = 25`，上次結束碼 0） |
 | 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 | ✅ 運作中 |
-| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ⚠️ API 已驗證 204。**免部署選項：`worker/dispatch-cron.gs`（Google Apps Script）**；cron-job.org 的 `User-Agent` 需實測（見下） |
+| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ✅ Apps Script 版已部署並實測交貨（`worker/dispatch-cron.gs`）；cron-job.org 的 `User-Agent` 需實測（見下） |
 | 4 | GitHub Actions `schedule` | **實測 4–5 次/天**（設定是 48 次/天） | GitHub 排程器 | ⚠️ 已生效，但只是 best-effort（達成率約 10%），**不可依賴** |
 
 第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
 所以改成「一次觸發、跑兩趟」—— 採集 → 等 28 分鐘 → 再採集一次，
 把實際間隔從 60 分鐘壓到約 30 分鐘。
 
-**這四層互不衝突**：`watchdog.py` 的 25 分鐘門檻會自動去重，
+**本機那幾層互不衝突**：`watchdog.py` 的 25 分鐘門檻會自動去重，
 所以哪一層先跑到，其他層看到資料還新鮮就會直接跳過。
+
+⚠️ **但第 3 層（Apps Script）是例外**：它的 `dispatch()` **沒有**新鮮度檢查，
+每 30 分鐘無條件打一次。所以 Mac 開著的時候，同一個 tick 可能產生兩筆相隔約
+一分鐘的快照 —— 資料量約多一倍。這不會壞（`concurrency` group 會讓它們排隊），
+但如果想避免，**不能靠錯開時間**：Apps Script 的觸發器精度是 ±15 分鐘
+（見上面 Apps Script 那節），錯不開。真要解決得在 `dispatch-cron.gs` 裡加一個
+「最近有沒有跑過」的檢查（讀 Actions run list），而不是調排程時間。
 
 `scripts/watchdog.py` 是第 1、2 層共用的：它會先 `git pull`，看 `data/latest.csv`
 的 `scraped_at` 有多舊，**舊於 25 分鐘才**補採集，然後 rebuild dashboard、
@@ -924,10 +931,25 @@ Info  [OK] HTTP 204 —— 已排入佇列 poepoe33/nexus-data/scrape.yml@main  
 `Logger.log` 會把 JS number 當成 Java Double 再套進 `%s`，所以程式碼裡每個數字
 都必須用 `String()` 包起來。已修，重新貼一次 `Code.gs` 即可。
 
-> ⚠️ Apps Script 的時間觸發器**會被小幅隨機化** —— Google 文件明講它會落在一個
-> 時間窗內，之後維持同一個偏移。所以可能比整點慢幾分鐘。
-> 對本專案沒有影響：watchdog 門檻是 25 分鐘，只要「大約每 30 分」就夠，
-> 真正的採集工作仍然在 GitHub Actions 上執行。
+> 🔔 **失敗一定會寄信**：`dispatch()` 失敗時是 **`throw`**，不是 `return false`。
+> 這是刻意的 —— Google 的「Summary of failures」通知信**只在執行丟出未捕捉例外時才寄**。
+> 如果失敗時只是印 `[ERR]` 再回傳 `false`，那次執行在 Google 眼中算「成功」，
+> 於是 token 過期／權限不足會**每 30 分鐘靜靜地失敗一次，永遠沒人知道** ——
+> 而那正是最該被告警的狀況。例外訊息本身也帶著診斷建議（例：
+> `HTTP 401 —— token 無效／過期／沒帶。重新跑 saveToken()`），
+> 所以通知信裡直接就看得出要改什麼，不必再去翻執行紀錄。
+
+> ⚠️ Apps Script 的時間觸發器**本來就不準**。官方 `ClockTriggerBuilder` 文件對
+> `nearMinute()` 明講 *"the minute at which the trigger runs (plus or minus 15 minutes)"*，
+> 而且 *"If `nearMinute()` is not called, a random minute value is used"*；
+> `everyMinutes(n)` 又只接受 1 / 5 / 10 / 15 / 30，**沒有相位參數**。
+>
+> **推論：不要想用「錯開到 :15 / :45」來避開 Mac watchdog 的 :00 / :30** ——
+> 精度根本做不到，那只是幻覺（這個念頭很自然，但查了文件才知道行不通）。
+> 兩者本來就可能在同一分鐘觸發。同時觸發不會壞：`scrape.yml` 有
+> `concurrency: group: carpark-snapshot` / `cancel-in-progress: false`，
+> 多個來源只會**排隊**，不會平行跑、不會互撞；代價只是同一個 tick 可能產生
+> 兩筆相隔約一分鐘的快照。真正的採集工作仍然在 GitHub Actions 上執行。
 
 **本機就能測（不需要 Google 帳號、不需要網路）：**
 
@@ -937,8 +959,13 @@ node scripts/test_gas_dispatch.js
 
 它用 Node 的 `vm` 把 `dispatch-cron.gs` 跑在沙箱裡，注入假的 `UrlFetchApp` /
 `ScriptApp` / `PropertiesService`，驗證 204/200 的判定、六種失敗狀態碼的診斷文字、
-**兩種 403 是否給出不同的建議**，以及觸發器只增不減等行為。
+**兩種 403 是否給出不同的建議**、**失敗是否真的丟例外（＝告警是否真的會寄出）**，
+以及觸發器只增不減等行為。
 （`dispatch-cron.gs` 只有在出錯時才會被執行到，而那正是最需要它正確的時候。）
+
+⚠️ 假物件要**比真環境更不友善**才測得出東西。這裡的假 `Logger` 刻意模擬 Java
+Double（把 `0` 印成 `"0.0"`）—— 第一版直接用 `util.format`，比真環境寬容，
+於是使用者實際踩到的 `已移除 0.0 個觸發器` 在測試裡完全看不到。
 
 ### cron-job.org 值得先花 2 分鐘測一次
 

@@ -42,13 +42,22 @@
  *   6. 執行 `installTrigger`，之後每 30 分鐘自動跑
  *
  * 注意（Apps Script 的固有特性，不是 bug）：
- *   時間觸發器「可能會被小幅隨機化」——Google 文件明講會落在一個時間窗內，
- *   之後每天維持同一個偏移。所以實際觸發時間可能比整點慢幾分鐘。
- *   對這個專案完全沒差：watchdog 的門檻是 25 分鐘，只要「大約每 30 分」就好，
- *   不需要準點。真正的採集工作仍然在 GitHub Actions 上執行。
+ *   時間觸發器**本來就不準**。官方 ClockTriggerBuilder 文件對 nearMinute() 明講
+ *     "the minute at which the trigger runs (plus or minus 15 minutes)"
+ *   而且 "If nearMinute() is not called, a random minute value is used"。
+ *   everyMinutes(n) 更只接受 1 / 5 / 10 / 15 / 30，**沒有相位參數**。
  *
- *   附帶好處：觸發器執行失敗時 Google 會寄「Summary of failures」通知信，
- *   所以「Apps Script 叫不動 GitHub」不會靜靜地壞掉，不需要自己寫告警。
+ *   → 所以**不要**嘗試用「錯開到 :15 / :45」來避開 Mac watchdog 的 :00 / :30：
+ *     精度根本做不到，錯開只是幻覺。兩者本來就可能在同一分鐘觸發。
+ *     同時觸發不會壞 —— scrape.yml 有 concurrency group（cancel-in-progress:
+ *     false），只會排隊，不會平行跑、不會互撞；代價是同一個 tick 可能產生
+ *     兩筆相隔約一分鐘的快照。真正的採集工作仍然在 GitHub Actions 上執行。
+ *
+ * 為什麼失敗**一定要丟例外**（不能只印 log 然後 return false）：
+ *   Google 的「Summary of failures」通知信只在執行**丟出未捕捉例外**時才寄。
+ *   若 dispatch() 失敗時只是印 [ERR] 再 return false，這次執行在 Google 眼中
+ *   算「成功」—— 於是 token 過期／權限不足會**每 30 分鐘靜靜地失敗一次，
+ *   永遠沒人知道**。這正是最該被告警的狀況，所以下面刻意 throw。
  *
  * ⚠️ 本檔所有 Logger.log 的數字都用 String() 包起來，這是刻意的：
  *   Apps Script 的 Logger.log 會把 JS number 轉成 Java Double 再套進 %s，
@@ -90,12 +99,14 @@ function saveToken() {
 }
 
 // ---------------------------------------------------------------- 主要工作
-/** 打一次 workflow_dispatch。回傳 true 代表已排入佇列。 */
+/** 打一次 workflow_dispatch。成功回傳 true；失敗**丟例外**（見檔頭說明）。 */
 function dispatch() {
   const token = PropertiesService.getScriptProperties().getProperty(PROP_TOKEN);
   if (!token) {
-    Logger.log('[ERR] 尚未設定 token —— 先跑一次 saveToken()');
-    return false;
+    const msg = '尚未設定 token —— 先跑一次 saveToken()';
+    Logger.log('[ERR] %s', msg);
+    // 丟例外而不是 return false：只有例外才會觸發 Google 的失敗通知信。
+    throw new Error(msg);
   }
 
   const res = UrlFetchApp.fetch(API_URL, {
@@ -124,8 +135,10 @@ function dispatch() {
     return true;
   }
 
-  Logger.log('[ERR] HTTP %s\n%s\n→ %s', String(code), body.slice(0, 400), diagnose(code, body));
-  return false;
+  const advice = diagnose(code, body);
+  Logger.log('[ERR] HTTP %s\n%s\n→ %s', String(code), body.slice(0, 400), advice);
+  // 先印完整診斷（人看得懂），再丟例外（讓 Google 寄失敗通知信）。兩者都要。
+  throw new Error('HTTP ' + code + ' —— ' + advice);
 }
 
 /** 把 HTTP 狀態碼翻譯成可行動的建議（對照 scripts/dispatch.sh）。 */
