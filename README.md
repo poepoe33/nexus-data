@@ -414,6 +414,7 @@ scripts/check_runs.py                診斷工具：數 schedule 觸發次數、
 scripts/watchdog.py                  本機補採（launchd / WorkBuddy 自動化用）
 scripts/dispatch.sh                  呼叫 workflow_dispatch（外部 cron 用）
 worker/dispatch-cron.js              Cloudflare Worker：每 30 分觸發（可自訂 User-Agent）
+worker/dispatch-cron.gs              Google Apps Script：同一件事，免部署、不用 Cloudflare
 worker/wrangler.toml                 Worker 設定（crons / vars）
 dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
 dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
@@ -696,7 +697,7 @@ python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 |---|---|---|---|---|
 | 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已裝好，待雙擊啟用 |
 | 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 | ✅ 運作中 |
-| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ⚠️ API 已驗證 204，但 **cron-job.org 不能送 `User-Agent`**（會 403）→ 改用 `worker/` 的 Cloudflare Worker |
+| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ⚠️ API 已驗證 204。**免部署選項：`worker/dispatch-cron.gs`（Google Apps Script）**；cron-job.org 的 `User-Agent` 需實測（見下） |
 | 4 | GitHub Actions `schedule` | 尚未生效 | GitHub 排程器 | ⏳ 註冊中 |
 
 第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
@@ -848,10 +849,52 @@ Resource not accessible by personal access token
 只授權 `poepoe33/nexus-data` 這一個 repo、權限只給 **Actions: Read and write**，
 其他全部設 No access。被洩漏時傷害範圍就只限這個 repo。
 
-### 推薦：Cloudflare Worker + Cron Trigger（完全避開上述兩個坑）
+### 不想用 Cloudflare：Google Apps Script（免費、免部署）
 
-因為 cron-job.org 不能自訂 `User-Agent`，本 repo 附了一支 Worker
-（`worker/dispatch-cron.js` + `worker/wrangler.toml`）：
+本 repo 也附了一支 Apps Script 版（`worker/dispatch-cron.gs`），做的是同一件事，
+但**不需要 wrangler、不需要 CLI、不用動 Cloudflare**，腳本跑在 Google 的基礎設施上。
+
+**為什麼它不會踩到上面的 `User-Agent` 坑**：Apps Script 的 `UrlFetchApp`
+**會自己送一個 `User-Agent`**（而且你改不掉它 —— 這一點常被誤解成缺點）。
+GitHub 要的是「**有**一個有效的 UA」，不是「你指定的 UA」，所以剛好符合。
+
+配額（消費級 Gmail 帳號）對我們的需求來說極寬鬆：
+
+| 項目 | 上限 | 我們的需求 |
+|---|---|---|
+| URL Fetch 呼叫 | 20,000 次/天 | 48 次/天 |
+| 指令碼每日執行時間 | 1 小時 | 約 1 秒/次 |
+| 觸發器數量 | 20 個/指令碼 | 1 個 |
+
+安裝（約 5 分鐘）：
+
+1. 開 <https://script.google.com> → 新增專案
+2. 把 `worker/dispatch-cron.gs` 全部貼進 `Code.gs`
+3. 建一個 **fine-grained PAT**（只授權 `poepoe33/nexus-data`，權限 **Actions: Read and write**）
+4. 在 `saveToken()` 裡貼上 PAT → 執行 → 授權 → **立刻把 PAT 刪掉**
+   （token 存進「指令碼屬性」，不留在程式碼裡）
+5. 執行 `dispatch` 測一次，執行紀錄應出現 `[OK] HTTP 204`
+6. 執行 `installTrigger` → 之後每 30 分鐘自動跑
+
+> ⚠️ Apps Script 的時間觸發器**會被小幅隨機化** —— Google 文件明講它會落在一個
+> 時間窗內，之後維持同一個偏移。所以可能比整點慢幾分鐘。
+> 對本專案沒有影響：watchdog 門檻是 25 分鐘，只要「大約每 30 分」就夠，
+> 真正的採集工作仍然在 GitHub Actions 上執行。
+
+### cron-job.org 值得先花 2 分鐘測一次
+
+上面的 403 結論來自 cron-job.org 的 FAQ。但注意那句話只說
+「**你設的** `User-Agent` 會被忽略」，**不等於「它不送 UA」**；
+而 GitHub 要的只是「有一個有效的 UA」（見上面的實測表：送
+`User-Agent: cron-job.org` 就會得到 **200**）。
+
+所以**建一個 job 按 Test run 就知道**是 204 還是 403。若通，它是最省事的選擇 ——
+UI 填一填，不用寫程式、不用部署。
+
+### 選項：Cloudflare Worker + Cron Trigger（若你本來就在用 Cloudflare）
+
+如果你本來就在用 Cloudflare（或其他能跑程式碼的邊緣平台），本 repo 附了一支 Worker
+（`worker/dispatch-cron.js` + `worker/wrangler.toml`），標頭控制最完整：
 
 ```bash
 npm install -g wrangler
