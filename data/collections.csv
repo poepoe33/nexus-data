@@ -137,3 +137,4 @@ scraped_at,source,carparks,with_car,run_id
 2026-10-01 11:31:14,local-watchdog,92,82,
 2026-10-01 11:39:01,local-watchdog-fallback,92,82,
 2026-10-01 12:30:19,github-workflow_dispatch,92,82,36815400446
+2026-10-01 13:00:19,github-workflow_dispatch,92,82,36817713998
