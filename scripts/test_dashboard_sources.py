@@ -2,15 +2,26 @@
 """測試 build_dashboard.py 的 collection_sources()：採集來源分桶，以及「未標記」的判準。
 
 為什麼值得單獨測：
-  這個函式的輸出直接決定 admin 頁面那句說明文字。2026-10-02 之前，那句文字是
-  寫死的「2026-10-02 前的資料沒有來源標記」—— 可是 origin 上線之後，只要還有
-  觸發器沒更新（Apps Script 沒重貼），新的未標記資料就會一直進來，那句話就變成
-  假話，而且**沒有任何東西會報錯**。這支測試把「哪一筆算上線後」釘住。
+  這個函式的輸出直接決定 admin 頁面那句說明文字，而那句文字**錯了不會報錯**。
+
+  這支測試的歷史就是這類 bug 的歷史：
+
+  ① 第一版：文字寫死「2026-10-02 前的資料沒有來源標記」。
+     → 上線當天（2026-10-02 00:05:58）就出現上線後的未標記資料，那句話變假話。
+
+  ② 第二版：改成「數上線後（>= ORIGIN_CUTOFF）的未標記筆數」。
+     → 換個方向錯：那些筆數是**永久**的（永遠不會被改寫成 apps-script），
+       所以重貼 .gs 之後它仍然 > 0，告警變成常態（狼來了）。
+
+  ③ 現在：問「未標記的資料是不是比**任何具名來源**都還新？」
+     → 重貼之後新的具名資料一進來就蓋過去，答案自己回到「歷史資料」。
+
+  所以下面最重要的一組是「觸發器更新之後 live 必須歸零」——
+  那一組正是 ② 會答錯、③ 才會答對的地方。
 
   另一半在測的是一個容易寫錯的地方：分桶用的是**減法**
-  （github_other = github_all − 四個具名來源）。減法的好處是耐後綴 ——
-  以後多一個沒見過的 origin 也不會被漏算；代價是它算不出「哪一天之後」，
-  所以 github_other_recent 必須**另外直接數**。下面有一組案例專門確認這件事。
+  （github_other = github_all − 四個具名來源）。減法耐得住以後新增的 origin，
+  但它算不出「哪一筆比較新」，所以 live 必須另外掃一次、直接比時間。
 
 用法：python3 scripts/test_dashboard_sources.py
 結束碼：0 = 全過，1 = 有失敗（並列出失敗清單）。
@@ -97,7 +108,7 @@ with section("檔案不存在：少一格統計，不是整頁壞掉"):
         s = build_dashboard.collection_sources()
         ok(s["github_all"] == 0, "沒有檔案時 github_all = 0")
         ok(s["github_other"] == 0, "沒有檔案時 github_other = 0")
-        ok(s["github_other_recent"] == 0, "沒有檔案時 github_other_recent = 0")
+        ok(s["github_other_live"] == 0, "沒有檔案時 github_other_live = 0")
         ok(s["total"] == 0, "沒有檔案時 total = 0")
     finally:
         build_dashboard.COLLECTIONS_CSV = saved
@@ -122,58 +133,105 @@ with section("基本分桶：四種具名來源各歸各的"):
         ok(s["github_manual"] == 1, "manual 分到自己的桶", str(s["github_manual"]))
         ok(s["github_all"] == 5, "github_all = 5（不含本機）", str(s["github_all"]))
         ok(s["github_other"] == 1, "上線前的未標記算進 other", str(s["github_other"]))
-        ok(s["github_other_recent"] == 0,
-           "上線前的未標記**不算** recent（這正是原本寫死的假設）",
-           str(s["github_other_recent"]))
+        ok(s["github_other_live"] == 0,
+           "未標記的比具名來源舊 → 不是 live",
+           str(s["github_other_live"]))
         ok(s["local_all"] == 2, "local_all 不含 local-repair 以外的本機來源", str(s["local_all"]))
         ok(s["total"] == 7, "total 是所有列數", str(s["total"]))
 
 
-# ============================================ 上線後的未標記（本次修的重點）
+# ================================================== 還在產生未標記資料（真陽性）
 
-with section("上線後的未標記：文案必須改口，不能再說是歷史資料"):
+with section("還有觸發器沒更新：未標記的比具名來源新"):
     rows = [
-        row("2026-09-29 10:00:00", "github-workflow_dispatch"),   # 上線前
-        row("2026-10-02 00:05:58", "github-workflow_dispatch"),   # ← 實際踩到的那一筆
-        row("2026-10-02 00:35:58", "github-workflow_dispatch"),
+        row("2026-10-02 00:31:32", "github-dispatch-manual"),     # 目前最新的具名
+        row("2026-10-02 00:35:58", "github-workflow_dispatch"),   # 比它還新 → live
+        row("2026-10-02 00:05:58", "github-workflow_dispatch"),   # 比它舊 → 不算
     ]
     with csv_file(rows) as s:
-        ok(s["github_other"] == 3, "三筆都算 other", str(s["github_other"]))
-        ok(s["github_other_recent"] == 2,
-           "只有上線後的兩筆算 recent（00:05 與 00:35）",
-           str(s["github_other_recent"]))
-        ok(s["github_other_recent"] < s["github_other"],
-           "recent 是 other 的真子集，不是整桶")
+        ok(s["github_other"] == 2, "兩筆未標記都在 other 裡", str(s["github_other"]))
+        ok(s["github_other_live"] == 1,
+           "只有比具名來源新的那一筆算 live（00:35:58）",
+           str(s["github_other_live"]))
 
 
-# ================================================================== 邊界
+# ============================================== ★ 關鍵回歸：修好之後要能歸零
 
-with section("邊界：切分點本身與前後一秒"):
+with section("★ 觸發器更新之後：舊的未標記資料仍在，但 live 必須歸零"):
+    # 這正是第二版會答錯的地方 —— 那些未標記筆數是永久的，不會被改寫成
+    # apps-script，所以「數上線後的筆數」永遠 > 0，告警會變成常態。
     rows = [
-        row("2026-10-01 23:59:59", "github-workflow_dispatch"),   # 上線前最後一刻
-        row("2026-10-02 00:00:00", "github-workflow_dispatch"),   # 切分點本身
-        row("2026-10-02", "github-workflow_dispatch"),            # 只有日期
-        row("2026-10-03 00:00:00", "github-workflow_dispatch"),   # 之後
+        row("2026-10-02 00:05:58", "github-workflow_dispatch"),     # 永久殘留
+        row("2026-10-02 00:35:58", "github-workflow_dispatch"),     # 永久殘留
+        row("2026-10-02 01:05:00", "github-dispatch-apps-script"),  # 重貼之後才有的
     ]
     with csv_file(rows) as s:
-        ok(s["github_other"] == 4, "四筆都在 other 裡", str(s["github_other"]))
-        ok(s["github_other_recent"] == 3,
-           "切分點本身算 recent（用 >= 而非 >），只有 23:59:59 那筆不算",
-           str(s["github_other_recent"]))
-        ok(build_dashboard.ORIGIN_CUTOFF == "2026-10-02",
-           "切分點是 2026-10-02（origin 上線日）")
+        ok(s["github_other"] == 2,
+           "殘留的未標記資料仍然計入 other（不隱藏歷史）", str(s["github_other"]))
+        ok(s["github_other_live"] == 0,
+           "★ 具名資料已經追過去了 → live = 0（告警解除）",
+           str(s["github_other_live"]))
+        ok(s["github_apps_script"] == 1, "重貼後的第一筆被正確標記",
+           str(s["github_apps_script"]))
+
+    # 再往後跑幾輪，仍然要維持 0。
+    rows = rows + [
+        row("2026-10-02 01:35:00", "github-dispatch-apps-script"),
+        row("2026-10-02 02:05:00", "github-dispatch-apps-script"),
+    ]
+    with csv_file(rows) as s:
+        ok(s["github_other_live"] == 0, "之後每一輪都維持 live = 0",
+           str(s["github_other_live"]))
 
 
-with section("邊界：時間欄位缺失或空白不該被算成 recent"):
+# ============================================================ 時間比較邊界
+
+with section("邊界：未標記與具名來源時間完全相同時，不算 live"):
     rows = [
-        row("", "github-workflow_dispatch"),
-        row("2026-10-05 10:00:00", "github-workflow_dispatch"),
+        row("2026-10-02 01:00:00", "github-dispatch-apps-script"),
+        row("2026-10-02 01:00:00", "github-workflow_dispatch"),   # 同一秒
+    ]
+    with csv_file(rows) as s:
+        ok(s["github_other"] == 1, "仍算進 other", str(s["github_other"]))
+        ok(s["github_other_live"] == 0,
+           "用嚴格大於（>），同一秒不算「還在產生」",
+           str(s["github_other_live"]))
+
+    rows = [
+        row("2026-10-02 01:00:00", "github-dispatch-apps-script"),
+        row("2026-10-02 01:00:01", "github-workflow_dispatch"),   # 晚一秒
+    ]
+    with csv_file(rows) as s:
+        ok(s["github_other_live"] == 1, "晚一秒就算 live",
+           str(s["github_other_live"]))
+
+
+with section("邊界：ORIGIN_CUTOFF 仍然要擋住「全部都是上線前」的情況"):
+    # 沒有任何上線後的資料，但未標記的比具名來源新 —— 這不算「有東西沒更新」，
+    # 因為當時根本還沒有 origin 這種東西。這條確認 cutoff 沒有被拿掉。
+    rows = [
+        row("2026-09-28 10:00:00", "github-schedule"),            # 具名，但很舊
+        row("2026-10-01 23:59:59", "github-workflow_dispatch"),   # 上線前，比它新
+    ]
+    with csv_file(rows) as s:
+        ok(s["github_other"] == 1, "算進 other", str(s["github_other"]))
+        ok(s["github_other_live"] == 0,
+           "上線前的未標記不算 live（cutoff 生效）",
+           str(s["github_other_live"]))
+    ok(build_dashboard.ORIGIN_CUTOFF == "2026-10-02",
+       "切分點是 2026-10-02（origin 上線日）")
+
+
+with section("邊界：時間欄位缺失不該被算成 live"):
+    rows = [
+        row("", "github-workflow_dispatch"),                      # 沒有時間
+        row("2026-10-05 10:00:00", "github-workflow_dispatch"),   # 有時間，且最新
     ]
     with csv_file(rows) as s:
         ok(s["github_other"] == 2, "兩筆都算 other", str(s["github_other"]))
-        ok(s["github_other_recent"] == 1,
-           "沒有時間的那筆不算 recent（空字串 < 切分點）",
-           str(s["github_other_recent"]))
+        ok(s["github_other_live"] == 1,
+           "沒有時間的那筆不算 live（空字串比不過具名來源）",
+           str(s["github_other_live"]))
 
 
 # ================================================== 具名來源不算「未標記」
@@ -187,7 +245,7 @@ with section("具名來源即使發生在上線後，也不算未標記"):
     ]
     with csv_file(rows) as s:
         ok(s["github_other"] == 0, "四個具名來源都不落進 other", str(s["github_other"]))
-        ok(s["github_other_recent"] == 0, "recent 也是 0", str(s["github_other_recent"]))
+        ok(s["github_other_live"] == 0, "live 也是 0", str(s["github_other_live"]))
         ok(buckets_sum(s) == s["github_all"],
            "四桶 + other 恰好等於 github_all", f"{buckets_sum(s)} vs {s['github_all']}")
 
@@ -197,14 +255,15 @@ with section("具名來源即使發生在上線後，也不算未標記"):
 with section("未知 origin：以後多一個來源不會被漏算"):
     rows = [
         row("2026-10-05 10:00:00", "github-dispatch-telegram"),   # 沒見過的來源
-        row("2026-10-05 11:00:00", "github-dispatch-apps-script"),
+        row("2026-10-05 09:00:00", "github-dispatch-apps-script"),
     ]
     with csv_file(rows) as s:
         ok(s["github_all"] == 2, "github_all 把未知來源也數進去", str(s["github_all"]))
         ok(s["github_other"] == 1,
            "未知來源落進 other（減法生效，不需要改程式）", str(s["github_other"]))
-        ok(s["github_other_recent"] == 1,
-           "未知來源若在上線後，recent 也算得到它", str(s["github_other_recent"]))
+        ok(s["github_other_live"] == 1,
+           "未知來源比具名來源新 → 算 live（新的沒送 origin 的東西會被抓到）",
+           str(s["github_other_live"]))
         ok(buckets_sum(s) == s["github_all"],
            "就算出現沒見過的來源，四桶 + other 仍然等於 github_all",
            f"{buckets_sum(s)} vs {s['github_all']}")
@@ -220,14 +279,16 @@ with section("髒資料：缺 source 或空字串"):
     with csv_file(rows) as s:
         ok(s["counts"].get("unknown") == 2, "空的 source 歸到 unknown", str(s["counts"]))
         ok(s["github_all"] == 0, "unknown 不算 GitHub 來源", str(s["github_all"]))
-        ok(s["github_other_recent"] == 0, "unknown 也不算未標記的 GitHub", str(s["github_other_recent"]))
+        ok(s["github_other_live"] == 0, "unknown 也不算未標記的 GitHub",
+           str(s["github_other_live"]))
 
 
 with section("髒資料：缺欄位（只有 scraped_at 與 source）"):
     rows = [("2026-10-05 10:00:00", "github-workflow_dispatch")]
     with csv_file(rows, header=["scraped_at", "source"]) as s:
         ok(s["github_other"] == 1, "欄位少也能讀，不會炸", str(s["github_other"]))
-        ok(s["github_other_recent"] == 1, "recent 照樣算得出來", str(s["github_other_recent"]))
+        ok(s["github_other_live"] == 1, "live 照樣算得出來（沒有具名來源可比）",
+           str(s["github_other_live"]))
 
 
 # ============================================== 不變式（對真實資料也要成立）
@@ -237,9 +298,9 @@ with section("不變式：對真實的 collections.csv 檢查"):
     ok(buckets_sum(s) == s["github_all"],
        "真實資料：四桶 + other == github_all",
        f"{buckets_sum(s)} vs {s['github_all']}")
-    ok(0 <= s["github_other_recent"] <= s["github_other"],
-       "真實資料：0 <= recent <= other",
-       f"{s['github_other_recent']} / {s['github_other']}")
+    ok(0 <= s["github_other_live"] <= s["github_other"],
+       "真實資料：0 <= live <= other",
+       f"{s['github_other_live']} / {s['github_other']}")
     ok(s["github_all"] + s["local_all"] <= s["total"],
        "真實資料：github + local 不會超過總列數",
        f"{s['github_all']} + {s['local_all']} vs {s['total']}")

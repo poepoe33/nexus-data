@@ -408,7 +408,7 @@ scripts/test_map_live.js             真人瀏覽器測試（puppeteer-core + �
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），96 條斷言
 scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，59 條斷言
 scripts/test_collection_source.py    採集來源判定（collection_source / dispatch_origin），42 條斷言
-scripts/test_dashboard_sources.py    採集來源分桶 + 「未標記」切分點（collection_sources），36 條斷言
+scripts/test_dashboard_sources.py    採集來源分桶 + 「未標記」判準（collection_sources），42 條斷言
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
 scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
@@ -807,16 +807,27 @@ ORIGIN=manual ./scripts/dispatch.sh      # 手動跑時也順手標一下
 > 資料 —— Apps Script 還沒重貼 —— 畫面卻仍宣稱「都是以前的」。那句話會隨著
 > 每個 30 分鐘的 tick 越來越假，而且**不會有任何東西報錯**。
 >
-> 現在 `collection_sources()` 另外直接數一個 `github_other_recent`
-> （未標記 **且** 時間 ≥ `ORIGIN_CUTOFF`），頁面據此換一句話：
+> 現在 `collection_sources()` 另外算一個 `github_other_live`，頁面據此換一句話：
 >
 > | 情況 | 頁面顯示 | 代表什麼 |
 > |---|---|---|
-> | `github_other_recent == 0` | 未標記來源 N（2026-10-02 前的歷史資料） | 沒事 |
-> | `github_other_recent > 0` | 未標記來源 N（含尚未更新、還沒送 origin 的觸發器） | **有東西還沒更新，該去重貼 `.gs`** |
+> | `github_other_live == 0` | 未標記來源 N（2026-10-02 前的歷史資料） | 沒事 |
+> | `github_other_live > 0` | 未標記來源 N（含尚未更新、還沒送 origin 的觸發器） | **有東西還沒更新，該去重貼 `.gs`** |
 >
-> 注意 `github_other` 是**減法**算出來的（耐新 origin），但減法算不出
-> 「哪一天之後」，所以 `github_other_recent` 必須另外數一次。
+> ⚠️ **`github_other_live` 的定義是「未標記 **且比任何具名來源都新**」，不是
+> 「上線後的筆數」。** 這中間踩過一次：
+>
+> | 版本 | 判準 | 結果 |
+> |---|---|---|
+> | v1 | 文字寫死「2026-10-02 前」 | 上線當天就變假話 |
+> | v2 | 數「上線後（`>= ORIGIN_CUTOFF`）的未標記筆數」 | 那些筆數是**永久**的（不會被改寫成 apps-script），重貼之後仍然 > 0 → 告警變成常態（狼來了） |
+> | v3 | 「未標記是否比**任何具名來源**都新」 | 重貼後具名資料一進來就蓋過去 → 自己歸零 ✓ |
+>
+> 所以判準要能**自己解除**。`ORIGIN_CUTOFF` 仍然留著，擋的是另一種情況：
+> 整份資料都還在 origin 之前，那就無從判斷。
+>
+> 另外 `github_other` 是**減法**算出來的（耐新 origin），但減法算不出
+> 「哪一筆比較新」，所以 `github_other_live` 必須另外掃一次、直接比時間。
 
 > 📌 另一個容易漏的地方：`build_dashboard.py` 的 `github_stats()` 原本用
 > `== "github-workflow_dispatch"` 數「被觸發」。加了 origin 之後新資料會變成

@@ -389,20 +389,36 @@ def collection_sources() -> dict:
     缺失就讓整頁建不出來 —— 沒有它只是少一格統計，不是壞掉。
     """
     counts: dict[str, int] = {}
-    # 「未標記」之中，發生在 origin 上線**之後**的筆數。
-    # 為什麼要單獨數這一格：頁面上「未標記來源」的說明文字如果寫死成
-    # 「2026-10-02 前的資料」，只要上線後還有觸發器沒更新（例如 Apps Script
-    # 還沒重貼），新的未標記資料就會一直進來，那句話就變成假話了。
-    # 實際踩過：2026-10-02 00:05 那筆就是上線後產生的未標記資料。
-    unmarked_recent = 0
+    # 「未標記」之中，哪些代表**還有觸發器沒更新**？
+    #
+    # 這一格為什麼不能只用「日期 >= 上線日」來數（第一版就是那樣，是錯的）：
+    #   上線後產生的未標記資料是**永久**的 —— 00:05:58 那筆永遠是
+    #   github-workflow_dispatch，不會因為 Apps Script 重貼了就變成 apps-script。
+    #   所以「上線後的未標記筆數」永遠不會回到 0，那句「還有觸發器沒更新」
+    #   會從此變成**新的假話**（只是換個方向錯）。修 A 造成 B，正是這類 bug 的樣子。
+    #
+    # 真正該問的是：「未標記的資料，是不是比任何具名來源都還新？」
+    #   是 → 現在還有東西在產生未標記資料（某個觸發器沒更新）
+    #   否 → 未標記的都只是歷史殘留，沒事了
+    # 這個判準會自己復原：重貼之後新的具名資料一進來，時間就超過舊的未標記資料。
+    unmarked_era: list[str] = []   # 上線後的未標記時間戳
+    newest_named = ""              # 具名來源中最新的時間戳
     if COLLECTIONS_CSV.exists():
         with COLLECTIONS_CSV.open(encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 src = (row.get("source") or "").strip() or "unknown"
                 counts[src] = counts.get(src, 0) + 1
-                if (src.startswith("github-") and src not in NAMED_GITHUB_SOURCES
-                        and (row.get("scraped_at") or "") >= ORIGIN_CUTOFF):
-                    unmarked_recent += 1
+                if not src.startswith("github-"):
+                    continue
+                when = (row.get("scraped_at") or "").strip()
+                if src in NAMED_GITHUB_SOURCES:
+                    newest_named = max(newest_named, when)
+                elif when >= ORIGIN_CUTOFF:
+                    unmarked_era.append(when)
+
+    # 只算「比具名來源還新」的那些。ORIGIN_CUTOFF 仍然要留著 ——
+    # 它擋掉的是另一種情況：整份資料都還在 origin 之前，那就無從判斷。
+    unmarked_live = sum(1 for t in unmarked_era if t > newest_named)
 
     def tally(prefix: str, exclude: tuple[str, ...] = ()) -> int:
         return sum(n for s, n in counts.items()
@@ -420,7 +436,8 @@ def collection_sources() -> dict:
         "github_self": self_n,
         "github_all": all_n,
         # 三個具名的外部觸發來源。靠 dispatch 時帶的 origin input 分辨 ——
-        # 沒有它就只到 github-workflow_dispatch 為止（2026-10-02 之前的資料）。
+        # 沒有它就只到 github-workflow_dispatch 為止（起源是 2026-10-02，
+        # 但這桶裡同時包含更早的歷史資料，所以不能靠日期判斷，見下面的 live）。
         "github_apps_script": apps_n,
         "github_mac": mac_n,
         "github_manual": manual_n,
@@ -428,10 +445,11 @@ def collection_sources() -> dict:
         # 這樣以後多一個沒見過的 origin 也不會被漏算，
         # 而且「三個具名來源 + other」永遠恰好等於 github_all。
         "github_other": max(0, all_n - self_n - apps_n - mac_n - manual_n),
-        # 上面的 other 有多少是**上線之後**才發生的。>0 代表「還有觸發器沒更新」，
-        # 頁面會據此換一句說明（見 admin_template.html 的 UNMARKED_HINT_*）。
-        # 刻意直接數，而不是從 counts 用減法推 —— 減法算不出「哪一天之後」。
-        "github_other_recent": unmarked_recent,
+        # 上面的 other 有多少代表「**現在**還有觸發器沒更新」。
+        # > 0 就換一句說明（見 admin_template.html 的 UNMARKED_HINT_*）。
+        # 定義是「未標記且比所有具名來源都新」，不是「上線後的筆數」——
+        # 後者永遠不會歸零，會讓告警變成常態（狼來了）。
+        "github_other_live": unmarked_live,
         # local-repair 不是採集（只是把衝突標記裡的資料救回來），不計入。
         "local_all": tally("local-", exclude=("local-repair",)),
         "local_fallback": counts.get("local-watchdog-fallback", 0),

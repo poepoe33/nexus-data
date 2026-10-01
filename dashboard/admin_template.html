@@ -285,9 +285,14 @@ function hourBars(counts, perHour){
 
 /* 「未標記來源」那一桶為什麼存在，有兩種完全不同的情況，說明文字必須分開講。
    只寫「都是 2026-10-02 前的資料」是**會變成假話**的：origin 上線之後，只要還有
-   觸發器沒更新（例如 Apps Script 還沒重貼），新的未標記資料就會一直進來，
-   而文字還在那裡說「都是以前的」。實際踩過 —— 2026-10-02 00:05 那筆就是上線
-   之後才產生的未標記資料，當時畫面上卻寫著「2026-10-02 前」。
+   觸發器沒更新（例如 Apps Script 還沒重貼），新的未標記資料就會一直進來。
+   實際踩過 —— 2026-10-02 00:05 那筆就是上線之後才產生的未標記資料。
+
+   但反過來也不能只問「有沒有上線後的未標記資料」：那些筆數是**永久**的
+   （它們永遠不會被改寫成 apps-script），所以那樣問會永遠回答「是」，
+   變成另一種假話。要問的是「未標記的資料是不是比任何具名來源都還新」——
+   重貼之後具名資料一進來就會蓋過去，答案自己會回到「歷史資料」。
+
    與其把歷史藏起來假裝都分好了，不如顯示出來並說明真正的原因。 */
 const UNMARKED_HINT_OLD  = "2026-10-02 前的歷史資料";
 const UNMARKED_HINT_LIVE = "含尚未更新、還沒送 origin 的觸發器";
@@ -299,7 +304,7 @@ function srcBlock(){
   const self = SRC.github_self||0, all = SRC.github_all||0;
   const apps = SRC.github_apps_script||0, mac = SRC.github_mac||0;
   const manual = SRC.github_manual||0, other = SRC.github_other||0;
-  const otherRecent = SRC.github_other_recent||0;
+  const otherLive = SRC.github_other_live||0;
   const loc = SRC.local_all||0;
   if(!all && !loc) return "";
   const fb = SRC.local_fallback||0;
@@ -316,7 +321,7 @@ function srcBlock(){
 
   const small = [];
   if(manual) small.push(`人手觸發 <b>${nf(manual)}</b>`);
-  if(other)  small.push(`未標記來源 <b>${nf(other)}</b>（${otherRecent ? UNMARKED_HINT_LIVE : UNMARKED_HINT_OLD}）`);
+  if(other)  small.push(`未標記來源 <b>${nf(other)}</b>（${otherLive ? UNMARKED_HINT_LIVE : UNMARKED_HINT_OLD}）`);
   if(loc)    small.push(`本機採集 <b>${nf(loc)}</b>`);
 
   return `<div class="srcrow">${big}</div>`
