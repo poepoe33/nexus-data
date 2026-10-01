@@ -248,9 +248,16 @@ const $ = (id) => doc.getElementById(id);
 const DATA = JSON.parse(/window\.__MAPDATA__ = (\{[\s\S]*?\});<\/script>/.exec(HTML)[1]);
 const MODE0 = DATA.modes[DATA.mode_order[0]];
 const NPARKS = MODE0.parks.length;
+const MOTOR_NPARKS = DATA.modes.motor.parks.length;
 const NO_READ = MODE0.parks.filter((p) => p.rate == null).length;
 const LIVE_COUNT = MODE0.parks.filter((p) => p.rate != null).length;
 const LIVE = MODE0.parks.filter((p) => p.free != null && p.cap != null && p.rate != null);
+
+/* Must match the app's NEUTRAL (the "no data for this slot" colour) and the
+   list cap in renderSheet(). Kept as named constants so a palette change or a
+   cap change is a one-line edit here rather than a hunt for magic strings. */
+const NEUTRAL = "#9AA79C";
+const LIST_CAP = 40;
 
 /* ---------------- assertions ---------------- */
 
@@ -272,7 +279,7 @@ ok(log.maps.length === 1, "建立 1 個 AMap.Map", log.maps.length);
 const map = log.maps[0];
 ok(map.id === "map", "地圖容器 id 是 map");
 ok(map.opts.viewMode === "2D", "viewMode 固定 2D");
-ok(map.opts.mapStyle === "amap://styles/dark", "底圖用官方內建深色樣式");
+ok(map.opts.mapStyle === "amap://styles/fresh", "底圖用官方內建淺色樣式 fresh", map.opts.mapStyle);
 ok(JSON.stringify(map.opts.center) === JSON.stringify([113.5495, 22.1875]),
    "中心點轉成高德的 [lng, lat] 順序", JSON.stringify(map.opts.center));
 ok(JSON.stringify(map.opts.zooms) === JSON.stringify([11, 19]),
@@ -293,7 +300,8 @@ ok(Object.keys(heat.opts.gradient).length === 6, "gradient 有 6 個色階",
 const ds = heat.dataset;
 ok(ds && Array.isArray(ds.data), "heat 收到 dataSet");
 ok(ds.max === 100, "dataSet.max = 100（固定 0–100 才能跨時間比較）", ds.max);
-ok(ds.data.length === 80, "即時模式：80 場有讀數（1 場無讀數不進熱力圖）", ds.data.length);
+ok(ds.data.length === LIVE_COUNT,
+   `即時模式：${LIVE_COUNT} 場有讀數（${NO_READ} 場無讀數不進熱力圖）`, ds.data.length);
 const p0 = ds.data[0];
 ok(typeof p0.lng === "number" && typeof p0.lat === "number" && "count" in p0,
    "heat 點格式是 {lng, lat, count}", JSON.stringify(p0));
@@ -350,9 +358,10 @@ ok(!!btn("seg-crs", "高德") && !!btn("seg-crs", "衛星"),
 
 // --- sheet ---
 const rows = $("sheetbody").querySelectorAll(".cp");
-ok(rows.length === 40, "底部清單最多列 40 場", rows.length);
+ok(rows.length === Math.min(LIST_CAP, LIVE_COUNT), `底部清單最多列 ${LIST_CAP} 場`, rows.length);
 ok(rows.every((r) => typeof r.onclick === "function"), "清單每一列都有點擊處理");
-ok(/40 \/ 80/.test($("sh-sub").textContent), "清單只列有資料的場：40 / 80", $("sh-sub").textContent);
+ok(new RegExp(`${LIST_CAP} / ${LIVE_COUNT}`).test($("sh-sub").textContent),
+   `清單只列有資料的場：${LIST_CAP} / ${LIVE_COUNT}`, $("sh-sub").textContent);
 
 // --- layer switching must NOT rebuild ---
 const heatBefore = log.heat.length, dotsBefore = log.dots.length;
@@ -367,10 +376,18 @@ btn("seg-layer", "純圓點").onclick();
 ok(log.dots.every((d) => d._map === map), "純圓點時圓點回到地圖");
 ok(heat._visible === false, "純圓點時 HeatMap 已隱藏");
 
+/* 回到「熱力＋圓點」。必須在下面切時段之前做：
+   純圓點時 buildHeat() 會直接 return，所以 log.heat 不會再增加，
+   log.heat[last] 會一直停在「即時模式」那一個 —— 後面的歷史模式斷言
+   就變成拿即時熱力圖去比歷史期望值（曾經因為兩者剛好都是 80 而假通過）。 */
+btn("seg-layer", "熱力＋圓點").onclick();
+
 // --- mode switch ---
 btn("seg-mode", "電單車").onclick();
-ok(log.dots.length === dotsBefore + 63, "切到電單車重建 63 個點", log.dots.length - dotsBefore);
-ok($("s-cnt").textContent === "63", "電單車停車場數 = 63", $("s-cnt").textContent);
+ok(log.dots.length === dotsBefore + MOTOR_NPARKS,
+   `切到電單車重建 ${MOTOR_NPARKS} 個點`, log.dots.length - dotsBefore);
+ok($("s-cnt").textContent === String(MOTOR_NPARKS),
+   `電單車停車場數 = ${MOTOR_NPARKS}`, $("s-cnt").textContent);
 ok(/電單車/.test($("s-rate").textContent + $("s-ratel").textContent),
    "使用率標籤跟著車種變");
 
@@ -456,7 +473,7 @@ ok(hds.data.every((d) => Number.isInteger(d.count) && d.count >= 0 && d.count <=
 
 const cur = log.dots.slice(-cars.length);
 ok(cur.length === cars.length, "歷史模式仍為每個停車場畫圓點", cur.length);
-const greyN = cur.filter((d) => d.opts.fillColor === "#39465A").length;
+const greyN = cur.filter((d) => d.opts.fillColor === NEUTRAL).length;
 ok(greyN === cars.length - expect.length,
    "沒有該時段資料的場都畫成灰色", `${greyN} vs ${cars.length - expect.length}`);
 
@@ -628,6 +645,45 @@ ok(recs3[0].id !== FULLEST.id,
    recs3[0].id + " vs " + FULLEST.id);
 ok(recs3[0].free > (FULLEST.free == null ? 0 : FULLEST.free),
    "排第一的場空位比最滿的場多", recs3[0].free + " > " + FULLEST.free);
+
+/* ---------------- 淺色主題 + 響應式 + web app ---------------- */
+
+ok(/<meta name="theme-color" content="#EAF2E6">/.test(HTML),
+   "theme-color 是淺色（否則瀏覽器會在淺色頁面頂端壓一條深色）");
+ok(/name="apple-mobile-web-app-capable" content="yes"/.test(HTML),
+   "加到主畫面後全螢幕開啟（web app 體感）");
+ok(/viewport-fit=cover/.test(HTML), "viewport 用 viewport-fit=cover");
+ok(/env\(safe-area-inset-top/.test(HTML), "頂部面板吃 safe-area（瀏海不遮）");
+ok(/env\(safe-area-inset-bottom/.test(HTML), "底部面板吃 safe-area（Home 指示條不遮）");
+ok(/#sheetbody\{[^}]*max-height:var\(--sheet-max\)/.test(HTML),
+   "面板高度由 --sheet-max 單一來源控制");
+ok(/body\.sheet-open #legend,[\s\S]{0,90}var\(--sheet-max\)/.test(HTML),
+   "圖例與縮放鈕用同一個變數讓位（不會各自寫死高度）");
+ok(/@media \(max-width:639px\)/.test(HTML) &&
+   /@media \(min-width:640px\) and \(max-width:1023px\)/.test(HTML),
+   "手機 / 平板 / 桌面三段斷點");
+ok(/id="grab"/.test(HTML), "底部面板有抓握條（看起來可以拖）");
+ok(/addEventListener\("touchstart"/.test(HTML) && /addEventListener\("touchend"/.test(HTML),
+   "底部面板可以用手指拖曳切換");
+ok(/suppressSheetClick/.test(HTML), "拖曳結束後抑制補送的 click（否則會切換兩次＝看起來沒反應）");
+ok(/overscroll-behavior:none/.test(HTML), "關掉橡皮筋捲動");
+ok(/overscroll-behavior:contain/.test(HTML), "清單捲到底不會把整頁一起拖動");
+ok(!/#0B0E14|#0F1520|#141A24|#1A2230|#232E3E|#39465A/.test(HTML),
+   "深色主題的顏色已全部移除");
+ok(/amap:\/\/styles\/fresh/.test(HTML), "底圖換成淺色 fresh");
+
+/* 色階在 CSS（圖例漸層）與 JS（STOPS/gradient）各寫一次，很容易改一邊忘了
+   另一邊。這裡把兩邊拉出來比對，讓不一致當場失敗。 */
+const lgBar = /\.lg-bar\{[^}]*linear-gradient\(90deg,([^)]*)\)/.exec(HTML);
+const cssStops = lgBar ? lgBar[1].split(",").map((s) => s.trim().toLowerCase()) : [];
+const jsStops = Object.keys(heat.opts.gradient)
+  .sort((a, b) => Number(a) - Number(b))
+  .map((k) => "#" + heat.opts.gradient[k].match(/\d+/g)
+    .map((v) => Number(v).toString(16).padStart(2, "0")).join(""));
+ok(cssStops.length === 6 && jsStops.length === 6 &&
+   cssStops.every((c, i) => c === jsStops[i]),
+   "圖例的 CSS 漸層與 JS 色階完全一致",
+   `css=${JSON.stringify(cssStops)} js=${JSON.stringify(jsStops)}`);
 
 /* ---------------- report ---------------- */
 console.log(`\n${pass} passed, ${fail} failed`);
