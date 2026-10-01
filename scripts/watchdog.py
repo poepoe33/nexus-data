@@ -26,7 +26,9 @@ GitHub Actions 的內建 `schedule` 是 best-effort —— 本專案實測只有
 沒有它就會變成「叫了 GitHub 又自己採」，產生兩筆幾乎同時的快照。
 
 注意：本機這層**需要 Mac 是醒著的**（睡眠時 launchd 會在喚醒後補跑一次，
-關機則完全不跑）。要完全脫離 Mac 就得靠 Cloudflare Worker（見 worker/）。
+關機則完全不跑）。要完全脫離 Mac 就得靠外部觸發器打 workflow_dispatch ——
+免部署的做法是 Google Apps Script（worker/dispatch-cron.gs），
+要完整標頭控制則是 Cloudflare Worker（worker/dispatch-cron.js）。
 
 門檻為什麼是 25 分鐘而不是 45：本機每 30 分鐘才被叫醒一次，如果門檻設 45，
 就會出現「21:00 看到只舊 24 分鐘 → 跳過 → 22:00 才採」這種實際間隔被拉到

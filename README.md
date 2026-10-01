@@ -403,8 +403,9 @@ scripts/scrape.py                    採集器（三種模式）
 scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
 scripts/bench_dashboard.py           合成歷史，量測 build_dashboard.py 的時間/記憶體
 scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦）
-scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，143 條斷言
+scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，184 條斷言
 scripts/test_map_live.js             真人瀏覽器測試（puppeteer-core + 本機 Chrome）
+scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務）
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
 scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
@@ -548,9 +549,11 @@ jobs:
 
 ## ⚠️ GitHub Actions 排程的三個坑（重要）
 
-1. **cron 不是精準的。** `*/30 * * * *` 只是「大約」在 :00 / :30 觸發，GitHub 負載高時會延遲幾分鐘甚至
-   丟掉某一次。如果要嚴格每半小時，需要外部 cron（例如 Cloudflare Cron / 自己的伺服器）來
-   `curl` 觸發 `workflow_dispatch`，或改用 `repository_dispatch`。
+1. **cron 不是精準的 —— 而且不只「差幾分鐘」那麼客氣。** 本 repo 實測：設定每天
+   48 次，實際只交貨 **4–5 次**，觸發的分鐘數完全沒照 cron 走（見下方「排程」一節）。
+   官方文件明講尖峰時「some queued jobs may be dropped」。
+   要穩定就別依賴它，改用外部觸發器打 `workflow_dispatch`
+   （免費、免部署的做法見「不想用 Cloudflare：Google Apps Script」）。
 2. **repo 60 天沒活動，排程會被自動停用。** 因為我們每次都會 commit，所以實務上不會發生；
    但如果長時間沒資料變動（例如對岸網站掛掉），記得回來看一下。
 3. **Actions 用量**：本 repo 是 public，GitHub Actions 分鐘數**免費無限**。
@@ -642,21 +645,36 @@ print(busy.groupby("name")["car"].mean().sort_values().head(10))
 - 抓取頻率與並發都刻意壓到最低（快照 1 請求、主資料每次請求間隔 0.5 秒），
   避免對政府網站造成負擔。
 
-## 排程：新 repo 的 schedule 需要好幾個小時才會生效
+## 排程：GitHub 的 `schedule` 是 best-effort，不是壞掉
 
-**先講結論：GitHub 的排程器沒有壞，是「新 repo 的排程註冊很慢」。**
+**先講結論：GitHub 的排程器沒有壞 —— 但它的 `schedule` 是「盡力而為」，不是保證。**
 
-實測證據（同一個帳號 poepoe33，用 API 對照）：
+2026-10-01 用 Actions API 撈出這個 repo 的**全部 26 筆 run**，實測結果：
 
-| repo | 建立時間 | 可見性 | cron | 第一次 `schedule` run |
-|---|---|---|---|---|
-| `aircancel` | 2026-09-27T14:49Z | private | `0 */3 * * *` | **+7.9 小時**（22:42Z） |
-| `nexus-data` | 2026-09-28T07:54Z | public | `7,37 * * * *` | 尚未（+6.9h 時仍為 0，13 筆 run 全是 push/dispatch） |
+| 項目 | 實測值 |
+|---|---|
+| run 成功率 | **26 / 26 全數成功**，0 失敗 → 不是我們的 bug |
+| 實際交貨頻率 | **每天 4–5 次** |
+| 設定值 | `7,37 * * * *` = 每天 48 次 |
+| 達成率 | **約 10%** |
+| 觸發的分鐘數 | `:03 :09 :15 :16 :17 :26 :30 :31 :51 :56`（散落，完全沒照 `7` / `37`） |
 
-`aircancel` 的排程**正常運作**（後續還有 +8.2h、+11.8h 的 run），
-所以「這個帳號的排程器壞了」不成立。差別只在於 `nexus-data` 還太新。
+這完全符合官方文件對 `schedule` 的描述：
 
-→ **註冊延遲約 8 小時**，這是實測值，不是官方保證。等就對了。
+> The `schedule` event can be delayed during periods of high loads of GitHub
+> Actions workflow runs. High load times include the start of every hour.
+> … If the load is sufficiently high enough, some queued jobs may be dropped.
+
+也就是說：**被延遲、被丟掉都是官方預期行為，而且你無法從 repo 端修好它。**
+能控制的只有「有沒有一個外部觸發器準時打 `workflow_dispatch`」——
+那條路完全繞過 GitHub 的排程器（見下面第 3 層）。
+
+> 📌 **為什麼以前會誤判成「新 repo 註冊很慢」**：`nexus-data` 建立後的前 6.9 小時，
+> 真的一次 `schedule` 都沒跑（當時 13 筆 run 全是 push/dispatch），所以得到了
+> 「註冊延遲約 8 小時、等就對了」的結論。
+> **那個結論現在被推翻了** —— 排程後來確實生效了，只是**頻率遠低於設定值**。
+> 「註冊慢」是真的，但真正的問題是 best-effort 的達成率只有約 10%。
+> 當時的錯誤在於：只看「有沒有出現」就下結論，而沒有接著量「出現得多不多」。
 
 用這支工具直接量（比翻網頁快）：
 
@@ -665,8 +683,14 @@ python3 scripts/check_runs.py            # event 統計 + 最近 20 筆
 python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 ```
 
-輸出裡的 `event 統計 : {'workflow_dispatch': 7, 'push': 6}` 就是關鍵 ——
-**`schedule` 一次都沒出現**，代表排程還沒註冊成功。
+輸出裡的 `event 統計 : {...}` 回答的是**第一個問題**：「`schedule` 到底有沒有被觸發？」
+
+⚠️ 但它**回答不了第二個問題**：「觸發了幾次？」
+只看 event 種類會讓你誤以為「有出現 `schedule` = 排程正常」。本 repo 就是這樣被騙了
+一輪：`schedule` 確實出現了，但一天只有 4–5 次。所以要接著看**每天幾筆**。
+
+- `schedule` 一次都沒出現 → 排程還沒生效（新 repo 的註冊延遲是真的，可達數小時）
+- 有出現，但一天只有個位數 → **這就是 best-effort 的正常表現，別再等它變好**
 
 ### 已知的官方規則（docs.github.com，`schedule` 事件）
 
@@ -686,10 +710,11 @@ python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 
 > ⚠️ **誠實揭露**：本 repo 的 workflow 檔被改過兩次 ——
 > 13:24Z 改 cron（避開 `:00`/`:30` 高負載點）、14:47Z 加上資料守門步驟。
-> 也就是說**註冊時鐘可能又歸零了**，實際等待時間要從 14:47Z 重算。
-> 這不是「排程壞了」，而是為了資料完整性必須付的代價。
-> 如果等不下去，直接用下面第 1 層（本機 launchd）或第 3 層（外部 cron），
-> 那兩條路**完全不依賴** GitHub 的排程器。
+> 註冊時鐘可能因此又歸零過。
+>
+> 但現在知道：**即使註冊成功，`schedule` 也只會一天交貨 4–5 次**（見上表）。
+> 所以「等它註冊好」根本不是解法 —— 要可靠就得靠第 3 層的外部觸發器，
+> 那條路完全不依賴 GitHub 的排程器。
 
 ### 所以：四層備援
 
@@ -698,7 +723,7 @@ python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 | 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已裝好，待雙擊啟用 |
 | 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 | ✅ 運作中 |
 | 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ⚠️ API 已驗證 204。**免部署選項：`worker/dispatch-cron.gs`（Google Apps Script）**；cron-job.org 的 `User-Agent` 需實測（見下） |
-| 4 | GitHub Actions `schedule` | 尚未生效 | GitHub 排程器 | ⏳ 註冊中 |
+| 4 | GitHub Actions `schedule` | **實測 4–5 次/天**（設定是 48 次/天） | GitHub 排程器 | ⚠️ 已生效，但只是 best-effort（達成率約 10%），**不可依賴** |
 
 第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
 所以改成「一次觸發、跑兩趟」—— 採集 → 等 28 分鐘 → 再採集一次，
@@ -799,19 +824,23 @@ Request forbidden by administrative rules. Please make sure your request has a
 User-Agent header
 ```
 
-實測（本 repo，2026-09-28）：
+實測（對 `api.github.com`，2026-10-01）：
 
-| 送出的標頭 | 結果 |
+| 送出的 `User-Agent` | 結果 |
 |---|---|
-| 有 `User-Agent` | **204** ✅ |
-| 沒有 `User-Agent` | **403** ← 就是這個 |
-| 完全沒帶 token | 401（所以不是 token 問題） |
+| 任何非空字串（例如 `cron-job.org`） | **200** ✅ |
+| **標頭完全移除** | **403** ← 就是這個 |
+| `Mozilla/5.0 (compatible; GoogleDocs; script; +http://docs.google.com)`（← Apps Script 實際送出的） | **200** ✅ |
+| 完全沒帶 token | 401（所以 403 不是 token 問題） |
+
+**關鍵：GitHub 只要求「有一個非空的 `User-Agent`」，完全不在乎內容。**
+所以「會自己附上 UA」的服務都不會踩到這個坑 —— 包括 Google Apps Script（見下）。
 
 > ⚠️ **cron-job.org 使用者注意**：它的官方 FAQ 明講
 > 「the headers **"User-Agent"** and "Connection" are **not supported and will be
-> ignored**」—— 也就是**你沒辦法在 cron-job.org 上修這個問題**。
-> 如果你在 cron-job.org 的 Test run 看到 403，改用下面的 Cloudflare Worker，
-> 或任何能自訂標頭的服務。
+> ignored**」。但注意那句話只說「**你設的**會被忽略」，**不等於「它不送」**。
+> 若它仍會送一個自己的 UA，那就會得到 200。**實際按一次 Test run 就知道**
+> （見下方「cron-job.org 值得先花 2 分鐘測一次」）。
 
 `curl` 預設會送 `User-Agent: curl/x.y.z`，所以本機測試不會踩到 —— 這正是
 「本機 curl 可以、cron 服務不行」的原因。
@@ -855,15 +884,17 @@ Resource not accessible by personal access token
 但**不需要 wrangler、不需要 CLI、不用動 Cloudflare**，腳本跑在 Google 的基礎設施上。
 
 **為什麼它不會踩到上面的 `User-Agent` 坑**：Apps Script 的 `UrlFetchApp`
-**會自己送一個 `User-Agent`**（而且你改不掉它 —— 這一點常被誤解成缺點）。
-GitHub 要的是「**有**一個有效的 UA」，不是「你指定的 UA」，所以剛好符合。
+**一律自己附上 `User-Agent`**，而且**你在 `headers` 裡設的值會被忽略** ——
+這一點常被誤解成缺點。GitHub 要的只是「**有**一個非空的 UA」，不是「你指定的 UA」，
+所以剛好符合。上面那張實測表的最後一列，就是 Apps Script 實際送出的 UA（**200** ✅）。
 
-配額（消費級 Gmail 帳號）對我們的需求來說極寬鬆：
+配額（消費級 Gmail 帳號，Google 官方 Quotas & limits 頁面）：
 
 | 項目 | 上限 | 我們的需求 |
 |---|---|---|
 | URL Fetch 呼叫 | 20,000 次/天 | 48 次/天 |
-| 指令碼每日執行時間 | 1 小時 | 約 1 秒/次 |
+| 觸發器總執行時間 | **90 分鐘/天** | 每次不到 1 秒 |
+| 指令碼單次執行 | 6 分鐘 | 不到 1 秒 |
 | 觸發器數量 | 20 個/指令碼 | 1 個 |
 
 安裝（約 5 分鐘）：
@@ -875,11 +906,24 @@ GitHub 要的是「**有**一個有效的 UA」，不是「你指定的 UA」，
    （token 存進「指令碼屬性」，不留在程式碼裡）
 5. 執行 `dispatch` 測一次，執行紀錄應出現 `[OK] HTTP 204`
 6. 執行 `installTrigger` → 之後每 30 分鐘自動跑
+7. 卡住時跑 `showStatus` —— 它會直接告訴你是「沒 token」、「沒排程」還是
+   「排程在但每次都失敗」，這三種的修法完全不同
 
 > ⚠️ Apps Script 的時間觸發器**會被小幅隨機化** —— Google 文件明講它會落在一個
 > 時間窗內，之後維持同一個偏移。所以可能比整點慢幾分鐘。
 > 對本專案沒有影響：watchdog 門檻是 25 分鐘，只要「大約每 30 分」就夠，
 > 真正的採集工作仍然在 GitHub Actions 上執行。
+
+**本機就能測（不需要 Google 帳號、不需要網路）：**
+
+```bash
+node scripts/test_gas_dispatch.js
+```
+
+它用 Node 的 `vm` 把 `dispatch-cron.gs` 跑在沙箱裡，注入假的 `UrlFetchApp` /
+`ScriptApp` / `PropertiesService`，驗證 204/200 的判定、六種失敗狀態碼的診斷文字、
+**兩種 403 是否給出不同的建議**，以及觸發器只增不減等行為。
+（`dispatch-cron.gs` 只有在出錯時才會被執行到，而那正是最需要它正確的時候。）
 
 ### cron-job.org 值得先花 2 分鐘測一次
 

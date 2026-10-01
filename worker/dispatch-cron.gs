@@ -6,18 +6,32 @@
  *   的做法。腳本跑在 Google 的基礎設施上，不需要你的 Mac 開機。
  *
  * 為什麼 Apps Script 不會踩到 GitHub 的 `User-Agent` 陷阱：
- *   GitHub REST API 規定請求必須帶 `User-Agent`，缺少時回 **403**：
+ *   GitHub REST API 規定請求必須帶 `User-Agent`，缺少時回 **403**（不是 401）：
  *     "Request forbidden by administrative rules. Please make sure your request
  *      has a User-Agent header"
- *   cron-job.org 之類的服務會被這個卡住（它的 FAQ 明講 User-Agent 標頭會被忽略）。
- *   Apps Script 的 UrlFetchApp **會自己送一個 User-Agent**（而且你改不掉它）——
- *   這正好符合 GitHub 的要求：它要的是「有一個有效的 UA」，不是「你指定的 UA」。
- *   實測：`curl -H "User-Agent: cron-job.org"` → 200；`-H "User-Agent:"` → 403。
  *
- * 配額（消費級 Gmail 帳號，2026 官方數字）—— 我們的需求遠低於上限：
- *   URL Fetch 呼叫      20,000 次/天   （我們 48 次/天）
- *   指令碼每日執行時間   1 小時/天      （我們每次約 1 秒）
- *   每個指令碼的觸發器   20 個          （我們 1 個）
+ *   cron-job.org 之類的服務會被這個卡住，因為它的 FAQ 明講 User-Agent 標頭
+ *   「not supported and will be ignored」。Apps Script 則相反：
+ *   `UrlFetchApp` **一律自己附上** `User-Agent`（實測為
+ *   `Mozilla/5.0 (compatible; GoogleDocs; script; +http://docs.google.com)`），
+ *   而且**你在 headers 裡設的值會被忽略**。
+ *
+ *   這乍看是缺點，其實剛好符合 GitHub 的要求 —— 它要的是「有一個有效的 UA」，
+ *   不是「你指定的 UA」。2026-10-01 對 `api.github.com` 實測：
+ *
+ *     -H "User-Agent:"                        → 403（完全沒有 UA）
+ *     -H "User-Agent: cron-job.org"           → 200（隨便一個非空 UA 就過）
+ *     -A "Mozilla/5.0 (compatible; GoogleDocs; script; +http://docs.google.com)"
+ *                                             → 200（← Apps Script 實際送出的那個）
+ *
+ *   所以這個檔案不需要、也做不到「自訂 UA」；能過關是因為它**一定會送一個**。
+ *
+ * 配額（消費級 Gmail 帳號，Google 官方「Quotas & limits」頁面數字）——
+ * 我們的需求遠低於上限：
+ *   URL Fetch 呼叫       20,000 次/天   （我們 48 次/天）
+ *   觸發器總執行時間      90 分鐘/天     （我們每次不到 1 秒）
+ *   指令碼單次執行        6 分鐘        （我們每次不到 1 秒）
+ *   每個指令碼的觸發器    20 個          （我們 1 個）
  *
  * 安裝步驟（約 5 分鐘）：
  *   1. 開 https://script.google.com → 新增專案
@@ -32,12 +46,19 @@
  *   之後每天維持同一個偏移。所以實際觸發時間可能比整點慢幾分鐘。
  *   對這個專案完全沒差：watchdog 的門檻是 25 分鐘，只要「大約每 30 分」就好，
  *   不需要準點。真正的採集工作仍然在 GitHub Actions 上執行。
+ *
+ *   附帶好處：觸發器執行失敗時 Google 會寄「Summary of failures」通知信，
+ *   所以「Apps Script 叫不動 GitHub」不會靜靜地壞掉，不需要自己寫告警。
  */
 
 // ---------------------------------------------------------------- 設定
 const REPO     = 'poepoe33/nexus-data';
 const WORKFLOW = 'scrape.yml';
 const REF      = 'main';
+
+// 這個值**不會**真的送出去（UrlFetchApp 會用自己的 UA，見檔頭說明）。
+// 留著是因為：① 若 Google 哪天開始尊重這個標頭就自動生效；② 讓讀程式的人
+// 一眼看出我們知道 GitHub 要求 UA。真正讓請求過關的是 UrlFetchApp 內建的 UA。
 const UA       = 'nexus-data-gascript/1.0 (+https://github.com/poepoe33/nexus-data)';
 
 // token 存在「指令碼屬性」裡，不寫進程式碼、不進版本控制。
@@ -77,7 +98,8 @@ function dispatch() {
     // 不要讓 4xx/5xx 丟例外：要把 body 印出來才診斷得出是哪一種失敗。
     muteHttpExceptions: true,
     headers: {
-      // GitHub 強制要求；UrlFetchApp 也會自己補一個，這裡明示只是為了可讀性。
+      // GitHub 強制要求。UrlFetchApp 實際上會覆寫成自己的 UA（見檔頭實測），
+      // 所以這一行是「意圖聲明」而非生效的設定。
       'User-Agent': UA,
       'Authorization': 'Bearer ' + token,
       'Accept': 'application/vnd.github+json',
@@ -107,7 +129,8 @@ function diagnose(code, body) {
   }
   if (code === 403) {
     if (/user-agent/i.test(body)) {
-      return '缺少 User-Agent 標頭。（Apps Script 正常不會發生）';
+      return '缺少 User-Agent 標頭。（Apps Script 正常不會發生；' +
+             '若真的出現，代表 UrlFetchApp 行為改變了。）';
     }
     return 'token 有效但權限不足：classic PAT 要勾 workflow scope；' +
            'fine-grained PAT 要給此 repo 的 Actions: Read and write。';
@@ -126,6 +149,24 @@ function testRun() {
   return dispatch();
 }
 
+// ---------------------------------------------------------------- 診斷
+/**
+ * 印出目前狀態。卡住時先跑這個，它會告訴你是「沒 token」、「沒排程」
+ * 還是「排程在但每次都失敗」—— 這三種的修法完全不同。
+ */
+function showStatus() {
+  const token = PropertiesService.getScriptProperties().getProperty(PROP_TOKEN);
+  Logger.log('token      : %s', token ? '已設定（長度 ' + token.length + '）'
+                                      : '❌ 未設定 → 先跑 saveToken()');
+
+  const mine = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'dispatch';
+  });
+  Logger.log('觸發器      : %s 個 %s', mine.length,
+             mine.length ? '✅ 每 30 分鐘自動跑' : '❌ 未安裝 → 跑 installTrigger()');
+  Logger.log('目標        : %s/%s @ %s', REPO, WORKFLOW, REF);
+}
+
 // ---------------------------------------------------------------- 一次性：安裝排程
 /** 安裝「每 30 分鐘」觸發器。重複執行安全（會先清掉舊的）。 */
 function installTrigger() {
@@ -139,11 +180,9 @@ function installTrigger() {
 
 /** 移除本專案安裝的觸發器。 */
 function removeTrigger() {
-  const n = ScriptApp.getProjectTriggers().filter(function (t) {
+  const mine = ScriptApp.getProjectTriggers().filter(function (t) {
     return t.getHandlerFunction() === 'dispatch';
-  }).map(function (t) {
-    ScriptApp.deleteTrigger(t);
-    return 1;
-  }).length;
-  Logger.log('已移除 %s 個觸發器。', n);
+  });
+  mine.forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  Logger.log('已移除 %s 個觸發器。', mine.length);
 }

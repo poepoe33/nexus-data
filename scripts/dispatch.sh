@@ -76,8 +76,10 @@ case "$HTTP" in
   403)
     if grep -qi "user-agent" /tmp/dispatch-resp.txt; then
       echo "→ 缺少 User-Agent 標頭。GitHub REST API 強制要求，缺了會回 403（不是 401）。" >&2
-      echo "  注意：cron-job.org 官方 FAQ 明講不支援自訂 User-Agent，會被忽略。" >&2
-      echo "  改用 worker/ 底下的 Cloudflare Worker，或任何能自訂標頭的服務。" >&2
+      echo "  注意：cron-job.org 官方 FAQ 明講不支援自訂 User-Agent（你設的會被忽略）。" >&2
+      echo "  但 GitHub 只要求「有一個非空 UA」，它若自己送一個就會過 —— 實測看看。" >&2
+      echo "  要保證不踩到：worker/dispatch-cron.gs（Google Apps Script，免部署），" >&2
+      echo "  它一定會自己附上 UA；或 worker/dispatch-cron.js（Cloudflare Worker）。" >&2
     else
       echo "→ token 有效但權限不足。需要：" >&2
       echo "    classic PAT → 勾 'workflow' scope" >&2
