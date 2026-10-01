@@ -909,6 +909,18 @@ Resource not accessible by personal access token
 7. 卡住時跑 `showStatus` —— 它會直接告訴你是「沒 token」、「沒排程」還是
    「排程在但每次都失敗」，這三種的修法完全不同
 
+執行紀錄應該長這樣：
+
+```
+Info  已移除 0 個觸發器。                    ← installTrigger
+Info  已安裝：每 30 分鐘觸發一次。
+Info  [OK] HTTP 204 —— 已排入佇列 poepoe33/nexus-data/scrape.yml@main   ← dispatch
+```
+
+⚠️ 如果你看到 `已移除 0.0 個觸發器` 或 `HTTP 204.0`，那是舊版。Apps Script 的
+`Logger.log` 會把 JS number 當成 Java Double 再套進 `%s`，所以程式碼裡每個數字
+都必須用 `String()` 包起來。已修，重新貼一次 `Code.gs` 即可。
+
 > ⚠️ Apps Script 的時間觸發器**會被小幅隨機化** —— Google 文件明講它會落在一個
 > 時間窗內，之後維持同一個偏移。所以可能比整點慢幾分鐘。
 > 對本專案沒有影響：watchdog 門檻是 25 分鐘，只要「大約每 30 分」就夠，

@@ -127,7 +127,21 @@ function boot(opts) {
     PropertiesService: { getScriptProperties() { return props; } },
     UrlFetchApp: fetch,
     ScriptApp: scriptApp,
-    Logger: { log() { logs.push(util.format.apply(util, Array.prototype.slice.call(arguments))); } },
+    Logger: {
+      log() {
+        const args = Array.prototype.slice.call(arguments);
+        // 模擬 Apps Script 的 Logger.log：它把 JS number 轉成 Java Double 再套進 %s，
+        // 所以 Logger.log('%s', 0) 印出來是 "0.0" 而不是 "0"。
+        //
+        // 這個「不友善」是刻意的。第一版的假 Logger 直接用 util.format，
+        // 比真實環境寬容，於是真正的 bug（執行紀錄印出「已移除 0.0 個觸發器」）
+        // 在測試裡完全看不到 —— 假物件比真環境善良，就等於沒測。
+        const vals = args.slice(1).map(function (v) {
+          return (typeof v === "number") ? v + ".0" : v;
+        });
+        logs.push(util.format.apply(util, [args[0]].concat(vals)));
+      }
+    },
   };
 
   vm.createContext(sandbox);
@@ -332,6 +346,46 @@ section("showStatus", function () {
   ok(/已設定/.test(j2), "有 token 時 showStatus 指出已設定");
   ok(/1 個/.test(j2), "有觸發器時 showStatus 報出數量", j2.replace(/\n/g, " | ").slice(0, 120));
   ok(!/github_pat_abc/.test(j2), "showStatus 不會把 token 內容印出來（只印長度）");
+});
+
+/* --- 9b. Logger 的數字格式：Apps Script 會把 number 當 Java Double ---
+   實際踩到的 bug：installTrigger 的執行紀錄印出「已移除 0.0 個觸發器」。
+   使用者貼回來的 log 長這樣：
+       1:47:43 PM  Info  已移除 0.0 個觸發器。
+   看起來像程式壞了，其實只是 Logger.log 把 0 當成 Double 格式化。
+   修法是所有數字都用 String() 包起來。 */
+section("Logger 數字格式：觸發器數量", function () {
+  const t = boot();
+  t.sandbox.installTrigger();
+  t.sandbox.removeTrigger();
+  const j = t.logs.join("\n");
+  ok(!/\d\.0\s*個觸發器/.test(j),
+     "觸發器數量不會印成「0.0 個」（真實踩到的 bug）", j.replace(/\n/g, " | "));
+  ok(/已移除 0 個觸發器/.test(j),
+     "印出的是乾淨的「已移除 0 個觸發器」", j.replace(/\n/g, " | "));
+});
+
+section("Logger 數字格式：HTTP 狀態碼", function () {
+  const okT = boot({ props: { GH_TOKEN: "x" }, responder: () => ({ code: 204, text: "" }) });
+  okT.sandbox.dispatch();
+  const jok = okT.logs.join("\n");
+  ok(!/HTTP 204\.0/.test(jok), "成功訊息不會印成「HTTP 204.0」", jok.replace(/\n/g, " | "));
+  ok(/HTTP 204\b/.test(jok), "成功訊息印的是「HTTP 204」");
+
+  const errT = boot({ props: { GH_TOKEN: "x" }, responder: () => ({ code: 500, text: "boom" }) });
+  errT.sandbox.dispatch();
+  const jerr = errT.logs.join("\n");
+  ok(!/HTTP 500\.0/.test(jerr), "錯誤訊息不會印成「HTTP 500.0」", jerr.replace(/\n/g, " | "));
+});
+
+section("Logger 數字格式：showStatus", function () {
+  const t = boot({ props: { GH_TOKEN: "github_pat_abc" } });
+  t.sandbox.installTrigger();
+  t.sandbox.showStatus();
+  const j = t.logs.join("\n");
+  ok(!/\d\.0\s*個/.test(j), "showStatus 的觸發器數量不會印成「1.0 個」",
+     j.replace(/\n/g, " | "));
+  ok(/1 個/.test(j), "showStatus 印的是「1 個」");
 });
 
 /* --- 10. 原始碼層級：防止已修正的事實錯誤復活 --- */

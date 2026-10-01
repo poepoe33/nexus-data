@@ -49,6 +49,12 @@
  *
  *   附帶好處：觸發器執行失敗時 Google 會寄「Summary of failures」通知信，
  *   所以「Apps Script 叫不動 GitHub」不會靜靜地壞掉，不需要自己寫告警。
+ *
+ * ⚠️ 本檔所有 Logger.log 的數字都用 String() 包起來，這是刻意的：
+ *   Apps Script 的 Logger.log 會把 JS number 轉成 Java Double 再套進 %s，
+ *   所以 Logger.log('%s', 0) 印出來是 **"0.0"** 而不是 "0"。
+ *   實際踩過：installTrigger 的執行紀錄印出「已移除 0.0 個觸發器」，
+ *   看起來像程式壞了，其實只是格式化問題。
  */
 
 // ---------------------------------------------------------------- 設定
@@ -114,11 +120,11 @@ function dispatch() {
   // 這個端點歷史上回 204（無 body），官方文件現在寫 200（回傳 run id 與 url）。
   // 兩者都代表已排入佇列。
   if (code === 204 || code === 200) {
-    Logger.log('[OK] HTTP %s —— 已排入佇列 %s/%s@%s', code, REPO, WORKFLOW, REF);
+    Logger.log('[OK] HTTP %s —— 已排入佇列 %s/%s@%s', String(code), REPO, WORKFLOW, REF);
     return true;
   }
 
-  Logger.log('[ERR] HTTP %s\n%s\n→ %s', code, body.slice(0, 400), diagnose(code, body));
+  Logger.log('[ERR] HTTP %s\n%s\n→ %s', String(code), body.slice(0, 400), diagnose(code, body));
   return false;
 }
 
@@ -162,7 +168,7 @@ function showStatus() {
   const mine = ScriptApp.getProjectTriggers().filter(function (t) {
     return t.getHandlerFunction() === 'dispatch';
   });
-  Logger.log('觸發器      : %s 個 %s', mine.length,
+  Logger.log('觸發器      : %s 個 %s', String(mine.length),
              mine.length ? '✅ 每 30 分鐘自動跑' : '❌ 未安裝 → 跑 installTrigger()');
   Logger.log('目標        : %s/%s @ %s', REPO, WORKFLOW, REF);
 }
@@ -184,5 +190,5 @@ function removeTrigger() {
     return t.getHandlerFunction() === 'dispatch';
   });
   mine.forEach(function (t) { ScriptApp.deleteTrigger(t); });
-  Logger.log('已移除 %s 個觸發器。', mine.length);
+  Logger.log('已移除 %s 個觸發器。', String(mine.length));
 }
