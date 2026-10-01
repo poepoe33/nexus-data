@@ -13,6 +13,10 @@
 門檻為什麼是 25 分鐘而不是 45：本機每 30 分鐘才被叫醒一次，如果門檻設 45，
 就會出現「21:00 看到只舊 24 分鐘 → 跳過 → 22:00 才採」這種實際間隔被拉到
 80 幾分鐘的狀況。設 25 分鐘，30 分鐘的節奏才會真的落實成 30 分鐘。
+
+提交範圍（重要）：這支腳本只被授權提交「產生物」，清單見 SNAPSHOT_PATHS。
+手寫的原始檔（dashboard/template.html、dashboard/map_template.html）不在此列 ——
+它們必須由人／agent 用一般 commit 提交，否則改版的意圖會被資料 commit 蓋掉。
 """
 
 from __future__ import annotations
@@ -31,6 +35,34 @@ ROOT = Path(__file__).resolve().parent.parent
 STALE_MINUTES = 25
 BUILD = ROOT / "scripts" / "build_dashboard.py"
 MAPBUILD = ROOT / "scripts" / "build_map.py"
+
+# 看門狗唯一的寫入權限：它只 commit「產生物」。這份清單就是它的職權範圍。
+#
+#   data/                  採集寫出的快照（latest.csv/json、history/*.csv、carparks.csv…）
+#   dashboard/data.json    由 build_dashboard.py 聚合產生
+#   dashboard/index.html   由 dashboard/template.html 產生
+#   dashboard/map.html     由 dashboard/map_template.html 產生
+#
+# 為什麼不是 `git add -A data dashboard`：那會連「手寫原始檔」一起掃進來。
+# 2026-10-01 真實事故 —— 改版地圖範本（淺色澳門色調）時看門狗剛好醒來，
+# 把整個主題改動 commit 成 `chore(data): local watchdog snapshot …`，
+# 而真正該帶這些改動的 `feat(map)` commit 反而只剩測試檔。
+# 後果不是資料錯，而是歷史被誤標：事後查「淺色主題是哪個 commit 改的」會找錯。
+SNAPSHOT_PATHS = (
+    "data",
+    "dashboard/data.json",
+    "dashboard/index.html",
+    "dashboard/map.html",
+)
+
+# 原始檔與憑證：永遠不該由看門狗代為提交。
+# 這些本來就不在 SNAPSHOT_PATHS 裡，列出來是當成最後一道防線用
+# （見 stage_snapshot），萬一清單被改壞也能擋住。
+NEVER_STAGE = (
+    "dashboard/template.html",
+    "dashboard/map_template.html",
+    "dashboard/.amap_key.json",
+)
 
 
 def run_builds() -> None:
@@ -97,6 +129,32 @@ def git(*args, check=True):
     if check and r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {r.stderr.strip()[:300]}")
     return r
+
+
+def stage_snapshot() -> list[str] | None:
+    """只 stage 產生物，回傳被 stage 的路徑清單。
+
+    回傳 None 代表踩到 NEVER_STAGE 防線：此時已經 git reset 取消 stage，
+    呼叫端必須放棄這次 commit（工作區檔案不動，資料不會遺失）。
+
+    刻意用明確路徑而非 `git add -A data dashboard`：後者會把手寫原始檔
+    一起掃進來，讓資料 commit 混入程式改動（見 SNAPSHOT_PATHS 的事故註解）。
+    """
+    git("add", "-A", *SNAPSHOT_PATHS)
+    staged = git("diff", "--cached", "--name-only").stdout.split()
+
+    bad = [p for p in staged if p in NEVER_STAGE]
+    if bad:
+        # 正常情況下到不了這裡（SNAPSHOT_PATHS 已排除這些檔案）。
+        # 但「資料 commit 被誤標」是靜默失敗，寧可這次不 commit 也要讓它出聲。
+        git("reset")
+        print("[watchdog] ✗ 偵測到非產生物被 stage，已取消本次 commit：", file=sys.stderr)
+        for p in bad:
+            print(f"    {p}", file=sys.stderr)
+        print("[watchdog] 這些原始檔請用一般 commit 提交（資料仍在工作區）",
+              file=sys.stderr)
+        return None
+    return staged
 
 
 def last_scraped_at() -> datetime | None:
@@ -181,9 +239,12 @@ def main() -> int:
         print("[watchdog] ✗ 資料仍有衝突標記，中止 commit（資料沒有遺失）", file=sys.stderr)
         return 1
 
-    git("add", "-A", "data", "dashboard")
-    d = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT)
-    if d.returncode == 0:
+    staged = stage_snapshot()
+    if staged is None:
+        print("[watchdog] ✗ 已中止本次 commit（資料仍在工作區，沒有遺失）",
+              file=sys.stderr)
+        return 1
+    if not staged:
         print("[watchdog] 沒有資料變動，不 commit")
         return 0
 
