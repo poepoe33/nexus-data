@@ -357,29 +357,81 @@ def write_csv(path: Path, records: list[dict], columns: list[str]) -> None:
 COLLECTION_COLUMNS = ["scraped_at", "source", "carparks", "with_car", "run_id"]
 
 
+# 這些 origin 值等於「沒說」，一律退回 legacy 的 github-workflow_dispatch，
+# 這樣「沒帶 origin 的舊資料」與「人手亂按的 dispatch」會落在同一格，
+# 不會各自長出一個只有一筆的桶子。
+UNKNOWN_ORIGINS = {"", "unspecified", "unknown"}
+
+# origin 會直接被寫進 collections.csv 並顯示在 admin 頁面上，
+# 所以只留下安全字元、並限制長度（免得有人用 API 塞奇怪的東西進來）。
+_ORIGIN_SAFE = re.compile(r"[^A-Za-z0-9._-]")
+
+
+def dispatch_origin() -> str:
+    """這次 workflow_dispatch 是「誰」發起的（apps-script / mac-watchdog / manual…）。
+
+    為什麼是讀 GITHUB_EVENT_PATH 而不是環境變數：
+      GitHub 會把事件的**完整 payload** 寫進那個檔案，`workflow_dispatch` 的
+      payload 裡就有 `inputs`。它是 runner **自動提供**的環境變數，所以
+      不必在 workflow 的步驟上加任何 `env:` —— scrape.yml 只需要**宣告**這個 input。
+
+    ⚠️ 一定要先宣告，否則 API 會直接拒絕（2026-10-02 實測）：
+         POST .../dispatches  -d '{"ref":"main","inputs":{"origin":"x"}}'
+         → 422 {"message":"Unexpected inputs provided: [\"origin\"]"}
+       「偷偷塞一個 input 進去、不必改 workflow」這條路是不通的。
+       宣告之後才送得進來（實測 204，且 payload 裡 .inputs.origin 有值）。
+
+    讀不到就回空字串 —— 呼叫端會退回 legacy 標籤。這裡刻意**不丟例外**：
+    來源標記只是附加的統計，不值得為它讓整條採集失敗。
+    """
+    path = os.environ.get("GITHUB_EVENT_PATH")
+    if not path:
+        return ""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    inputs = payload.get("inputs")
+    if not isinstance(inputs, dict):
+        return ""
+    raw = str(inputs.get("origin") or "").strip().lower()
+    return _ORIGIN_SAFE.sub("", raw)[:32]
+
+
 def collection_source() -> str:
     """這次採集是「誰」做的。
 
     為什麼能分辨 GitHub 是「自行採集」還是「被外部觸發」而不必改 workflow：
     GitHub Actions 會**自動注入** GITHUB_ACTIONS / GITHUB_EVENT_NAME，
-    所以 schedule（GitHub 自己的排程）與 workflow_dispatch（Mac watchdog
-    或人手觸發）在腳本裡就分得出來。
+    所以 schedule（GitHub 自己的排程）與 workflow_dispatch（被外部觸發）
+    在腳本裡就分得出來。
 
-    這一點很重要 —— 改 .github/workflows/scrape.yml 會讓 GitHub **重新註冊排程**，
-    期間可能好幾個小時一次 schedule 都不會跑（該檔開頭有同樣的警告）。
-    既然環境變數本來就有，就沒有理由去動那個檔。
+    再往下細分「被誰觸發」靠的是 dispatch 時帶的 `origin` input
+    （見 dispatch_origin()）：Google Apps Script 帶 apps-script、
+    本機 watchdog 帶 mac-watchdog。沒有它就只到 github-workflow_dispatch 為止 ——
+    這也是 2026-10-02 之前的歷史資料會落在那裡的原因。
 
     回傳值：
-      github-schedule             GitHub 自己按排程跑的（「自行採集」）
-      github-workflow_dispatch    GitHub 跑的，但由外部觸發（watchdog / 手動）
-      local-watchdog              本機看門狗主動採集（--local-only）
-      local-watchdog-fallback     叫了 GitHub 但它沒交貨，本機接手（備援真正生效）
-      local-manual                人手在本機跑的
-      local-repair                不是採集，是修復衝突標記時把資料救回來
+      github-schedule                  GitHub 自己按排程跑的（「自行採集」）
+      github-dispatch-apps-script      Google Apps Script 的觸發器打的
+      github-dispatch-mac-watchdog     本機 Mac watchdog 打的
+      github-dispatch-manual           人在 GitHub 網頁／API 手動打的
+      github-workflow_dispatch         GitHub 跑的，但不知道是誰觸發的（含舊資料）
+      local-watchdog                   本機看門狗主動採集（--local-only）
+      local-watchdog-fallback          叫了 GitHub 但它沒交貨，本機接手（備援真正生效）
+      local-manual                     人手在本機跑的
+      local-repair                     不是採集，是修復衝突標記時把資料救回來
     """
     if os.environ.get("GITHUB_ACTIONS") == "true":
-        event = (os.environ.get("GITHUB_EVENT_NAME") or "").strip()
-        return f"github-{event}" if event else "github-unknown"
+        event = (os.environ.get("GITHUB_EVENT_NAME") or "").strip() or "unknown"
+        if event == "workflow_dispatch":
+            origin = dispatch_origin()
+            if origin not in UNKNOWN_ORIGINS:
+                return f"github-dispatch-{origin}"
+        return f"github-{event}"
     # 本機：由呼叫者（watchdog.py）用環境變數標記，沒標就當成人手跑的。
     return (os.environ.get("NEXUS_COLLECT_SOURCE") or "").strip() or "local-manual"
 

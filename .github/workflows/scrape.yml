@@ -9,9 +9,33 @@ on:
   #
   # ⚠️ 每次改動這個檔案，GitHub 都會重新註冊排程，註冊要 15 分鐘到數小時不等，
   #    期間一次 schedule 都不會跑。改完就不要再動它。
+  #    （2026-10-02 起這個代價已經很小：外部觸發器每 30 分鐘穩定供貨，
+  #      schedule 只是額外的 4–5 次/天。但沒必要還是不動。）
   schedule:
     - cron: "7,37 * * * *"
+
+  # `origin` 是「這次採集是誰觸發的」，用來讓 data/collections.csv 分得出
+  # Google Apps Script / 本機 Mac watchdog / 人手 —— admin 頁面才有辦法顯示。
+  #
+  # ⚠️ 為什麼一定要**宣告**在這裡，不能偷偷在 API 帶：
+  #    2026-10-02 實測，帶一個沒寫在這裡的 input 會直接被打回：
+  #      HTTP 422 {"message":"Unexpected inputs provided: [\"origin\"]"}
+  #    宣告之後才送得進來（實測 204，且 runner 的 GITHUB_EVENT_PATH 裡
+  #    .inputs.origin 確實有值）。
+  #
+  # scrape.py 是讀 GITHUB_EVENT_PATH（runner 自動提供的環境變數），
+  # 所以下面**不需要**在任何步驟加 `env:`。
+  #
+  # ⚠️ 這次改動會讓 GitHub 重新註冊上面的 schedule（見檔頭警告）。
+  #    代價已經很小：外部觸發器（Apps Script）每 30 分鐘穩定供貨，
+  #    schedule 只是額外的 4–5 次/天。
   workflow_dispatch:
+    inputs:
+      origin:
+        description: "誰觸發的：apps-script / mac-watchdog / manual"
+        required: false
+        default: "unspecified"
+        type: string
 
 permissions:
   contents: write

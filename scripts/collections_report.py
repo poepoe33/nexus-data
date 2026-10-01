@@ -31,7 +31,10 @@ PATH = ROOT / "data" / "collections.csv"
 # 顯示名稱與分組。順序 = 報告裡的顯示順序。
 LABELS = {
     "github-schedule":            ("GitHub 自行採集 (schedule)", "github"),
-    "github-workflow_dispatch":   ("GitHub 被觸發 (dispatch)",    "github"),
+    "github-dispatch-apps-script": ("GitHub ← Apps Script 觸發", "github"),
+    "github-dispatch-mac-watchdog": ("GitHub ← 本機 Mac 觸發",   "github"),
+    "github-dispatch-manual":     ("GitHub ← 人手觸發",          "github"),
+    "github-workflow_dispatch":   ("GitHub 被觸發 (來源不明)",    "github"),
     "github-unknown":             ("GitHub（事件不明）",           "github"),
     "local-watchdog":             ("本機看門狗 (主動)",            "local"),
     "local-watchdog-fallback":    ("本機備援 (GitHub 沒交貨)",     "local"),

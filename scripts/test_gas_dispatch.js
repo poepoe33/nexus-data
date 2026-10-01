@@ -231,7 +231,12 @@ section("請求內容", function () {
 
   let payload = null;
   try { payload = JSON.parse(c.params.payload); } catch (e) { /* 留給下面斷言 */ }
-  ok(payload && payload.ref === "main", "payload 是 {\"ref\":\"main\"}", c.params.payload);
+  ok(payload && payload.ref === "main", "payload 有 ref=main", c.params.payload);
+  /* origin 讓 collections.csv 分得出這次是 Apps Script 觸發的。
+     ⚠️ 這個 input **必須**先在 scrape.yml 宣告，否則 API 直接回 422
+        （見下面的跨檔一致性檢查）。 */
+  ok(payload && payload.inputs && payload.inputs.origin === "apps-script",
+     "payload 帶 inputs.origin=apps-script", c.params.payload);
 });
 
 /* --- 4. 每一種失敗都要丟例外（才會被告警），而且要給出**正確**的建議 --- */
@@ -425,6 +430,47 @@ section("Logger 數字格式：showStatus", function () {
   ok(!/\d\.0\s*個/.test(j), "showStatus 的觸發器數量不會印成「1.0 個」",
      j.replace(/\n/g, " | "));
   ok(/1 個/.test(j), "showStatus 印的是「1 個」");
+});
+
+/* --- 9c. 跨檔一致性：origin 必須「宣告過」才送得進去 ---
+   為什麼這個測試最值錢：GitHub **會拒絕**沒宣告的 input（實測 422
+   "Unexpected inputs provided"）。如果哪天有人改了 dispatch 送的 input 名字、
+   或把 scrape.yml 的宣告拿掉，生產環境就會開始每次觸發都失敗 ——
+   而且是**安靜地**失敗（要等 Google 的失敗通知信才會發現）。
+   這種跨檔的隱性契約，只有測試能釘住。 */
+section("跨檔一致性：origin input", function () {
+  const ymlPath = path.join(ROOT, ".github", "workflows", "scrape.yml");
+  const shPath = path.join(ROOT, "scripts", "dispatch.sh");
+  const wdPath = path.join(ROOT, "scripts", "watchdog.py");
+  const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch (e) { return ""; } };
+
+  const yml = read(ymlPath);
+  const sh = read(shPath);
+  const wd = read(wdPath);
+
+  ok(yml.length > 0, "讀得到 .github/workflows/scrape.yml");
+
+  /* 只看 workflow_dispatch 那一段，避免被其他地方的 "origin" 字串騙到。 */
+  const wdBlock = /workflow_dispatch:\s*\n([\s\S]*?)(?=\n\S|\npermissions:)/.exec(yml);
+  const block = wdBlock ? wdBlock[1] : "";
+  ok(block.length > 0, "抓得到 workflow_dispatch 區塊");
+  ok(/inputs:/.test(block), "workflow_dispatch 有宣告 inputs");
+  ok(/^\s+origin:/m.test(block), "workflow_dispatch 宣告了 origin（沒宣告的話 API 會回 422）");
+  ok(/default:\s*"unspecified"/.test(block),
+     "origin 的預設值是 unspecified（沒帶時落回 legacy 標籤，而不是變成空字串桶）");
+
+  ok(/ORIGIN/.test(SRC) && /'apps-script'/.test(SRC),
+     "dispatch-cron.gs 定義 ORIGIN='apps-script'");
+  ok(/inputs:\s*\{\s*origin:\s*ORIGIN\s*\}/.test(SRC),
+     "dispatch-cron.gs 把 origin 放進 payload 的 inputs");
+
+  ok(/ORIGIN=/.test(sh) || /\$\{ORIGIN/.test(sh), "dispatch.sh 支援 ORIGIN 環境變數");
+  ok(/inputs.*origin/.test(sh), "dispatch.sh 把 origin 塞進 payload");
+  ok(/tr -cd 'A-Za-z0-9._-'/.test(sh),
+     "dispatch.sh 會過濾 ORIGIN 的字元（它會進 JSON 與 CSV，不能讓它帶怪東西）");
+
+  ok(/ORIGIN.*mac-watchdog/.test(wd),
+     "watchdog.py 觸發時帶 ORIGIN=mac-watchdog（否則 Mac 的採集會標成來源不明）");
 });
 
 /* --- 10. 原始碼層級：防止已修正的事實錯誤復活 --- */

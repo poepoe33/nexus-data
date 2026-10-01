@@ -71,6 +71,15 @@ const REPO     = 'poepoe33/nexus-data';
 const WORKFLOW = 'scrape.yml';
 const REF      = 'main';
 
+// 告訴 workflow「這次是誰觸發的」，會寫進 data/collections.csv，
+// 讓 admin 頁面分得出 Apps Script / Mac watchdog / 人手。
+//
+// ⚠️ 這個名字必須先在 scrape.yml 的 workflow_dispatch.inputs 裡宣告過，
+//    否則 API 會直接拒絕（2026-10-02 實測）：
+//      HTTP 422 {"message":"Unexpected inputs provided: [\"origin\"]"}
+//    只加在 payload 裡是不夠的 —— 宣告是前提，不是選項。
+const ORIGIN   = 'apps-script';
+
 // 這個值**不會**真的送出去（UrlFetchApp 會用自己的 UA，見檔頭說明）。
 // 留著是因為：① 若 Google 哪天開始尊重這個標頭就自動生效；② 讓讀程式的人
 // 一眼看出我們知道 GitHub 要求 UA。真正讓請求過關的是 UrlFetchApp 內建的 UA。
@@ -122,7 +131,7 @@ function dispatch() {
       'Accept': 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28'
     },
-    payload: JSON.stringify({ ref: REF })
+    payload: JSON.stringify({ ref: REF, inputs: { origin: ORIGIN } })
   });
 
   const code = res.getResponseCode();
@@ -131,7 +140,8 @@ function dispatch() {
   // 這個端點歷史上回 204（無 body），官方文件現在寫 200（回傳 run id 與 url）。
   // 兩者都代表已排入佇列。
   if (code === 204 || code === 200) {
-    Logger.log('[OK] HTTP %s —— 已排入佇列 %s/%s@%s', String(code), REPO, WORKFLOW, REF);
+    Logger.log('[OK] HTTP %s —— 已排入佇列 %s/%s@%s（origin=%s）',
+               String(code), REPO, WORKFLOW, REF, ORIGIN);
     return true;
   }
 

@@ -283,6 +283,9 @@ def dispatch_to_github(attempts: int = 3, backoff: int = 15) -> bool:
     失敗會重試：dispatch 失敗常常是暫時性的（網路抖一下、GitHub 回 5xx、
     剛好擦到 rate limit）。這是「主力採集」路徑，一次失敗就直接退回本機，
     等於白白讓 Mac 多做一次工 —— 而重試的成本只是一次 HTTP 請求。
+
+    帶 ORIGIN=mac-watchdog：讓 collections.csv 分得出這次是「Mac 觸發的」，
+    而不是 Apps Script 或人手觸發的（scrape.py 讀 workflow 的 origin input）。
     """
     if not DISPATCH.exists():
         print(f"[watchdog] 找不到 {DISPATCH}", file=sys.stderr)
@@ -292,7 +295,9 @@ def dispatch_to_github(attempts: int = 3, backoff: int = 15) -> bool:
         try:
             r = subprocess.run(
                 ["/bin/bash", str(DISPATCH)], cwd=ROOT,
-                capture_output=True, timeout=120, **SUBPROCESS_TEXT,
+                capture_output=True, timeout=120,
+                env={**os.environ, "ORIGIN": "mac-watchdog"},
+                **SUBPROCESS_TEXT,
             )
         except subprocess.TimeoutExpired:
             # dispatch.sh 自己有 curl 的 --max-time，正常不會走到這裡。

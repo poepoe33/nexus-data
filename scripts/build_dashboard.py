@@ -386,12 +386,26 @@ def collection_sources() -> dict:
         return sum(n for s, n in counts.items()
                    if s.startswith(prefix) and s not in exclude)
 
+    self_n = counts.get("github-schedule", 0)
+    all_n = tally("github-")
+    apps_n = counts.get("github-dispatch-apps-script", 0)
+    mac_n = counts.get("github-dispatch-mac-watchdog", 0)
+    manual_n = counts.get("github-dispatch-manual", 0)
+
     return {
         "counts": counts,
-        # 「GitHub 自行採集」= schedule。這是與「被 Mac 觸發的 dispatch」
-        # 唯一有意義的區分，也是判斷 GitHub 排程到底有沒有在運作的指標。
-        "github_self": counts.get("github-schedule", 0),
-        "github_all": tally("github-"),
+        # 「GitHub 自行採集」= schedule。這是判斷 GitHub 排程到底有沒有在運作的指標。
+        "github_self": self_n,
+        "github_all": all_n,
+        # 三個具名的外部觸發來源。靠 dispatch 時帶的 origin input 分辨 ——
+        # 沒有它就只到 github-workflow_dispatch 為止（2026-10-02 之前的資料）。
+        "github_apps_script": apps_n,
+        "github_mac": mac_n,
+        "github_manual": manual_n,
+        # 剩下的 = 沒帶 origin 的 dispatch。刻意用**減法**而不是再查一次 counts：
+        # 這樣以後多一個沒見過的 origin 也不會被漏算，
+        # 而且「三個具名來源 + other」永遠恰好等於 github_all。
+        "github_other": max(0, all_n - self_n - apps_n - mac_n - manual_n),
         # local-repair 不是採集（只是把衝突標記裡的資料救回來），不計入。
         "local_all": tally("local-", exclude=("local-repair",)),
         "local_fallback": counts.get("local-watchdog-fallback", 0),
@@ -412,7 +426,11 @@ def github_stats() -> dict:
     GitHub 的狀況完全看不出來。要把兩個管道拆開才有意義：
 
       schedule  GitHub 自己醒來採 —— 自主性，設 48/天，實測遠低於此
-      dispatch  被 Mac 看門狗叫起來採 —— 隨選，叫了幾乎都會交貨
+      dispatch  被外部叫起來採（Apps Script / Mac 看門狗 / 人手）—— 隨選，叫了幾乎都會交貨
+
+    這裡**不細分** dispatch 是誰叫的：這個函式只用 collections.csv，
+    而細分需要 origin；細分過的數字在 collection_sources() / admin 頁面的
+    srcBlock() 那邊呈現。刻意不在此處重複，免得同一件事有兩份會走鐘的邏輯。
 
     三個訊號合起來才回答得了「GitHub 能不能成功採集」：
       1. 排程實際頻率 vs 設定頻率 → 排程到底有沒有在跑
@@ -451,7 +469,15 @@ def github_stats() -> dict:
         return {"total": 0, "recent": [], "by_day": []}
 
     sched = [r for r in gh if r["source"] == "github-schedule"]
-    disp = [r for r in gh if r["source"] == "github-workflow_dispatch"]
+    # 「被觸發」= **所有**非 schedule 的 GitHub 採集。
+    #
+    # ⚠️ 這裡以前寫 `== "github-workflow_dispatch"`，加上 origin 之後就是一個
+    #    定時炸彈：新資料會變成 github-dispatch-apps-script /
+    #    github-dispatch-mac-watchdog，用等號比對會讓「被觸發」的數字
+    #    **從某一天起悄悄歸零**，而且交貨率（deliver_pct）會跟著掉到 0%
+    #    —— 看起來像 GitHub 全面故障，其實只是標籤多了一段後綴。
+    #    改成「不等於 schedule」就對未來的新 origin 免疫。
+    disp = [r for r in gh if r["source"] != "github-schedule"]
     fallback = [r for r in rows if r["source"] == "local-watchdog-fallback"]
 
     days = sorted({r["at"].date() for r in rows})

@@ -405,8 +405,9 @@ scripts/bench_dashboard.py           合成歷史，量測 build_dashboard.py �
 scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦）
 scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，184 條斷言
 scripts/test_map_live.js             真人瀏覽器測試（puppeteer-core + 本機 Chrome）
-scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務）
-scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為
+scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），96 條斷言
+scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，50 條斷言
+scripts/test_collection_source.py    採集來源判定（collection_source / dispatch_origin），42 條斷言
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
 scripts/macau_proj.py                MacauProj → WGS84 反算（自訂投影）
 scripts/calibrate_macau_crs.py       用政府雙座標系圖層實測基準轉換偏移
@@ -759,6 +760,51 @@ Apps Script 實際落在 :05 / :35 附近（實測 14:05:47），而 watchdog �
 commit、push。門檻設 25 而不是 45，是為了讓 30 分鐘的節奏真的落在 30 分鐘
 （設 45 會出現「看到只舊 24 分就跳過、下次等到 60 分」的 84 分鐘空洞）。
 第 3 層不經過 `watchdog.py`，是直接打 GitHub API 觸發 Actions。
+
+### 採集來源：怎麼分辨「誰觸發的」
+
+admin 頁面最上面那三格要回答的問題是「這次採集是誰叫的」。做法是
+**dispatch 時帶一個 `origin` input**，workflow 把它放進事件 payload，
+`scrape.py` 讀 `GITHUB_EVENT_PATH` 拿出來，寫進 `data/collections.csv` 的 `source` 欄。
+
+| `source` 的值 | 意思 |
+|---|---|
+| `github-schedule` | GitHub 自己按 cron 跑 |
+| `github-dispatch-apps-script` | Google Apps Script 的觸發器打的 |
+| `github-dispatch-mac-watchdog` | 這台 Mac 的 watchdog 打的 |
+| `github-dispatch-manual` | 人在 GitHub 網頁／API 手動打的 |
+| `github-workflow_dispatch` | 沒帶 `origin` 的 dispatch（含 2026-10-02 之前的**全部**歷史資料） |
+| `local-*` | 本機採的（見上表第 1、2 層） |
+
+> ⚠️ **`origin` 必須先宣告在 `scrape.yml` 的 `workflow_dispatch.inputs` 裡。**
+> GitHub **會拒絕**沒宣告的 input —— 2026-10-02 實測：
+>
+> ```
+> POST .../dispatches  -d '{"ref":"main","inputs":{"origin":"x"}}'
+> → HTTP 422  {"message":"Unexpected inputs provided: [\"origin\"]"}
+> ```
+>
+> 「偷偷塞一個 input 進去、不必改 workflow」這條路是**不通的**。
+> 宣告之後才送得進來（實測 204，而且 runner 的 `GITHUB_EVENT_PATH` 裡
+> `.inputs.origin` 確實有值）。
+>
+> `scrape.py` 讀的是 `GITHUB_EVENT_PATH`（runner 自動提供的環境變數），
+> 所以 `scrape.yml` 的步驟上**不需要**任何 `env:` —— 宣告是唯一的改動。
+
+`dispatch.sh` 支援 `ORIGIN` 環境變數，watchdog 就是靠它標成 `mac-watchdog`：
+
+```bash
+ORIGIN=manual ./scripts/dispatch.sh      # 手動跑時也順手標一下
+```
+
+> 歷史資料（2026-10-02 之前）**沒有**來源標記，所以 admin 頁面會把它們歸在
+> 「未標記來源」。那是預期的 —— 當時根本沒記錄這個資訊，不是資料壞掉。
+
+> 📌 另一個容易漏的地方：`build_dashboard.py` 的 `github_stats()` 原本用
+> `== "github-workflow_dispatch"` 數「被觸發」。加了 origin 之後新資料會變成
+> `github-dispatch-apps-script` 等等，那個等號會讓「被觸發」的數字**從某一天起
+> 悄悄歸零**，交貨率跟著掉到 0%（看起來像 GitHub 全面故障）。已改成
+> 「不等於 `github-schedule`」，對未來的新 origin 免疫。
 
 ### 手動 / 外部觸發
 

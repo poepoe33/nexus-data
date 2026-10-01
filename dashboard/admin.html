@@ -236,7 +236,7 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-<script>window.__DATA__ = {"generated_at":"2026-10-02 00:05:58","days_covered":5,"snapshots":164,"last_snapshot":"2026-10-02 00:05:58","collection":{"total":164,"today":1,"expected_per_hour":2,"expected_today":2,"expected_hour":0,"first":"2026-09-28 13:45:18","last":"2026-10-02 00:05:58","hourly_today":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"hours_covered":1,"latest_day":"2026-10-02","target_gap_min":30,"last_gap_min":29.8,"median_gap_min":30.0,"max_gap_min":270.6},"sources":{"counts":{"local-manual":2,"github-workflow_dispatch":37,"local-watchdog":110,"local-repair":1,"github-schedule":13,"local-watchdog-fallback":1},"github_self":13,"github_all":50,"local_all":113,"local_fallback":1,"total":164},"github":{"total":50,"all_total":164,"local_total":114,"share_pct":30.5,"schedule":13,"dispatch":37,"fallback":1,"today":1,"last":"2026-10-02 00:05:58","schedule_last":"2026-10-01 21:51:25","dispatch_last":"2026-10-02 00:05:58","days":5,"expected_per_day":48,"schedule_per_day":2.6,"schedule_pct":5.4,"deliver_pct":97.4,"asked":38,"median_gap_min":336.2,"max_gap_min":441.5,"by_day":[{"date":"2026-09-28","schedule":0,"dispatch":9},{"date":"2026-09-29","schedule":4,"dispatch":0},{"date":"2026-09-30","schedule":5,"dispatch":0},{"date":"2026-10-01","schedule":4,"dispatch":27},{"date":"2026-10-02","schedule":0,"dispatch":1}],"recent":[{"at":"2026-10-02 00:05:58","source":"github-workflow_dispatch","run":"36889377314"},{"at":"2026-10-01 23:36:08","source":"github-workflow_dispatch","run":"36885489631"},{"at":"2026-10-01 23:06:00","source":"github-workflow_dispatch","run":"36881577809"},{"at":"2026-10-01 22:36:00","source":"github-workflow_dispatch","run":"36877569219"},{"at":"2026-10-01 22:05:59","source":"github-workflow_dispatch","run":"36873659304"},{"at":"2026-10-01 21:51:25","source":"github-schedule","run":"36871794041"},{"at":"2026-10-01 21:35:58","source":"github-workflow_dispatch","run":"36869842364"},{"at":"2026-10-01 21:05:58","source":"github-workflow_dispatch","run":"36866238428"}]}};</script>
+<script>window.__DATA__ = {"generated_at":"2026-10-02 00:30:58","days_covered":5,"snapshots":164,"last_snapshot":"2026-10-02 00:05:58","collection":{"total":164,"today":1,"expected_per_hour":2,"expected_today":2,"expected_hour":0,"first":"2026-09-28 13:45:18","last":"2026-10-02 00:05:58","hourly_today":[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"hours_covered":1,"latest_day":"2026-10-02","target_gap_min":30,"last_gap_min":29.8,"median_gap_min":30.0,"max_gap_min":270.6},"sources":{"counts":{"local-manual":2,"github-workflow_dispatch":37,"local-watchdog":110,"local-repair":1,"github-schedule":13,"local-watchdog-fallback":1},"github_self":13,"github_all":50,"github_apps_script":0,"github_mac":0,"github_manual":0,"github_other":37,"local_all":113,"local_fallback":1,"total":164},"github":{"total":50,"all_total":164,"local_total":114,"share_pct":30.5,"schedule":13,"dispatch":37,"fallback":1,"today":1,"last":"2026-10-02 00:05:58","schedule_last":"2026-10-01 21:51:25","dispatch_last":"2026-10-02 00:05:58","days":5,"expected_per_day":48,"schedule_per_day":2.6,"schedule_pct":5.4,"deliver_pct":97.4,"asked":38,"median_gap_min":336.2,"max_gap_min":441.5,"by_day":[{"date":"2026-09-28","schedule":0,"dispatch":9},{"date":"2026-09-29","schedule":4,"dispatch":0},{"date":"2026-09-30","schedule":5,"dispatch":0},{"date":"2026-10-01","schedule":4,"dispatch":27},{"date":"2026-10-02","schedule":0,"dispatch":1}],"recent":[{"at":"2026-10-02 00:05:58","source":"github-workflow_dispatch","run":"36889377314"},{"at":"2026-10-01 23:36:08","source":"github-workflow_dispatch","run":"36885489631"},{"at":"2026-10-01 23:06:00","source":"github-workflow_dispatch","run":"36881577809"},{"at":"2026-10-01 22:36:00","source":"github-workflow_dispatch","run":"36877569219"},{"at":"2026-10-01 22:05:59","source":"github-workflow_dispatch","run":"36873659304"},{"at":"2026-10-01 21:51:25","source":"github-schedule","run":"36871794041"},{"at":"2026-10-01 21:35:58","source":"github-workflow_dispatch","run":"36869842364"},{"at":"2026-10-01 21:05:58","source":"github-workflow_dispatch","run":"36866238428"}]}};</script>
 <script>
 const D = window.__DATA__ || {};
 const COL = D.collection || {};
@@ -283,17 +283,41 @@ function hourBars(counts, perHour){
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="今日各小時採集次數">${bars}</svg>`;
 }
 
+/* 沒有 origin 的那一桶為什麼會很大：2026-10-02 之前的所有資料都沒有來源標記。
+   與其把幾百筆歷史藏起來假裝都分好了，不如顯示出來並說明原因。 */
+const UNMARKED_HINT = "2026-10-02 前的資料沒有來源標記";
+
+/* 採集來源。三格大數字 = 使用者真正要分辨的三種 GitHub 來源：
+   GitHub 自己的排程 / Apps Script 觸發 / 本機 Mac 觸發。
+   後兩者靠 dispatch 時帶的 origin input 分辨（scrape.py 讀 GITHUB_EVENT_PATH）。 */
 function srcBlock(){
   const self = SRC.github_self||0, all = SRC.github_all||0;
-  const trig = Math.max(0, all - self), loc = SRC.local_all||0;
+  const apps = SRC.github_apps_script||0, mac = SRC.github_mac||0;
+  const manual = SRC.github_manual||0, other = SRC.github_other||0;
+  const loc = SRC.local_all||0;
   if(!all && !loc) return "";
   const fb = SRC.local_fallback||0;
-  return `<div class="srcrow">
-    <div><b style="color:var(--accent)">${nf(self)}</b><span>GitHub 自行採集</span></div>
-    <div><b>${nf(trig)}</b><span>GitHub 被觸發</span></div>
-    <div><b>${nf(loc)}</b><span>本機採集</span></div>
-  </div>` + (fb ? `<div class="hrow" style="margin-top:6px">
-    <span>其中 <b>${nf(fb)}</b> 次是 GitHub 沒交貨、由本機備援接手</span></div>` : "");
+
+  /* 這三格固定顯示（即使是 0）—— 使用者的問題正是「看不出誰是誰」，
+     把 0 藏起來只會讓人以為那條路不存在。 */
+  const big =
+    `<div title="GitHub 自己按 cron 跑">
+       <b style="color:var(--accent)">${nf(self)}</b><span>GitHub 排程</span></div>` +
+    `<div title="Google Apps Script 的觸發器打的（origin=apps-script）">
+       <b style="color:#1F7A46">${nf(apps)}</b><span>Apps Script</span></div>` +
+    `<div title="這台 Mac 的 watchdog 打的（origin=mac-watchdog）">
+       <b style="color:#8A6A15">${nf(mac)}</b><span>本機 Mac</span></div>`;
+
+  const small = [];
+  if(manual) small.push(`人手觸發 <b>${nf(manual)}</b>`);
+  if(other)  small.push(`未標記來源 <b>${nf(other)}</b>（${UNMARKED_HINT}）`);
+  if(loc)    small.push(`本機採集 <b>${nf(loc)}</b>`);
+
+  return `<div class="srcrow">${big}</div>`
+    + (small.length ? `<div class="hrow" style="margin-top:9px">
+         <span>${small.join("　·　")}</span></div>` : "")
+    + (fb ? `<div class="hrow" style="margin-top:6px">
+         <span>其中 <b>${nf(fb)}</b> 次是 GitHub 沒交貨、由本機備援接手</span></div>` : "");
 }
 
 /* ---------- GitHub 採集 ---------- */
@@ -393,7 +417,7 @@ function githubBlock(){
     <div class="srcrow">
       <div><b>${nf(G.total)}</b><span>GitHub 累計</span></div>
       <div><b style="color:#1F7A46">${nf(G.schedule)}</b><span>自行排程</span></div>
-      <div><b style="color:#8A6A15">${nf(G.dispatch)}</b><span>被觸發</span></div>
+      <div><b style="color:#8A6A15">${nf(G.dispatch)}</b><span>被觸發（合計）</span></div>
     </div>
 
     ${G.all_total ? `<div class="ghlead" style="margin:10px 0 0">

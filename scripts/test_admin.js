@@ -180,6 +180,65 @@ group("B5. 其他", function () {
      fs9 ? fs9[1] + "px" : "找不到");
 });
 
+/* B6. 採集來源要分得開 —— 這是 2026-10-02 使用者的原始需求：
+   「看不出哪些是 github 自動採集、哪些是 gs 推送 github 採集、哪些是 mac 推送的」。
+   在加 origin 之前，後兩者都落在 github-workflow_dispatch，頁面上合成一格
+   「GitHub 被觸發」，所以問題不是「顯示不清楚」而是「資料裡根本沒有這個資訊」。 */
+group("B6. 採集來源分得開", function () {
+  const KEYS = ["github_apps_script", "github_mac", "github_manual", "github_other"];
+  KEYS.forEach((k) => ok(new RegExp("SRC\\." + k).test(tpl), "模板引用 SRC." + k));
+
+  /* payload 層面：四桶加起來必須剛好等於 github_all。
+     這條是為了擋「以後新增一個 origin 卻忘了加進 buckets」——
+     那種錯會讓總數對不上，但每一格看起來都很正常。 */
+  if (payload && payload.sources) {
+    const s = payload.sources;
+    ["github_self", "github_all", "local_all"].concat(KEYS)
+      .forEach((k) => ok(k in s, "payload.sources 有 " + k));
+    const sum = (s.github_self || 0) + (s.github_apps_script || 0) + (s.github_mac || 0)
+              + (s.github_manual || 0) + (s.github_other || 0);
+    ok(sum === (s.github_all || 0),
+       "四桶加起來等於 github_all（新增 origin 不會被漏算）",
+       `${sum} vs ${s.github_all}`);
+  } else {
+    ok(false, "payload.sources 不存在（build_dashboard.py 沒注入？）");
+  }
+
+  /* 行為層面：真的把 srcBlock() 跑起來。只檢查原始碼字串不夠 ——
+     那驗不出「數字有沒有被接到對的格子」。 */
+  const uh = /const UNMARKED_HINT = "([^"]*)"/.exec(tpl);
+  ok(uh !== null, "有定義 UNMARKED_HINT（未標記來源的說明文字）");
+
+  const m = /function srcBlock\(\)\{[\s\S]*?\n\}/.exec(tpl);
+  ok(m !== null, "找得到 srcBlock 的原始碼");
+  if (!m || !uh) return;
+
+  /* 用 new Function 而不是 vm：參數就是它的自由變數，不需要另外造一個 realm。 */
+  const mk = (src) => new Function("SRC", "nf", "UNMARKED_HINT",
+      m[0] + "; return srcBlock();")(src, (n) => String(n), uh[1]);
+
+  const a = mk({ github_self: 5, github_all: 20, github_apps_script: 9,
+                 github_mac: 6, github_manual: 0, github_other: 0, local_all: 3 });
+  ok(/GitHub 排程/.test(a), "輸出有「GitHub 排程」那一格");
+  ok(/Apps Script/.test(a), "輸出有「Apps Script」那一格");
+  ok(/本機 Mac/.test(a), "輸出有「本機 Mac」那一格");
+  ok(/>9</.test(a) && />6</.test(a) && />5</.test(a),
+     "三個來源各自的數字都出現（9 / 6 / 5）",
+     a.replace(/\s+/g, " ").slice(0, 160));
+  ok(!/GitHub 被觸發/.test(a),
+     "不再出現「GitHub 被觸發」這種把兩個來源混在一起的標籤");
+
+  const b = mk({ github_self: 1, github_all: 100, github_apps_script: 2,
+                 github_mac: 1, github_manual: 0, github_other: 96, local_all: 0 });
+  ok(/未標記來源/.test(b), "有未標記來源時會顯示（不藏起來假裝都分好了）");
+  ok(/2026-10-02/.test(b), "未標記來源有附原因，否則看起來像壞掉");
+
+  const c = mk({ github_self: 1, github_all: 1, github_apps_script: 0,
+                 github_mac: 0, github_manual: 0, github_other: 0, local_all: 0 });
+  ok(/Apps Script/.test(c) && /本機 Mac/.test(c),
+     "具名來源是 0 時仍然顯示那一格（使用者的問題正是「看不出誰是誰」）");
+});
+
 /* ================================================================== 結果 */
 
 const failed = results.filter((r) => !r.pass);

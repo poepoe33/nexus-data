@@ -11,6 +11,9 @@
 #   1. 環境變數 $GITHUB_TOKEN
 #   2. 檔案 ~/.config/nexus-data/gh-token（建議權限 600）
 #
+# 來源標記：設 $ORIGIN 就會一起送出去（例如 ORIGIN=mac-watchdog），
+# 讓 data/collections.csv 分得出這次是誰觸發的。不設也可以（就是不分）。
+#
 # 建議用「fine-grained PAT」而不是 classic PAT：只給這一個 repo 的
 # Actions: Read and write 權限，其他全部設 No access。被洩漏時傷害最小。
 
@@ -20,6 +23,14 @@ REPO="${REPO:-poepoe33/nexus-data}"
 WORKFLOW="${WORKFLOW:-scrape.yml}"
 REF="${REF:-main}"
 TOKEN_FILE="${TOKEN_FILE:-$HOME/.config/nexus-data/gh-token}"
+
+# ORIGIN = 「誰觸發的」，會被寫進 data/collections.csv 並顯示在 admin 頁面，
+# 讓 Apps Script / Mac watchdog / 人手 三種來源分得開。
+# 對應 scrape.yml 裡 workflow_dispatch 宣告的 origin input。
+#
+# 為什麼要過 tr：這個值會被直接嵌進 JSON，也會被寫進 CSV。
+# 只留安全字元，順便擋掉 JSON 注入。沒設就送空的 payload（＝不分來源）。
+ORIGIN="$(printf '%s' "${ORIGIN:-}" | tr -cd 'A-Za-z0-9._-')"
 
 TOKEN="${GITHUB_TOKEN:-}"
 if [ -z "$TOKEN" ] && [ -r "${TOKEN_FILE}" ]; then
@@ -46,6 +57,12 @@ case "$TOKEN" in
     exit 2 ;;
 esac
 
+if [ -n "$ORIGIN" ]; then
+  PAYLOAD="{\"ref\":\"$REF\",\"inputs\":{\"origin\":\"$ORIGIN\"}}"
+else
+  PAYLOAD="{\"ref\":\"$REF\"}"
+fi
+
 HTTP=$(curl -sS -o /tmp/dispatch-resp.txt -w '%{http_code}' \
   -X POST \
   -H "Authorization: Bearer $TOKEN" \
@@ -54,7 +71,7 @@ HTTP=$(curl -sS -o /tmp/dispatch-resp.txt -w '%{http_code}' \
   -H "User-Agent: nexus-data-dispatch/1.0 (+https://github.com/poepoe33/nexus-data)" \
   -H "Content-Type: application/json" \
   "https://api.github.com/repos/$REPO/actions/workflows/$WORKFLOW/dispatches" \
-  -d "{\"ref\":\"$REF\"}")
+  -d "$PAYLOAD")
 
 # GitHub 這個端點歷史上回 204（無 body），但官方文件現在寫 200（回傳 run id 與 url）。
 # 兩者都代表「已排入佇列」，所以兩個都當成功 —— 只認 204 的話，
@@ -88,6 +105,8 @@ case "$HTTP" in
   404)
     echo "→ repo 或 workflow 檔名錯（${REPO} / ${WORKFLOW}）" >&2 ;;
   422)
-    echo "→ body 缺 ref，或 JSON 格式錯（要 -d '{\"ref\":\"main\"}'）" >&2 ;;
+    echo "→ 兩種可能：body 缺 ref／JSON 格式錯，或**帶了 workflow 沒宣告的 input**。" >&2
+    echo "  scrape.yml 目前只宣告 origin。要新增 input 必須先改 workflow 檔 ——" >&2
+    echo "  實測未宣告的 input 會被直接拒絕（422 Unexpected inputs provided）。" >&2 ;;
 esac
 exit 1
