@@ -213,6 +213,7 @@ def cmd_snapshot(root: Path) -> int:
 
     now = datetime.now(MACAO)
     stamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    source = collection_source()
     for rec in records:
         rec["scraped_at"] = stamp
 
@@ -236,6 +237,7 @@ def cmd_snapshot(root: Path) -> int:
             {
                 "scraped_at": stamp,
                 "source": f"{BASE}/carpark_realtime.aspx",
+                "collected_by": source,
                 "timezone": "Asia/Macau (UTC+8)",
                 "count": len(records),
                 "carparks": records,
@@ -256,7 +258,10 @@ def cmd_snapshot(root: Path) -> int:
         writer.writerows(records)
 
     filled = sum(1 for r in records if r.get("car") is not None)
+    log_collection(data_dir, stamp, source, len(records), filled)
+
     print(f"[snapshot] {stamp} +08:00 | {len(records)} carparks ({filled} with car data)")
+    print(f"           by {source}")
     print(f"           -> {latest_csv}")
     print(f"           -> {latest_json}")
     print(f"           -> {day_file}")
@@ -344,6 +349,65 @@ def write_csv(path: Path, records: list[dict], columns: list[str]) -> None:
         writer = csv.DictWriter(fh, fieldnames=columns, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(records)
+
+
+# --------------------------------------------------------------------------- #
+# collection provenance
+# --------------------------------------------------------------------------- #
+COLLECTION_COLUMNS = ["scraped_at", "source", "carparks", "with_car", "run_id"]
+
+
+def collection_source() -> str:
+    """這次採集是「誰」做的。
+
+    為什麼能分辨 GitHub 是「自行採集」還是「被外部觸發」而不必改 workflow：
+    GitHub Actions 會**自動注入** GITHUB_ACTIONS / GITHUB_EVENT_NAME，
+    所以 schedule（GitHub 自己的排程）與 workflow_dispatch（Mac watchdog
+    或人手觸發）在腳本裡就分得出來。
+
+    這一點很重要 —— 改 .github/workflows/scrape.yml 會讓 GitHub **重新註冊排程**，
+    期間可能好幾個小時一次 schedule 都不會跑（該檔開頭有同樣的警告）。
+    既然環境變數本來就有，就沒有理由去動那個檔。
+
+    回傳值：
+      github-schedule             GitHub 自己按排程跑的（「自行採集」）
+      github-workflow_dispatch    GitHub 跑的，但由外部觸發（watchdog / 手動）
+      local-watchdog              本機看門狗主動採集（--local-only）
+      local-watchdog-fallback     叫了 GitHub 但它沒交貨，本機接手（備援真正生效）
+      local-manual                人手在本機跑的
+      local-repair                不是採集，是修復衝突標記時把資料救回來
+    """
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        event = (os.environ.get("GITHUB_EVENT_NAME") or "").strip()
+        return f"github-{event}" if event else "github-unknown"
+    # 本機：由呼叫者（watchdog.py）用環境變數標記，沒標就當成人手跑的。
+    return (os.environ.get("NEXUS_COLLECT_SOURCE") or "").strip() or "local-manual"
+
+
+def log_collection(data_dir: Path, stamp: str, source: str,
+                   carparks: int, with_car: int) -> None:
+    """把「這一筆快照是怎麼來的」追加到 data/collections.csv。
+
+    為什麼獨立成一個檔而不是在 latest.csv 加一欄：
+      latest.csv 每個停車場一列（~92 列），但「採集來源」是整個快照的屬性，
+      加進去等於同一個值重複 92 次，還會改動既有 schema、動到下游解析。
+      一筆快照一列的流水帳才是對的形狀，而且是純追加、不影響任何現有消費者。
+    """
+    path = data_dir / "collections.csv"
+    row = {
+        "scraped_at": stamp,
+        "source": source,
+        "carparks": carparks,
+        "with_car": with_car,
+        "run_id": (os.environ.get("GITHUB_RUN_ID") or "").strip(),
+    }
+    exists = path.exists()
+    with path.open("a", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=COLLECTION_COLUMNS,
+                                extrasaction="ignore")
+        if not exists:
+            writer.writeheader()
+        writer.writerow(row)
 
 
 # --------------------------------------------------------------------------- #

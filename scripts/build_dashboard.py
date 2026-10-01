@@ -54,6 +54,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HIST_DIR = ROOT / "data" / "history"
 REF_CSV = ROOT / "data" / "carparks.csv"
 LATEST_CSV = ROOT / "data" / "latest.csv"
+COLLECTIONS_CSV = ROOT / "data" / "collections.csv"
 OUT_DIR = ROOT / "dashboard"
 
 WEEKDAYS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
@@ -347,6 +348,39 @@ def _collection_stats(stamps_seen, row_count, first_stamp, last_stamp):
     }, len(dates)
 
 
+def collection_sources() -> dict:
+    """統計 data/collections.csv：每一筆快照是「誰」採的。
+
+    這份流水帳 2026-10-01 才開始寫；更早的 136 筆由
+    scripts/backfill_collections.py 從 git 歷史 + Actions API 重建。
+
+    為什麼要容忍檔案不存在：這頁是主要交付物。不能因為一份「附加的統計檔」
+    缺失就讓整頁建不出來 —— 沒有它只是少一格統計，不是壞掉。
+    """
+    counts: dict[str, int] = {}
+    if COLLECTIONS_CSV.exists():
+        with COLLECTIONS_CSV.open(encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                src = (row.get("source") or "").strip() or "unknown"
+                counts[src] = counts.get(src, 0) + 1
+
+    def tally(prefix: str, exclude: tuple[str, ...] = ()) -> int:
+        return sum(n for s, n in counts.items()
+                   if s.startswith(prefix) and s not in exclude)
+
+    return {
+        "counts": counts,
+        # 「GitHub 自行採集」= schedule。這是與「被 Mac 觸發的 dispatch」
+        # 唯一有意義的區分，也是判斷 GitHub 排程到底有沒有在運作的指標。
+        "github_self": counts.get("github-schedule", 0),
+        "github_all": tally("github-"),
+        # local-repair 不是採集（只是把衝突標記裡的資料救回來），不計入。
+        "local_all": tally("local-", exclude=("local-repair",)),
+        "local_fallback": counts.get("local-watchdog-fallback", 0),
+        "total": sum(counts.values()),
+    }
+
+
 def build_mode(acc, g_rate, g_w, ref, latest, col, cap_key):
     """針對單一車種，把聚合結果整理成輸出結構。"""
     total_cap = total_free = 0
@@ -504,6 +538,7 @@ def main() -> int:
         "first_snapshot": collection["first"],
         "last_snapshot": collection["last"],
         "collection": collection,
+        "sources": collection_sources(),
         "modes": modes,
         "carparks": base,
     }

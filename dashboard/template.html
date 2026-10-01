@@ -181,6 +181,10 @@ select{
 .hrow{display:flex;justify-content:space-between;font-size:11.5px;color:var(--tx3);margin-top:9px;gap:8px}
 .hrow b{font-weight:500;color:var(--tx2)}
 .hbars{margin-top:11px}
+.srcrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--line);text-align:center}
+.srcrow b{display:block;font-size:16px;font-weight:600;letter-spacing:-.3px}
+.srcrow span{display:block;font-size:10.5px;color:var(--tx3);line-height:1.35}
 #cpsel{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
   color:var(--tx);font:inherit;font-size:14px;padding:11px 10px;outline:none;margin-bottom:10px;
   -webkit-appearance:none;appearance:none}
@@ -531,6 +535,25 @@ function allOver(){
 }
 
 const COL = D.collection || {};
+/* 採集來源統計。舊的 data.json 沒有這個欄位，所以要有預設值，
+   否則整頁會在讀 .github_self 時爆掉。 */
+const SRC = D.sources || {};
+
+/* 採集來源拆解。「GitHub 自行採集」= schedule，這是唯一能回答「GitHub
+   到底有沒有在按排程自己跑」的數字。被觸發的那些是 Mac 叫的 ——
+   兩者混在一起看會高估 GitHub 的自主性，所以刻意分開顯示。 */
+function srcBlock(){
+  const self = SRC.github_self||0, all = SRC.github_all||0;
+  const trig = Math.max(0, all - self), loc = SRC.local_all||0;
+  if(!all && !loc) return "";
+  const fb = SRC.local_fallback||0;
+  return `<div class="srcrow">
+    <div><b style="color:var(--accent)">${nf(self)}</b><span>GitHub 自行採集</span></div>
+    <div><b>${nf(trig)}</b><span>GitHub 被觸發</span></div>
+    <div><b>${nf(loc)}</b><span>本機採集</span></div>
+  </div>` + (fb ? `<div class="hrow" style="margin-top:6px">
+    <span>其中 <b>${nf(fb)}</b> 次是 GitHub 沒交貨、由本機備援接手</span></div>` : "");
+}
 
 function minsAgo(ts){
   if(!ts) return null;
@@ -586,6 +609,7 @@ function renderHealth(){
     </div>
     <div class="hrow"><span>首次 <b>${esc((COL.first||"--").slice(5,16))}</b></span>
       <span>最近 <b>${esc((COL.last||"--").slice(5,16))}</b></span></div>
+    ${srcBlock()}
     <div class="hbars">${hourBars(COL.hourly_today||new Array(24).fill(0), COL.expected_per_hour||2)}
       <div class="hrow" style="margin-top:6px"><span>綠＝該小時採滿 ${COL.expected_per_hour||2} 筆</span>
       <span>灰＝完全沒採到</span></div></div>`;

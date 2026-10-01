@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 import subprocess
 import sys
 import time
@@ -383,12 +384,19 @@ def main() -> int:
             detail = (f"最新快照仍是 {age2:.0f} 分鐘前" if age2 is not None
                       else "仍然沒有任何快照")
             print(f"[watchdog] ⚠ GitHub 沒在期限內交貨（{detail}）→ 退回本機採集")
+            local_source = "local-watchdog-fallback"
         else:
             print("[watchdog] ⚠ 叫不動 GitHub → 退回本機採集", file=sys.stderr)
+            local_source = "local-watchdog-fallback"
     else:
         print(f"[watchdog] {why} → --local-only，直接由本機採集")
+        local_source = "local-watchdog"
 
     # ---- 第二層：本機自己採（備援）------------------------------------------
+    # 標記這次採集的來源，讓 data/collections.csv 分得出「GitHub 自行採集」、
+    # 「GitHub 被觸發」、「本機備援」。scrape.py 是同一支行程內被呼叫的，
+    # 所以用環境變數當介面（它讀 NEXUS_COLLECT_SOURCE）。
+    os.environ["NEXUS_COLLECT_SOURCE"] = local_source
     rc = scrape.cmd_snapshot(ROOT)
     if rc != 0:
         print("[watchdog] 採集失敗", file=sys.stderr)
