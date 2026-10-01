@@ -657,6 +657,11 @@ ok(/env\(safe-area-inset-top/.test(HTML), "頂部面板吃 safe-area（瀏海不
 ok(/env\(safe-area-inset-bottom/.test(HTML), "底部面板吃 safe-area（Home 指示條不遮）");
 ok(/#sheetbody\{[^}]*max-height:var\(--sheet-max\)/.test(HTML),
    "面板高度由 --sheet-max 單一來源控制");
+ok(/--sheet-head/.test(HTML), "面板高度拆成「標題列」與「清單」兩個變數");
+/* 手機上底部面板是全寬的，所以「收起」時也會蓋住圖例與縮放鈕 ——
+   兩者必須一律站在面板上方，不能只在展開時讓位。 */
+ok(/#legend,#zoom\{bottom:calc\(env\(safe-area-inset-bottom,0px\) \+ var\(--sheet-head\)/.test(HTML),
+   "面板收起時圖例與縮放鈕也讓位（否則被全寬面板蓋住）");
 ok(/body\.sheet-open #legend,[\s\S]{0,90}var\(--sheet-max\)/.test(HTML),
    "圖例與縮放鈕用同一個變數讓位（不會各自寫死高度）");
 ok(/@media \(max-width:639px\)/.test(HTML) &&

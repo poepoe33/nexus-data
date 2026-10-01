@@ -37,8 +37,11 @@
   --gold:#B07D0E;                    /* 澳門黃（深一點，白底上才看得清） */
   --warn-bg:#FCF4D6; --warn-tx:#7E5F0C;
   --shadow:0 6px 22px rgba(31,58,44,.15);
-  /* 底部面板展開時的高度 —— 圖例與縮放鈕靠它讓位，各斷點各自覆寫 */
-  --sheet-max:34vh;
+  /* 底部面板的高度拆成兩段，圖例與縮放鈕靠這兩個變數讓位。
+     分開是必要的：收起的面板只有「頭」，展開時才是「頭 + 內容」。
+     兩個都用同一個變數，就不會出現「面板高度改了但讓位沒改」的錯位。 */
+  --sheet-max:34vh;                  /* 展開時清單的最大高度 */
+  --sheet-head:44px;                 /* 面板標題列（+ 抓握條）的高度 */
   color-scheme:light;   /* 讓原生 <select> 下拉也走淺色 */
 }
 body.mode-motor{--accent:var(--gold);--accent-tx:#FFFFFF}
@@ -246,10 +249,14 @@ body{
 }
 #fail b{display:block;color:var(--tx);font-size:15px;margin-bottom:8px}
 #fail code{background:var(--card2);border-radius:5px;padding:1px 5px;font-size:12px;color:var(--tx2)}
-/* 底部面板展開時，把圖例與縮放鈕推上去，否則會被面板蓋住。
-   高度由 --sheet-max 決定，所以三個斷點只要改那一個變數。 */
+/* 底部面板會蓋住圖例與縮放鈕，所以兩者一律「站在面板上方」。
+   收起的面板只有標題列高，展開時才加上清單高度 —— 用同一個變數算，
+   面板高度改了也不會忘記改這裡。 */
+#legend,#zoom{bottom:calc(env(safe-area-inset-bottom,0px) + var(--sheet-head) + 12px)}
 body.sheet-open #legend,
-body.sheet-open #zoom{bottom:calc(var(--sheet-max) + 58px)}
+body.sheet-open #zoom{
+  bottom:calc(env(safe-area-inset-bottom,0px) + var(--sheet-max) + var(--sheet-head) + 12px)
+}
 
 /* ============================================================
    響應式：手機 / 平板 / 桌面
@@ -259,7 +266,7 @@ body.sheet-open #zoom{bottom:calc(var(--sheet-max) + 58px)}
 
 /* ---------- 平板（640–1023px）---------- */
 @media (min-width:640px) and (max-width:1023px){
-  :root{--sheet-max:42vh}
+  :root{--sheet-max:42vh;--sheet-head:58px}   /* 抓握條 14px + 標題列 44px */
   #topcard,#searchcard{max-width:660px}
   #sheetcard{max-width:660px}
   .grab{display:block}                 /* 觸控裝置 → 顯示抓握條 */
@@ -270,13 +277,13 @@ body.sheet-open #zoom{bottom:calc(var(--sheet-max) + 58px)}
 
 /* ---------- 手機（<640px）---------- */
 @media (max-width:639px){
-  :root{--sheet-max:56vh}              /* 要看清單時給足高度 */
+  :root{--sheet-max:56vh;--sheet-head:70px}   /* 抓握條 18px + 標題列 48px + 邊距 */
 
   /* 瀏海／動態島：所有貼邊的面板都要吃 safe-area，否則會被切掉 */
   #top{padding:calc(env(safe-area-inset-top,0px) + 8px) 8px 0;gap:6px}
   #sheet{padding:0}
-  #legend{left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
-  #zoom{right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+  #legend{left:8px}
+  #zoom{right:8px}
   #sheetbody{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px)}
 
   /* 面板貼滿寬度、貼齊底部 —— 這是 app 的樣子，不是「浮在頁面上的卡片」 */
