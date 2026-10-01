@@ -3,31 +3,52 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
-<meta name="theme-color" content="#0B0E14">
+<!-- 淺色主題：瀏覽器 UI／狀態列也跟著用奶油綠，不要深色一條壓在上面 -->
+<meta name="theme-color" content="#EAF2E6">
+<!-- 「像 web app」的關鍵：加到主畫面後用全螢幕開啟，不要有 Safari 的網址列 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="澳門車位">
+<meta name="format-detection" content="telephone=no">
 <title>澳門停車場實時車位</title>
 <style>
 :root{
-  --bg:#0B0E14; --card:#141A24; --card2:#1A2230; --line:#232E3E;
-  --tx:#E6EDF3; --tx2:#9AA7B8; --tx3:#6B7889;
-  --ok:#2EA043; --warn:#D29922; --bad:#F85149; --accent:#4C8DFF;
+  /* 淺色澳門色調。刻意與 map.html 用同一組變數，兩頁觀感才會一致。 */
+  --bg:#EAF2E6;                      /* 頁面底色：淺綠白 */
+  --card:#FFFFFF;                    /* 卡片：純白。這頁資料密集，白底讀起來最清楚 */
+  --card2:#EDF3E8;                   /* 次要區塊／hover */
+  --line:#DCE6D4;                    /* 邊線：淺綠灰 */
+  --tx:#1F3A2C;                      /* 主文字：深墨綠 */
+  --tx2:#4B6A55;
+  --tx3:#7C937F;
+  --accent:#2E8B62;                  /* 澳門綠 */
+  --accent-tx:#FFFFFF;
+  --gold:#B07D0E;                    /* 澳門黃（白底上要夠深才看得清） */
+  --ok:#1F7A46; --warn:#8A6A15; --bad:#C0392B;
+  --track:#E4EDDF;                   /* 進度條／長條圖的底 */
+  --shadow:0 4px 16px rgba(31,58,44,.10);
+  color-scheme:light;
 }
-body.mode-motor{--accent:#F0A33C}
+body.mode-motor{--accent:var(--gold)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
 body{
   background:var(--bg); color:var(--tx);
   font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
   padding-bottom:env(safe-area-inset-bottom);
+  overscroll-behavior:none;
 }
 .wrap{max-width:520px;margin:0 auto;padding:0 14px 40px}
 
 /* header */
-header{padding:22px 0 12px}
+header{padding:calc(env(safe-area-inset-top,0px) + 22px) 0 12px}
 h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .sub{margin-top:5px;font-size:12px;color:var(--tx3)}
 .navmap{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 14px;
-  border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;
-  font-size:13px;font-weight:600;box-shadow:0 3px 10px rgba(47,107,255,.28)}
+  border-radius:10px;background:var(--accent);color:var(--accent-tx);text-decoration:none;
+  font-size:13px;font-weight:600;box-shadow:0 3px 10px rgba(46,139,98,.28)}
 .navmap:hover{filter:brightness(1.07)}
 .sub b{color:var(--tx2);font-weight:500}
 
@@ -41,29 +62,29 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .mbtn .ico{display:block;margin:0 auto 6px;color:var(--tx3)}
 .mbtn .nm{font-size:15.5px;font-weight:600;color:var(--tx);letter-spacing:.3px}
 .mbtn .ds{font-size:11px;color:var(--tx3);margin-top:3px}
-.mbtn.on{border-color:transparent;color:#fff}
+.mbtn.on{border-color:transparent;color:var(--accent-tx)}
 .mbtn.on .ico,.mbtn.on .ds{color:rgba(255,255,255,.82)}
-.mbtn.on .nm{color:#fff}
-#mb-car.on{background:linear-gradient(160deg,#2A5FBF,#1B3E80);box-shadow:0 4px 16px rgba(76,141,255,.22)}
-#mb-motor.on{background:linear-gradient(160deg,#B9741F,#80500F);box-shadow:0 4px 16px rgba(240,163,60,.22)}
+.mbtn.on .nm{color:var(--accent-tx)}
+#mb-car.on{background:linear-gradient(160deg,#3AA173,#25684A);box-shadow:0 4px 16px rgba(46,139,98,.28)}
+#mb-motor.on{background:linear-gradient(160deg,#C79320,#8A6A15);box-shadow:0 4px 16px rgba(176,125,14,.28)}
 .mhint{font-size:11px;color:var(--tx3);text-align:center;margin:0 0 4px}
 
 /* data progress banner */
 .banner{
   margin:12px 0 16px;padding:11px 13px;border-radius:12px;
-  background:linear-gradient(90deg,rgba(76,141,255,.14),rgba(76,141,255,.04));
-  border:1px solid rgba(76,141,255,.28);font-size:12px;color:var(--tx2);line-height:1.55
+  background:linear-gradient(90deg,rgba(46,139,98,.12),rgba(46,139,98,.03));
+  border:1px solid rgba(46,139,98,.26);font-size:12px;color:var(--tx2);line-height:1.55
 }
 body.mode-motor .banner{
-  background:linear-gradient(90deg,rgba(240,163,60,.14),rgba(240,163,60,.04));
-  border-color:rgba(240,163,60,.28)
+  background:linear-gradient(90deg,rgba(176,125,14,.13),rgba(176,125,14,.03));
+  border-color:rgba(176,125,14,.28)
 }
 .banner b{color:var(--accent);font-weight:600}
-.bar{height:5px;border-radius:3px;background:#1B2431;margin-top:8px;overflow:hidden}
+.bar{height:5px;border-radius:3px;background:var(--track);margin-top:8px;overflow:hidden}
 .bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
 
 /* overview */
-.ov{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.ov{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
 .ring{position:relative;width:96px;height:96px;flex:0 0 96px}
 .ring svg{transform:rotate(-90deg)}
 .ring .val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -80,8 +101,7 @@ body.mode-motor .banner{
   flex:1;border:0;background:transparent;color:var(--tx2);font:inherit;font-size:14px;font-weight:500;
   padding:9px 0;border-radius:9px;cursor:pointer;transition:.18s
 }
-.tabs button.on{background:var(--accent);color:#0B0E14;font-weight:600}
-body.mode-motor .tabs button.on{color:#1B1204}
+.tabs button.on{background:var(--accent);color:var(--accent-tx);font-weight:600}
 
 /* search + sort */
 .tools{display:flex;gap:8px;margin-bottom:12px}
@@ -97,7 +117,7 @@ select{
 
 /* carpark cards */
 .list{display:flex;flex-direction:column;gap:9px}
-.cp{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;transition:.15s}
+.cp{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
 .cp:active{background:var(--card2)}
 .cp .top{display:flex;align-items:baseline;gap:8px}
 .cp .nm{font-size:15px;font-weight:500;flex:1;line-height:1.35}
@@ -105,12 +125,12 @@ select{
 .cp .mid{display:flex;align-items:center;gap:10px;margin-top:9px}
 .cp .num{font-size:13px;color:var(--tx2);white-space:nowrap}
 .cp .num b{font-size:19px;font-weight:600;color:var(--tx);letter-spacing:-.3px}
-.track{flex:1;height:7px;border-radius:4px;background:#1B2431;overflow:hidden}
+.track{flex:1;height:7px;border-radius:4px;background:var(--track);overflow:hidden}
 .track i{display:block;height:100%;border-radius:4px}
 .cp .ft{margin-top:7px;font-size:11px;color:var(--tx3);display:flex;justify-content:space-between;gap:8px}
 
 /* peak row */
-.pk{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:10px}
+.pk{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 13px;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
 .pk:active{background:var(--card2)}
 .pk .l{flex:1;min-width:0}
 .pk .l .n{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -127,33 +147,32 @@ select{
 .hm-hd span{font-size:11px;color:var(--tx3)}
 .grid{display:grid;grid-template-columns:26px repeat(24,1fr);gap:2px}
 .gl{font-size:9.5px;color:var(--tx3);display:flex;align-items:center;justify-content:flex-end;padding-right:3px}
-.hc{aspect-ratio:1;border-radius:2px;background:#161D28}
-.hc.na{background:#131922}
+.hc{aspect-ratio:1;border-radius:2px;background:#EAF0E4}
+.hc.na{background:#F1F5EC}
 .hl{font-size:8.5px;color:var(--tx3);text-align:center;line-height:1}
 .legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10.5px;color:var(--tx3)}
 .legend i{width:15px;height:9px;border-radius:2px;display:block}
 
 /* charts */
-.chart{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:10px;box-shadow:var(--shadow)}
 .chart .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
 .chart .hd b{font-size:13.5px;font-weight:600}
 .chart .hd span{font-size:11px;color:var(--tx3)}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
-.gline{stroke:#202A38;stroke-width:1}
-.gtxt{fill:#5C6879;font-size:9px}
-.blab{fill:#7A8798;font-size:9.5px;text-anchor:middle}
-.pkdot{stroke:#0B0E14;stroke-width:2}
+.gline{stroke:#E2EADB;stroke-width:1}
+.gtxt{fill:#7C937F;font-size:9px}
+.blab{fill:#7C937F;font-size:9.5px;text-anchor:middle}
+/* 白色描邊：把尖峰點從底下的淡色面積中「切」出來，淺色底才不會糊在一起 */
+.pkdot{stroke:#FFFFFF;stroke-width:2}
 .pktxt{font-size:9.5px;font-weight:600;text-anchor:middle}
-.cline{stroke:#4C8DFF;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.carea{fill:rgba(76,141,255,.13)}
-.cdot{fill:#4C8DFF}
-body.mode-motor .cline{stroke:#F0A33C}
-body.mode-motor .carea{fill:rgba(240,163,60,.13)}
-body.mode-motor .cdot{fill:#F0A33C}
+/* 用 var(--accent)：切到電單車時曲線自動跟著變金色，不必再寫一份 override */
+.cline{stroke:var(--accent);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.carea{fill:var(--accent);opacity:.13}
+.cdot{fill:var(--accent)}
 .seg{display:flex;gap:4px;margin-bottom:10px}
 .seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
   font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
-.seg button.on{background:#1E2A3A;color:var(--tx);border-color:#33465C}
+.seg button.on{background:var(--card2);color:var(--tx);border-color:#C9DFCF}
 .hstat{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .hstat div{background:var(--card2);border-radius:10px;padding:9px 10px}
 .hstat b{display:block;font-size:19px;font-weight:600;letter-spacing:-.3px}
@@ -167,22 +186,23 @@ body.mode-motor .cdot{fill:#F0A33C}
   -webkit-appearance:none;appearance:none}
 #cpsel:focus{border-color:var(--accent)}
 .noData{font-size:11.5px;color:var(--tx3);text-align:center;padding:4px 0 8px}
-.bigbtn{display:block;width:100%;margin-top:16px;background:#1E2A3A;border:1px solid #33465C;
-  color:var(--tx);font:inherit;font-size:13.5px;padding:12px 0;border-radius:11px;cursor:pointer}
-.bigbtn:active{background:#26344A}
+.bigbtn{display:block;width:100%;margin-top:16px;background:var(--card2);border:1px solid #C9DFCF;
+  color:var(--accent);font:inherit;font-size:13.5px;font-weight:600;padding:12px 0;border-radius:11px;cursor:pointer}
+.bigbtn:active{background:#DFEBD9}
 
 /* sheet */
-.mask{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:.22s;z-index:40}
+.mask{position:fixed;inset:0;background:rgba(31,58,44,.45);opacity:0;pointer-events:none;transition:.22s;z-index:40}
 .mask.on{opacity:1;pointer-events:auto}
 .sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:50;max-height:88vh;overflow-y:auto;
-  background:#10161F;border-top:1px solid var(--line);border-radius:20px 20px 0 0;
+  background:#FFFFFF;border-top:1px solid var(--line);border-radius:20px 20px 0 0;
+  box-shadow:0 -8px 30px rgba(31,58,44,.18);
   transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,0,1);
   padding:8px 16px calc(30px + env(safe-area-inset-bottom));
-  max-width:520px;margin:0 auto;-webkit-overflow-scrolling:touch
+  max-width:520px;margin:0 auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain
 }
 .sheet.on{transform:translateY(0)}
-.handle{width:38px;height:4px;border-radius:2px;background:#2C3949;margin:6px auto 14px}
+.handle{width:38px;height:4px;border-radius:2px;background:#CBD9C4;margin:6px auto 14px}
 .sheet h2{margin:0 0 3px;font-size:18px;font-weight:600;line-height:1.35}
 .sheet .sz{font-size:11.5px;color:var(--tx3)}
 .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 4px}
@@ -190,7 +210,7 @@ body.mode-motor .cdot{fill:#F0A33C}
 .slot b{display:block;font-size:17px;font-weight:600;letter-spacing:-.3px}
 .slot b small{font-size:11px;font-weight:400;color:var(--tx3)}
 .slot span{font-size:10.5px;color:var(--tx3);display:block;margin-top:2px}
-.slot.hero{grid-column:span 3;background:linear-gradient(160deg,#1E2A3A,#172030);border:1px solid #33465C}
+.slot.hero{grid-column:span 3;background:linear-gradient(160deg,#E8F3E9,#DCEEE2);border:1px solid #C9DFCF}
 .slot.hero b{font-size:28px;letter-spacing:-1px}
 .slot.hero span{margin-top:5px;font-size:11.5px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -202,7 +222,32 @@ body.mode-motor .cdot{fill:#F0A33C}
 .kv em{color:var(--tx3);font-style:normal;flex:0 0 64px}
 .kv span{flex:1;color:var(--tx2);word-break:break-word}
 .empty{text-align:center;color:var(--tx3);font-size:13px;padding:34px 0}
-footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-height:1.7}
+footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-height:1.7}
+
+/* ---- 平板：欄寬放開一點，別讓卡片擠在手機寬度裡 ---- */
+@media (min-width:640px){
+  .wrap{max-width:660px;padding:0 18px 48px}
+  header{padding:calc(env(safe-area-inset-top,0px) + 26px) 0 12px}
+  h1{font-size:22px}
+  .cp,.pk{padding:14px 15px}
+}
+/* ---- 桌面：兩欄。520px 的單欄在寬螢幕上會變成一條窄窄的電話 ---- */
+@media (min-width:900px){
+  .wrap{max-width:880px}
+  .list{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+  /* 全澳總計那張是「表頭」，橫跨兩欄才不會旁邊空一格 */
+  .pdiv,.phead,.empty{grid-column:1/-1}
+}
+/* ---- 手機：手指尺寸、安全區、iOS 不放大字 ---- */
+@media (max-width:639px){
+  .wrap{padding:0 12px calc(28px + env(safe-area-inset-bottom))}
+  header{padding:calc(env(safe-area-inset-top,0px) + 18px) 0 10px}
+  /* 16px 以下 iOS 會自動放大整個頁面，輸入框一定要 16px */
+  input[type=search],select,#cpsel{font-size:16px}
+  .tabs button{padding:11px 0}
+  .mbtn{padding:12px 10px 11px}
+  .grid{grid-template-columns:20px repeat(24,1fr);gap:1.5px}
+}
 </style>
 </head>
 <body>
@@ -240,8 +285,8 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:#4A5666;line-heigh
   <div class="ov">
     <div class="ring">
       <svg width="96" height="96" viewBox="0 0 96 96">
-        <circle cx="48" cy="48" r="40" fill="none" stroke="#1B2431" stroke-width="9"/>
-        <circle id="arc" cx="48" cy="48" r="40" fill="none" stroke="#F85149" stroke-width="9"
+        <circle cx="48" cy="48" r="40" fill="none" stroke="#E4EDDF" stroke-width="9"/>
+        <circle id="arc" cx="48" cy="48" r="40" fill="none" stroke="#C0392B" stroke-width="9"
                 stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
       </svg>
       <div class="val"><b id="orate">--</b><span id="olab">全澳使用率</span></div>
@@ -296,8 +341,11 @@ const MODES = D.mode_order && D.mode_order.length ? D.mode_order : Object.keys(D
 let mode = MODES[0] || "car";
 let tab = 0;
 
-const col = r => r==null ? "#131922" : `hsl(${Math.round(140-140*r)},62%,${Math.round(30+20*r)}%)`;
-const colText = r => r==null ? "#6B7889" : `hsl(${Math.round(140-140*r)},70%,62%)`;
+/* 色相維持 140°（綠）→ 0°（紅）代表使用率 0 → 1，方向與地圖頁一致（紅＝滿）。
+   但淺色主題下亮度要反過來：格底要「淺到接近白」，文字要「深到看得清」。
+   深色版原本是 30+20r%（暗底）／62%（亮字），直接搬過來會變成白底白字。 */
+const col = r => r==null ? "#F1F5EC" : `hsl(${Math.round(140-140*r)},60%,${Math.round(90-40*r)}%)`;
+const colText = r => r==null ? "#7C937F" : `hsl(${Math.round(140-140*r)},62%,36%)`;
 const pct = r => r==null ? "--" : Math.round(r*100)+"%";
 const nf = n => n==null ? "--" : n.toLocaleString("en-US");
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -409,7 +457,7 @@ function barChart(vals, labels){
   vals.forEach((v,i)=>{
     const cx=pL+slot*i+slot/2, x=cx-bw/2;
     if(v==null){
-      bars+=`<rect x="${x.toFixed(1)}" y="${pT+ph-3}" width="${bw.toFixed(1)}" height="3" rx="1.5" fill="#1B2431"/>`;
+      bars+=`<rect x="${x.toFixed(1)}" y="${pT+ph-3}" width="${bw.toFixed(1)}" height="3" rx="1.5" fill="#E4EDDF"/>`;
     } else {
       const y=Y(v), h=Math.max(2,pT+ph-y);
       bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${colText(v)}" opacity="${i===pi?1:.7}"/>`;
@@ -503,7 +551,7 @@ function hourBars(counts, perHour){
     const cx=pL+slot*i+slot/2;
     const h=c>0 ? Math.max(4, (c/top)*ph) : 3;
     const y=pT+ph-h;
-    const fill = c===0 ? "#1B2431" : (c>=perHour ? "#2EA043" : "#D29922");
+    const fill = c===0 ? "#DCE6D4" : (c>=perHour ? "#1F7A46" : "#8A6A15");
     bars+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"/>`;
     if(i%3===0) bars+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${H-4}" text-anchor="middle">${i}</text>`;
   });
@@ -516,13 +564,13 @@ function renderHealth(){
   const m = minsAgo(COL.last);
   /* 目標是每 30 分鐘一次：35 分鐘內算正常，超過 90 分鐘就是真的停了 */
   const ok = m!=null && m < 35, warn = m!=null && m >= 35 && m < 90;
-  const dot = m==null ? "#6B7889" : (ok ? "#2EA043" : (warn ? "#D29922" : "#F85149"));
+  const dot = m==null ? "#7C937F" : (ok ? "#1F7A46" : (warn ? "#8A6A15" : "#C0392B"));
   const ago = m==null ? "--" : (m < 60 ? `${Math.round(m)} 分鐘前` : `${(m/60).toFixed(1)} 小時前`);
   const state = m==null ? "無資料" : (ok ? "正常" : (warn ? "偏慢" : "已停擺"));
   const pctToday = COL.expected_today ? Math.min(100, Math.round(COL.today/COL.expected_today*100)) : 0;
 
   const gmin = x => x==null ? "--" : (x < 60 ? `${Math.round(x)} 分` : `${(x/60).toFixed(1)} 小時`);
-  const gcol = x => x==null ? "#6B7889" : (x <= 35 ? "#2EA043" : (x <= 75 ? "#D29922" : "#F85149"));
+  const gcol = x => x==null ? "#7C937F" : (x <= 35 ? "#1F7A46" : (x <= 75 ? "#8A6A15" : "#C0392B"));
   const tgt = COL.target_gap_min || 30;
 
   el.innerHTML = `
@@ -530,8 +578,8 @@ function renderHealth(){
       <span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dot};margin-right:5px"></span>${state}</span></div>
     <div class="hstat">
       <div><b>${nf(COL.total)}</b><span>累計採集次數</span></div>
-      <div><b style="color:${ok?'#2EA043':(warn?'#D29922':'#F85149')}">${ago}</b><span>距離上次採集</span></div>
-      <div><b style="color:${gcol(COL.median_gap_min)}">${gmin(COL.median_gap_min)}</b><span>平均採集間隔<i style="color:#4A5666">/ ${tgt} 分</i></span></div>
+      <div><b style="color:${ok?'#1F7A46':(warn?'#8A6A15':'#C0392B')}">${ago}</b><span>距離上次採集</span></div>
+      <div><b style="color:${gcol(COL.median_gap_min)}">${gmin(COL.median_gap_min)}</b><span>平均採集間隔<i style="color:var(--tx3)">/ ${tgt} 分</i></span></div>
       <div><b style="color:${gcol(COL.last_gap_min)}">${gmin(COL.last_gap_min)}</b><span>最近一次間隔</span></div>
       <div><b>${nf(COL.today)}<i style="color:var(--tx3);font-size:12px"> / ${nf(COL.expected_today)}</i></b><span>今日採集（${pctToday}%）</span></div>
       <div><b>${nf(COL.hours_covered)}<i style="color:var(--tx3);font-size:12px"> / 24</i></b><span>今日有資料的時段</span></div>
@@ -619,9 +667,9 @@ function render(){
   } else {
     rows = rows.filter(r => r.peak);
     rows.sort((a,b)=> (b.peak?b.peak.rate:0) - (a.peak?a.peak.rate:0));
-    const card = c => {
+    const card = (c, cls) => {
       const p = c.peak;
-      return `<div class="pk" onclick="openSheet('${c.id}')">
+      return `<div class="pk${cls ? " " + cls : ""}" onclick="openSheet('${c.id}')">
         <div class="l"><div class="n">${esc(c.name)}</div>
           <div class="p">高峰 <b style="color:${colText(p.rate)}">${p.weekday_label} ${String(p.hour).padStart(2,"0")}:00</b>
           ${p.samples?`· ${p.samples} 筆樣本`:""}</div></div>
@@ -629,11 +677,13 @@ function render(){
       </div>`;
     };
     const ao = allOver();
-    const head = (!q && ao.peak) ? card(ao) : "";
-    const body = rows.length ? rows.map(card).join("")
+    /* 桌面兩欄時這張橫跨整列（.phead）。注意不能寫 rows.map(card)——
+       map 會把 index 當第二個參數傳進來，index>=1 就會被當成 class 名稱。 */
+    const head = (!q && ao.peak) ? card(ao, "phead") : "";
+    const body = rows.length ? rows.map(c => card(c)).join("")
       : `<div class="empty">尚無足夠資料判斷${mLabel()}高峰時段<br><span style="font-size:12px">資料持續累積中</span></div>`;
     document.getElementById("plist").innerHTML =
-      (head ? head + `<div style="height:1px;background:var(--line);margin:10px 2px"></div>` : "") + body;
+      (head ? head + `<div class="pdiv" style="height:1px;background:var(--line);margin:10px 2px"></div>` : "") + body;
   }
 }
 
