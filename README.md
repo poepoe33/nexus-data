@@ -723,24 +723,36 @@ python3 scripts/check_runs.py --steps    # 再加印最新一次的每個 step
 
 | 層 | 機制 | 實際頻率 | 依賴 | 現況 |
 |---|---|---|---|---|
-| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ✅ 已載入並運作中（`runs = 25`，上次結束碼 0） |
-| 2 | 本機 WorkBuddy 自動化（每小時觸發，每次跑兩趟，中間隔 28 分） | 約 30 分 | WorkBuddy 開著 | ✅ 運作中 |
-| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ✅ Apps Script 版已部署並實測交貨（`worker/dispatch-cron.gs`）；cron-job.org 的 `User-Agent` 需實測（見下） |
+| 1 | 本機 launchd `com.paulchang.macao-carpark-watchdog` | 每 30 分（:00 / :30） | Mac 開機且已登入 | ⏸️ **2026-10-01 已停用**（第 3 層接手）。恢復方式見下 |
+| 2 | 本機 WorkBuddy 自動化（`FREQ=HOURLY;INTERVAL=3`，每次跑兩趟） | 約 3 小時 | WorkBuddy 開著 | ⏸️ 已暫停 |
+| 3 | 外部 cron → `workflow_dispatch` | 每 30 分 | 無（不需 Mac） | ✅ **目前主力**。Apps Script 已部署並實測觸發交貨（run #36822989200 @ 14:05，非 :00/:30，故非本機所為） |
 | 4 | GitHub Actions `schedule` | **實測 4–5 次/天**（設定是 48 次/天） | GitHub 排程器 | ⚠️ 已生效，但只是 best-effort（達成率約 10%），**不可依賴** |
+
+**現在只有第 3 層在跑，Mac 完全不需要開機。** 第 1 層停用的是
+`launchctl bootout` + `launchctl disable`（plist 沒有刪、沒有搬動），
+所以恢復只要兩行：
+
+```bash
+launchctl enable  gui/$(id -u)/com.paulchang.macao-carpark-watchdog
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.paulchang.macao-carpark-watchdog.plist
+```
+
+`launchctl print-disabled gui/$(id -u)` 可以確認目前是不是 `=> disabled`。
 
 第 2 層的設計：WorkBuddy 的排程器最細只支援 `FREQ=HOURLY`（不支援 `MINUTELY`），
 所以改成「一次觸發、跑兩趟」—— 採集 → 等 28 分鐘 → 再採集一次，
-把實際間隔從 60 分鐘壓到約 30 分鐘。
+把實際間隔從 60 分鐘壓到約 30 分鐘。（實際設定的 `INTERVAL=3`，且目前是暫停的。）
 
 **本機那幾層互不衝突**：`watchdog.py` 的 25 分鐘門檻會自動去重，
 所以哪一層先跑到，其他層看到資料還新鮮就會直接跳過。
 
-⚠️ **但第 3 層（Apps Script）是例外**：它的 `dispatch()` **沒有**新鮮度檢查，
-每 30 分鐘無條件打一次。所以 Mac 開著的時候，同一個 tick 可能產生兩筆相隔約
-一分鐘的快照 —— 資料量約多一倍。這不會壞（`concurrency` group 會讓它們排隊），
-但如果想避免，**不能靠錯開時間**：Apps Script 的觸發器精度是 ±15 分鐘
-（見上面 Apps Script 那節），錯不開。真要解決得在 `dispatch-cron.gs` 裡加一個
-「最近有沒有跑過」的檢查（讀 Actions run list），而不是調排程時間。
+⚠️ **第 3 層沒有這個去重邏輯**：`dispatch()` 每 30 分鐘無條件打一次。
+第 1 層停用後這不成問題；但**若哪天把第 1 層開回來**，兩者會不會撞要看運氣 ——
+Apps Script 實際落在 :05 / :35 附近（實測 14:05:47），而 watchdog 在 :00 / :30 判斷時
+「上一筆快照只舊 24 分 13 秒」剛好壓在 25 分鐘門檻內，所以**會跳過**。
+但那個安全邊際只有 **47 秒** —— 一旦 Apps Script 飄到 :04:30 之前交貨，就會各採一次。
+這不是靠錯開時間能修的（Apps Script 觸發器精度是 ±15 分鐘，見上面那節），
+真要保證去重得在 `dispatch-cron.gs` 裡加「最近有沒有跑過」的檢查（讀 Actions run list）。
 
 `scripts/watchdog.py` 是第 1、2 層共用的：它會先 `git pull`，看 `data/latest.csv`
 的 `scraped_at` 有多舊，**舊於 25 分鐘才**補採集，然後 rebuild dashboard、
@@ -763,6 +775,9 @@ export GITHUB_TOKEN=<fine-grained PAT，只需此 repo 的 Actions: write>
 
 ### 安裝本機 30 分鐘排程
 
+> ⏸️ **目前的狀態是「已停用」**（2026-10-01，改用第 3 層的 Apps Script）。
+> 要恢復見上面「四層備援」那節的兩行指令。
+
 **最簡單：在 Finder 裡雙擊 `install-schedule.command`。**
 
 它會安裝並啟用 launchd 排程（每小時的 `:00` 與 `:30` 各跑一次 watchdog.py）。
@@ -770,8 +785,17 @@ export GITHUB_TOKEN=<fine-grained PAT，只需此 repo 的 Actions: write>
 
 為什麼要「雙擊」而不是由助理代跑：`.command` 被 Finder 雙擊時是由 Terminal 啟動，
 跑在**使用者的 GUI session** 裡，才有權限安裝 launchd 排程。
-從 AI 助理的沙箱環境呼叫 `launchctl` 一律被拒（`Bootstrap failed: 5: Input/output error`），
-`crontab` 則是 `operation not permitted` —— 這是 macOS sandbox 的限制。
+
+> ⚠️ 但「助理的沙箱完全碰不了 `launchctl`」是**錯的**（2026-10-01 實測更正）：
+> `launchctl print` / `print-disabled` / `bootout` / `disable` **都可以正常執行**，
+> 助理可以直接查狀態、也可以停用排程。
+> 只有**載入新 job 的 `bootstrap`** 會失敗（`Bootstrap failed: 5: Input/output error`），
+> `crontab` 則是 `operation not permitted`。
+> 所以「安裝／移除」需要雙擊，但「停用／恢復／查狀態」不必。
+>
+> 這個區分很重要，因為它決定了一件事：**停用是隨時可逆的** ——
+> 助理停用時用的是 `bootout` + `disable`，**沒有刪除也沒有搬動 plist**，
+> 所以 `enable` + `bootstrap` 就能原樣恢復。
 
 想手打的話，等效指令是：
 
@@ -782,11 +806,13 @@ launchctl bootstrap gui/$UID \
 
 log 在 `~/Library/Logs/macao-carpark-watchdog.log`。
 **不用做任何事也會生效**：`~/Library/LaunchAgents` 裡的 plist 會在下次登入時自動載入。
+（前提是沒有被 `disable` —— `disable` 是**持久**的，會壓過「登入自動載入」。）
 
 ### 完全不想依賴這台 Mac？用外部 cron 打 workflow_dispatch
 
-GitHub 的 `schedule` 目前還沒註冊成功（見上表），但 `workflow_dispatch` **是通的**。
-所以任何有計時能力的服務都能當觸發器，而且不需要 Mac 開機：
+GitHub 的 `schedule` **會跑，但只是 best-effort**（實測 4–5 次/天，見上表），
+所以不能只靠它。`workflow_dispatch` 則**是通的、而且可靠**。
+任何有計時能力的服務都能當觸發器，而且不需要 Mac 開機：
 
 **curl 版（在 Terminal 直接打，或貼進任何 cron）：**
 
