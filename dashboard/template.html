@@ -50,6 +50,12 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
   border-radius:10px;background:var(--accent);color:var(--accent-tx);text-decoration:none;
   font-size:13px;font-weight:600;box-shadow:0 3px 10px rgba(46,139,98,.28)}
 .navmap:hover{filter:brightness(1.07)}
+/* 管理員入口。刻意做成「外框線」而不是實心：公開頁的主要動作是看地圖，
+   管理頁是少數人用的後台，不該搶走視覺焦點，但也不能藏到找不到。 */
+.navadmin{display:inline-flex;align-items:center;gap:5px;margin-top:10px;margin-left:8px;
+  padding:8px 13px;border-radius:10px;background:transparent;border:1px solid var(--line);
+  color:var(--tx2);text-decoration:none;font-size:13px;font-weight:600}
+.navadmin:hover{border-color:var(--accent);color:var(--accent)}
 .sub b{color:var(--tx2);font-weight:500}
 
 /* ---- 頂部兩大分類 ---- */
@@ -234,6 +240,13 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
     <h1>澳門公共停車場 · 實時車位</h1>
     <div class="sub">數據來源 交通事務局 DSAT · 每 30 分鐘自動採集 · <b id="gen"></b></div>
     <a class="navmap" href="map.html">查看使用率地圖（熱力圖）</a>
+    <a class="navadmin" href="admin.html" title="採集營運面板（需管理員登入）">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/>
+        <path d="M8.2 10.5V7.8a3.8 3.8 0 017.6 0v2.7"/>
+      </svg>管理員
+    </a>
   </header>
 
   <div class="modes">

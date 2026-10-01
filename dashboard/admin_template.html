@@ -78,6 +78,25 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 .srcrow b{display:block;font-size:16px;font-weight:600;letter-spacing:-.3px}
 .srcrow span{display:block;font-size:10.5px;color:var(--tx3);line-height:1.35}
 
+/* ---- GitHub 採集區塊 ----
+   刻意跟上面的「整體採集」用同一組視覺語言（.hstat / .hrow / .bar / .hbars），
+   只加一條分隔線，讓它是同一張卡片的延伸，而不是另一張卡。 */
+.gh{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.ghlead{font-size:11.5px;color:var(--tx2);line-height:1.65;margin-bottom:10px}
+.ghlist{margin-top:11px}
+.ghrow{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--tx3);
+  padding:4px 0;border-top:1px solid var(--line)}
+.ghrow:first-child{border-top:0}
+.ghrow .t{font-variant-numeric:tabular-nums;color:var(--tx2);font-weight:500;min-width:44px}
+.ghrow .s{flex:1}
+.ghrow .r{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:var(--tx3)}
+.tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:600;
+  white-space:nowrap}
+.tag-sched{background:rgba(46,139,98,.15);color:#1F7A46}
+.tag-disp{background:rgba(176,125,14,.18);color:#8A6A15}
+.legend{display:flex;gap:12px;font-size:10.5px;color:var(--tx3);margin-top:4px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px}
+
 /* ---- 登入 gate ---- */
 .gate{text-align:center;padding:26px 18px 24px}
 .gate .lock{width:46px;height:46px;margin:0 auto 14px;border-radius:50%;
@@ -259,6 +278,117 @@ function srcBlock(){
     <span>其中 <b>${nf(fb)}</b> 次是 GitHub 沒交貨、由本機備援接手</span></div>` : "");
 }
 
+/* ---------- GitHub 採集 ---------- */
+
+/* 「幾分鐘前」的字串化。原本只在 renderHealth 裡用，GitHub 區塊也要用，
+   拉到模組層級共用，免得兩邊各寫一份、格式還不一樣。 */
+function agoText(m){
+  if(m==null) return "--";
+  if(m < 1) return "剛剛";
+  if(m < 60) return `${Math.round(m)} 分鐘前`;
+  if(m < 1440) return `${(m/60).toFixed(1)} 小時前`;
+  return `${(m/1440).toFixed(1)} 天前`;
+}
+
+/* 每日 GitHub 採集：一天兩根，綠＝自行排程、黃＝被觸發。
+   兩者一定要分開畫 —— 只看總數會誤以為 GitHub 很活躍，
+   實際上大部分是被 Mac 的看門狗叫起來的。 */
+function gdayBars(byDay){
+  const W=340,H=78,pL=4,pR=4,pT=8,pB=17;
+  const pw=W-pL-pR, ph=H-pT-pB, n=Math.max(1,byDay.length);
+  const slot=pw/n, bw=Math.max(4, Math.min(14, slot*0.26));
+  const top=Math.max(1, ...byDay.map(d=>Math.max(d.schedule,d.dispatch)));
+  const every=Math.max(1, Math.ceil(n/8));
+  let g="";
+  byDay.forEach((d,i)=>{
+    const cx=pL+slot*i+slot/2;
+    [[d.schedule,-1,"#2E8B62"],[d.dispatch,1,"#B07D0E"]].forEach(([v,side,fill])=>{
+      const h=v>0 ? Math.max(3,(v/top)*ph) : 2;
+      const x=cx + (side<0 ? -bw-1 : 1);
+      g+=`<rect x="${x.toFixed(1)}" y="${(pT+ph-h).toFixed(1)}" width="${bw.toFixed(1)}"`
+        +` height="${h.toFixed(1)}" rx="2" fill="${v>0?fill:'#DCE6D4'}"/>`;
+    });
+    if(i%every===0)
+      g+=`<text class="gtxt" x="${cx.toFixed(1)}" y="${H-4}" text-anchor="middle">${d.date.slice(5)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="每日 GitHub 採集次數">${g}</svg>`;
+}
+
+function githubBlock(){
+  const G = D.github || {};
+  if(!G.total) return "";
+
+  const lastAgo = minsAgo(G.last), schedAgo = minsAgo(G.schedule_last);
+  const pct = G.schedule_pct || 0;
+  const pcol = pct>=60 ? "#1F7A46" : (pct>=25 ? "#8A6A15" : "#C0392B");
+  const dpct = G.deliver_pct;
+  const dcol = dpct==null ? "#7C937F" : (dpct>=90 ? "#1F7A46" : (dpct>=60 ? "#8A6A15" : "#C0392B"));
+  const gapTxt = G.median_gap_min==null ? "--"
+    : (G.median_gap_min<60 ? `${Math.round(G.median_gap_min)} 分`
+                           : `${(G.median_gap_min/60).toFixed(1)} 小時`);
+
+  /* 一句話回答「GitHub 能不能成功採集」。
+     排程與隨選要分開講：排程很差但隨選很穩，混成一句會誤導。 */
+  const verdict = pct>=60 ? "排程運作正常"
+    : (dpct!=null && dpct>=80 ? "排程遠低於設定，但隨選觸發可靠"
+                              : "排程遠低於設定");
+
+  const recent = (G.recent||[]).map(r=>{
+    const isS = r.source==="github-schedule";
+    return `<div class="ghrow">
+      <span class="t">${esc((r.at||"").slice(11,16))}</span>
+      <span class="s"><span class="tag ${isS?'tag-sched':'tag-disp'}">${isS?'自行排程':'被觸發'}</span>
+        <span style="margin-left:6px">${esc((r.at||"").slice(5,10))} · ${esc(agoText(minsAgo(r.at)))}</span></span>
+      <span class="r">${r.run ? "#"+esc(r.run) : "—"}</span>
+    </div>`;
+  }).join("");
+
+  return `<div class="gh">
+    <div class="hd"><b>GitHub 採集</b><span>${verdict}</span></div>
+    <div class="ghlead">GitHub 有兩條路：<b>自行排程</b>（它自己醒來採，設定每 30 分鐘一次）
+      與<b>被觸發</b>（Mac 的看門狗發現資料太舊時叫它採）。兩條路要分開看，
+      只看總數會高估 GitHub 的自主性。</div>
+
+    <div class="hrow" style="margin-top:0">
+      <span>排程達成率</span>
+      <span><b style="color:${pcol}">${pct}%</b>　設定 ${nf(G.expected_per_day)} 次/天</span>
+    </div>
+    <div class="bar"><i style="width:${Math.max(2,Math.min(100,pct))}%;background:${pcol}"></i></div>
+    <div class="hrow">
+      <span>實測 <b>${G.schedule_per_day}</b> 次/天</span>
+      <span>排程間隔中位數 <b style="color:${G.median_gap_min!=null&&G.median_gap_min<=35?'#1F7A46':'#C0392B'}">${gapTxt}</b></span>
+    </div>
+
+    <div class="srcrow">
+      <div><b>${nf(G.total)}</b><span>GitHub 累計</span></div>
+      <div><b style="color:#1F7A46">${nf(G.schedule)}</b><span>自行排程</span></div>
+      <div><b style="color:#8A6A15">${nf(G.dispatch)}</b><span>被觸發</span></div>
+    </div>
+
+    <div class="hrow" style="margin-top:14px">
+      <span>叫 GitHub 之後誰交貨</span>
+      <span><b style="color:${dcol}">${dpct==null?"--":dpct+"%"}</b> 由 GitHub 完成</span>
+    </div>
+    <div class="bar"><i style="width:${dpct==null?0:Math.max(2,dpct)}%;background:${dcol}"></i></div>
+    <div class="hrow">
+      <span>${nf(G.dispatch)} / ${nf(G.asked)} 次</span>
+      <span>${G.fallback ? `${nf(G.fallback)} 次由本機備援接手` : "沒有動用過本機備援"}</span>
+    </div>
+
+    <div class="hbars">${gdayBars(G.by_day||[])}
+      <div class="legend"><span><i style="background:#2E8B62"></i>自行排程</span>
+        <span><i style="background:#B07D0E"></i>被觸發</span>
+        <span style="margin-left:auto">每日 GitHub 採集次數</span></div>
+    </div>
+
+    <div class="ghlist">
+      <div class="hrow" style="margin-top:0"><span>最近 GitHub 採集</span>
+        <span>最近一次排程 <b>${esc(agoText(schedAgo))}</b>　最近一次採集 <b>${esc(agoText(lastAgo))}</b></span></div>
+      ${recent}
+    </div>
+  </div>`;
+}
+
 function renderHealth(){
   const el = document.getElementById("health");
   if(!el) return;
@@ -288,7 +418,8 @@ function renderHealth(){
     ${srcBlock()}
     <div class="hbars">${hourBars(COL.hourly_today||new Array(24).fill(0), COL.expected_per_hour||2)}
       <div class="hrow" style="margin-top:6px"><span>綠＝該小時採滿 ${COL.expected_per_hour||2} 筆</span>
-      <span>灰＝完全沒採到</span></div></div>`;
+      <span>灰＝完全沒採到</span></div></div>
+    ${githubBlock()}`;
 }
 
 function renderBanner(){

@@ -381,6 +381,107 @@ def collection_sources() -> dict:
     }
 
 
+# GitHub 的 schedule 在 scrape.yml 設定為每 30 分鐘一次 = 48 次/天。
+# 這個數字是「應該」，用來跟實測對照 —— 官方明講 schedule 是 best-effort，
+# 但實測差距大到需要讓使用者一眼看見，而不是埋在「累計 138 筆」裡面。
+GITHUB_SCHEDULE_PER_DAY = 48
+
+
+def github_stats() -> dict:
+    """GitHub 到底有沒有在成功採集。
+
+    為什麼要單獨算：只看「累計採集次數」會被本機的 110 幾筆稀釋掉，
+    GitHub 的狀況完全看不出來。要把兩個管道拆開才有意義：
+
+      schedule  GitHub 自己醒來採 —— 自主性，設 48/天，實測遠低於此
+      dispatch  被 Mac 看門狗叫起來採 —— 隨選，叫了幾乎都會交貨
+
+    三個訊號合起來才回答得了「GitHub 能不能成功採集」：
+      1. 排程實際頻率 vs 設定頻率 → 排程到底有沒有在跑
+      2. dispatch 交貨率          → 叫它的時候它做不做得到
+      3. 備援次數                 → GitHub 沒交貨、由本機接手的次數
+
+    刻意只用 collections.csv，不打 Actions API：這支腳本在 CI 也會跑，
+    多一個網路相依就多一個讓主線掛掉的機會，而且會讓本機與 CI 的輸出
+    無法逐位元比對（見 watchdog 的 SNAPSHOT_PATHS 註解）。
+
+    時間一律回傳「字串」，讓前端自己算「幾分鐘前」—— 這樣頁面開著不動時
+    顯示的年齡仍會跟著時間走，不會停在建置當下。
+    """
+    if not COLLECTIONS_CSV.exists():
+        return {}
+
+    rows: list[dict] = []
+    with COLLECTIONS_CSV.open(encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            ts = (r.get("scraped_at") or "").strip()
+            try:
+                dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue                      # 衝突標記等壞列，跳過
+            rows.append({
+                "at": dt,
+                "stamp": ts,
+                "source": (r.get("source") or "").strip(),
+                "run": (r.get("run_id") or "").strip(),
+            })
+    if not rows:
+        return {}
+
+    gh = [r for r in rows if r["source"].startswith("github-")]
+    if not gh:
+        return {"total": 0, "recent": [], "by_day": []}
+
+    sched = [r for r in gh if r["source"] == "github-schedule"]
+    disp = [r for r in gh if r["source"] == "github-workflow_dispatch"]
+    fallback = [r for r in rows if r["source"] == "local-watchdog-fallback"]
+
+    days = sorted({r["at"].date() for r in rows})
+    n_days = max(1, len(days))
+    latest_day = days[-1]
+
+    # 排程間隔：這是「GitHub 自己多久醒一次」最誠實的數字。
+    sched_sorted = sorted(r["at"] for r in sched)
+    gaps = [(sched_sorted[i + 1] - sched_sorted[i]).total_seconds() / 60
+            for i in range(len(sched_sorted) - 1)]
+
+    # 每日拆解，讓「今天 GitHub 有沒有動」一眼可見。
+    by_day = []
+    for d in days:
+        s = sum(1 for r in sched if r["at"].date() == d)
+        p = sum(1 for r in disp if r["at"].date() == d)
+        by_day.append({"date": d.isoformat(), "schedule": s, "dispatch": p})
+
+    # 交貨率：叫了 GitHub 之後，是 GitHub 交貨還是本機接手。
+    # 這是唯一能從流水帳看出「GitHub 失敗」的訊號 —— 失敗的 run 不會留下快照。
+    asked = len(disp) + len(fallback)
+    deliver_pct = round(len(disp) / asked * 100, 1) if asked else None
+
+    sched_per_day = round(len(sched) / n_days, 1)
+    return {
+        "total": len(gh),
+        "schedule": len(sched),
+        "dispatch": len(disp),
+        "fallback": len(fallback),
+        "today": sum(1 for r in gh if r["at"].date() == latest_day),
+        "last": max(r["stamp"] for r in gh),
+        "schedule_last": max((r["stamp"] for r in sched), default=None),
+        "dispatch_last": max((r["stamp"] for r in disp), default=None),
+        "days": n_days,
+        "expected_per_day": GITHUB_SCHEDULE_PER_DAY,
+        "schedule_per_day": sched_per_day,
+        "schedule_pct": round(sched_per_day / GITHUB_SCHEDULE_PER_DAY * 100, 1),
+        "deliver_pct": deliver_pct,
+        "asked": asked,
+        "median_gap_min": round(statistics.median(gaps), 1) if gaps else None,
+        "max_gap_min": round(max(gaps), 1) if gaps else None,
+        "by_day": by_day,
+        # 最近幾筆 GitHub 採集（新的在前），讓「上次成功是什麼時候」具體可見。
+        "recent": [{"at": r["stamp"], "source": r["source"], "run": r["run"]}
+                   for r in sorted(gh, key=lambda r: r["at"], reverse=True)[:8]],
+    }
+
+
 def build_mode(acc, g_rate, g_w, ref, latest, col, cap_key):
     """針對單一車種，把聚合結果整理成輸出結構。"""
     total_cap = total_free = 0
@@ -539,6 +640,7 @@ def main() -> int:
         "last_snapshot": collection["last"],
         "collection": collection,
         "sources": collection_sources(),
+        "github": github_stats(),
         "modes": modes,
         "carparks": base,
     }
