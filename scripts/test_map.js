@@ -629,14 +629,41 @@ ok(recs.every((r) => /\d+(\.\d+)? (m|km)/.test(r.html)), "每一列都有距離"
 // 信心標示：樣本不足時一定要標低信心，不能假裝很準
 ok(recs.every((r) => r.badge != null), "每一列都有信心標示", JSON.stringify(recs.map((r) => r.badge)));
 
-// 換到一個「該時段沒有資料」的格子 → 必須走退路並標明
-btn("seg-when", "日").onclick();     // 週日
-$("sel-hour").value = "3";
-$("sel-hour").onchange();
-const recs2 = recRows();
-ok(recs2.length >= 1, "換時段後仍有推薦", recs2.length);
-const anyFallback = recs2.some((r) => /推算/.test(r.html) || /該時段無資料/.test(r.html));
-ok(anyFallback, "該時段沒有資料時，明確標示是用平均推算而非實測");
+// 換到一個「該時段沒有資料」的格子 → 必須走退路並標明。
+//
+// 這裡原本寫死「週日 3 時」，因為資料一開始只涵蓋週五～週日，那個格子必然是空的。
+// 但資料每天在長，格子遲早會被填滿 —— 2026-10-04 的資料就真的把它填滿了
+// （81/81 個場在週日 3 時都有樣本），這個斷言於是開始失敗。
+// 改成自己從「目前的推薦名單」裡挑一個真的有缺口的時段，並優先挑缺口最多的，
+// 這樣換過去之後，缺資料的場不會因為預估值改變而被擠出前 5 名。
+const recIds = recs.map((r) => r.id);
+const smOf = (id) => {
+  const q = MODE0.parks.find((z) => z.id === id);
+  return (q && q.sm) || "";
+};
+let gapSlot = null;
+for (let wd = 0; wd < 7; wd++) {
+  for (let hr = 0; hr < 24; hr++) {
+    const idx = wd * 24 + hr;
+    const gaps = recIds.filter((id) => {
+      const sm = smOf(id);
+      return idx >= sm.length || sm[idx] === ".";
+    }).length;
+    if (gaps && (!gapSlot || gaps > gapSlot.gaps)) gapSlot = { wd, hr, gaps };
+  }
+}
+const wdBtns = $("seg-when").children.filter((c) => /^[一二三四五六日]$/.test(c.textContent));
+ok(!!gapSlot, "推薦名單裡找得到『該時段無資料』的時段（資料覆蓋率還沒滿時）");
+if (gapSlot) {
+  wdBtns[gapSlot.wd].onclick();
+  $("sel-hour").value = String(gapSlot.hr);
+  $("sel-hour").onchange();
+  const recs2 = recRows();
+  ok(recs2.length >= 1, "換時段後仍有推薦", recs2.length);
+  const anyFallback = recs2.some((r) => /該時段無資料/.test(r.html) || /推算/.test(r.html));
+  ok(anyFallback, "該時段沒有資料時，明確標示是用平均推算而非實測",
+     `週${wdBtns[gapSlot.wd].textContent} ${gapSlot.hr}:00（${gapSlot.gaps}/${recIds.length} 個推薦場缺資料）`);
+}
 
 // 搜尋流程：打字 → 高德 → 起點
 FAKE_POIS["大三巴"] = [{ name: "大三巴牌坊", addr: "澳門大三巴街", lat: 22.1976, lng: 113.5406 }];

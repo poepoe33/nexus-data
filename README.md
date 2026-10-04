@@ -403,7 +403,7 @@ scripts/scrape.py                    採集器（三種模式）
 scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
 scripts/bench_dashboard.py           合成歷史，量測 build_dashboard.py 的時間/記憶體
 scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦）
-scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，207 條斷言
+scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，208 條斷言
 scripts/test_map_live.js             真人瀏覽器測試：高德搜索服務與 key 白名單（puppeteer-core + 本機 Chrome）
 scripts/test_map_live_features.js    真人瀏覽器測試：推薦點燈 / 自動 zoom in / 卡片自動關閉
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），96 條斷言
