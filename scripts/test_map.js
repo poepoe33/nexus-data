@@ -154,7 +154,12 @@ function makeAMap() {
   InfoWindow.prototype.setPosition = function (p) { this.position = p; };
 
   function Marker(opts) {
-    this.opts = opts || {}; this.position = null; this._map = null;
+    this.opts = opts || {};
+    /* 真的 AMap 會吃建構參數裡的 position；這個 stub 一開始漏了，
+       於是「用 opts 定位」的寫法在測試裡看起來像沒定位。
+       補上，讓 stub 忠實反映 SDK 行為（而不是反過來改 production 寫法）。 */
+    this.position = this.opts.position || null;
+    this._map = null;
     log.markers.push(this);
   }
   Marker.prototype.setPosition = function (p) { this.position = p; };
@@ -709,6 +714,111 @@ ok(recs3[0].id !== FULLEST.id,
    recs3[0].id + " vs " + FULLEST.id);
 ok(recs3[0].free > (FULLEST.free == null ? 0 : FULLEST.free),
    "排第一的場空位比最滿的場多", recs3[0].free + " > " + FULLEST.free);
+
+/* ============ 推薦：地圖上點燈 + 自動 zoom in + 卡片關閉 ============ */
+
+/* 只認 content 裡有 recpin 的 marker —— 起點標記（omark）沒有 content。 */
+const recPins = () => log.markers.filter((m) => /recpin/.test(String(m.opts.content || "")));
+const pinsOnMap = () => recPins().filter((m) => m._map === mapObj);
+const dotOnMap = () => log.dots.filter((d) => d._map === mapObj)[0];
+
+// 目前狀態：起點 = 全澳最滿的場（上面第 704 行設的），recs3 是那一批推薦
+const pins3 = pinsOnMap();
+ok(pins3.length === recs3.length,
+   "★ 地圖上的高亮數量 = 清單上的推薦數量", pins3.length + " vs " + recs3.length);
+ok(pins3.length >= 1, "選了地點後地圖上出現推薦高亮", pins3.length);
+
+// 名次數字要跟清單一致 —— 不然使用者沒辦法把「清單第 2 名」對到地圖上哪個圈
+const nums = pins3.map((m) => Number(/<b>(\d+)<\/b>/.exec(m.opts.content)[1]));
+ok(JSON.stringify(nums) === JSON.stringify(recs3.map((_, i) => i + 1)),
+   "高亮上的名次是 1..N 且與清單順序一致", JSON.stringify(nums));
+
+// 位置：每一個高亮都要落在對應的場座標上
+ok(pins3.every((m, i) => {
+     const p = parkOf(recs3[i].id);
+     return Math.abs(m.position.lat - p.g[0]) < 1e-9 &&
+            Math.abs(m.position.lng - p.g[1]) < 1e-9;
+   }), "高亮標在對應的停車場座標上");
+
+// 疊放次序：高於圓點（120）、低於起點標記（200）
+ok(pins3.every((m) => m.opts.zIndex > 120 && m.opts.zIndex < 200),
+   "高亮疊在圓點之上、起點標記之下", JSON.stringify(pins3.map((m) => m.opts.zIndex)));
+
+// 「動態」是 CSS 做的 —— CircleMarker 是 canvas 畫的，吃不到 CSS 動畫，
+// 所以這一條同時也是在釘住「用 DOM marker 而不是 CircleMarker」這個決定。
+ok(/\.recpin i\{[\s\S]{0,240}animation:recping/.test(HTML), "高亮用 CSS 動畫（擴散圓環）");
+ok(/@keyframes recping\{/.test(HTML), "有 recping keyframes");
+ok(/prefers-reduced-motion:reduce\)\{[\s\S]{0,240}\.recpin/.test(HTML),
+   "尊重 prefers-reduced-motion（關掉動畫，保留靜態圓環）");
+
+// 自動 zoom in：預設 13，選了地點之後必須拉近
+const zAfter = mapObj.getZoom();
+ok(zAfter > 13, "★ 選了地點後自動 zoom in（比預設 13 近）", zAfter);
+ok(zAfter >= 14 && zAfter <= 17, "縮放夾在 14–17（太遠看不完、太近沒意義）", zAfter);
+
+// 視野中心要落在「起點 + 推薦」的包圍盒中心，而不是只對準起點 ——
+// 只對準起點的話推薦的場常常在畫面外，清單就白做了。
+const lats = [FULLEST.g[0]].concat(recs3.map((r) => parkOf(r.id).g[0]));
+const lngs = [FULLEST.g[1]].concat(recs3.map((r) => parkOf(r.id).g[1]));
+const midLa = (Math.min(...lats) + Math.max(...lats)) / 2;
+const midLn = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+ok(Math.abs(mapObj._center.lat - midLa) < 1e-6 &&
+   Math.abs(mapObj._center.lng - midLn) < 1e-6,
+   "★ 視野中心 = 起點與推薦場的包圍盒中心", JSON.stringify(mapObj._center));
+
+/* 證明縮放不是「固定的 15」而是跟著跨度走：
+   舊寫法是 max(當前縮放, 15)，所以使用者已經拉到 19 時會**停在 19**，
+   只看到自己腳下那一格；新寫法會退到 17，讓推薦的場一起進畫面。
+   這條是那個取捨的守門員。 */
+mapObj.setZoom(19);
+await sleep(450);
+mapObj.fire("click", { lnglat: { lat: HOST.g[0], lng: HOST.g[1] } });
+ok(mapObj.getZoom() <= 17,
+   "★ 原本已拉到 19 也會退到 ≤17（否則推薦的場全在畫面外）", mapObj.getZoom());
+
+/* --- 卡片：開著的時候再點任何地點都要關掉 --- */
+
+await sleep(450);                    // 等過「點圓點」的時間差守衛
+dotOnMap().handlers.click();
+ok(log.iw[0].opened === true, "點圓點會開卡片");
+
+await sleep(450);
+mapObj.fire("click", { lnglat: { lat: HOST.g[0], lng: HOST.g[1] } });
+ok(log.iw[0].opened === false, "★ 卡片開著時點地圖選新地點 → 卡片自動關閉");
+
+// 換成「搜尋選地點」也一樣要關（兩條路都經過 setOrigin）
+dotOnMap().handlers.click();
+ok(log.iw[0].opened === true, "再開一次卡片（準備驗搜尋路徑）");
+$("q").value = "大三巴";
+$("q").dispatch("input");
+$("q").dispatch("keydown", { key: "Enter", preventDefault() {} });
+ok(log.iw[0].opened === false, "★ 卡片開著時改用搜尋選地點 → 卡片自動關閉");
+
+// 反向確認：點「推薦列」仍然要開卡片，不能被上面的關閉邏輯一起收掉
+const rowsNow = $("sheetbody").querySelectorAll(".rc");
+ok(rowsNow.length >= 1, "推薦列還在（否則下面的斷言沒有意義）", rowsNow.length);
+rowsNow[0].onclick();
+ok(log.iw[0].opened === true, "點推薦列仍然會開卡片（關閉只發生在「換地點」時）");
+
+/* --- 清除起點 → 高亮必須全部撤掉 --- */
+
+const pinsBeforeClear = pinsOnMap().length;
+ok(pinsBeforeClear >= 1, "清除前確實有高亮", pinsBeforeClear);
+$("qclr").onclick();
+ok(pinsOnMap().length === 0, "清除起點後高亮全部從地圖移除", pinsOnMap().length);
+
+/* --- 換時段 → 高亮要跟著重算，不能留下上一組的圈 --- */
+
+await sleep(450);
+mapObj.fire("click", { lnglat: { lat: HOST.g[0], lng: HOST.g[1] } });
+const pinsA = pinsOnMap();
+ok(pinsA.length >= 1, "重新選地點後又有高亮", pinsA.length);
+
+btn("seg-when", "六").onclick();     // 換一個星期幾 → setWhen → rebuild()
+const pinsB = pinsOnMap();
+ok(pinsB.length === recRows().length,
+   "★ 換時段後高亮跟著新的推薦重算", pinsB.length + " vs " + recRows().length);
+ok(pinsB.every((m) => pinsA.indexOf(m) < 0), "換時段是用新的標記，不是沿用舊的");
 
 /* ---------------- 淺色主題 + 響應式 + web app ---------------- */
 

@@ -249,6 +249,35 @@ body{
 .warn{margin:2px 8px 9px;padding:7px 9px;border-radius:9px;background:var(--warn-bg);color:var(--warn-tx);font-size:11px;line-height:1.55}
 .rnote{margin:0 8px 6px;font-size:11px;color:var(--tx3);line-height:1.5}
 
+/* ---------- 推薦：地圖上的高亮（亮燈） ---------- */
+/* 選了地點之後，被推薦的場要在地圖上自己跳出來 —— 否則清單講了半天，
+   使用者還要在 90 幾個圓點裡一個一個找。
+   用 DOM marker（AMap.Marker + content）而不是 CircleMarker：CircleMarker
+   是 canvas 畫的，吃不到 CSS 動畫；這裡要的正是「動」。
+   容器刻意做成 0×0，子元素用負邊距往外長，這樣錨點就剛好在座標上，
+   不需要另外算 offset（AMap 的 Marker 預設把 content 左上角放在座標點）。 */
+.recpin{position:relative;width:0;height:0;pointer-events:none}
+.recpin i{
+  position:absolute;left:-21px;top:-21px;width:42px;height:42px;border-radius:50%;
+  border:2px solid var(--accent);animation:recping 1.7s cubic-bezier(.25,.6,.35,1) infinite
+}
+.recpin b{
+  position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;
+  background:var(--accent);color:var(--accent-tx);
+  font:600 11px/20px system-ui,-apple-system,"PingFang TC",sans-serif;text-align:center;
+  box-shadow:0 1px 4px rgba(31,58,44,.35)
+}
+@keyframes recping{
+  0%{transform:scale(.45);opacity:.95}
+  70%{transform:scale(1.32);opacity:0}
+  100%{transform:scale(1.32);opacity:0}
+}
+/* 前庭神經敏感／暈動症的使用者：關掉擴散動畫，只留靜態圓環與編號。
+   這一格是「有動態顯示」的加分項，不該讓它變成障礙。 */
+@media (prefers-reduced-motion:reduce){
+  .recpin i{animation:none;transform:scale(1.05);opacity:.75}
+}
+
 /* ---------- info window ---------- */
 /* 高德自訂窗體（isCustom）沒有自帶外框，這裡自己畫，並補一個朝下的小箭頭。 */
 .iw{min-width:196px;max-width:250px;background:#fff;border:1px solid var(--line);
@@ -735,6 +764,8 @@ var map = new AMap.Map("map", {
 });
 
 var heat = null, dots = null, iw = null;
+var recPins = [];   // 推薦停車場在地圖上的高亮標記（見 buildRecPins）
+var REC_TOP = [];   // 目前推薦的前 5 名，setOrigin 用它算「該 zoom 到多近」
 
 function clearHeat(){ if(heat){ heat.setMap(null); heat = null; } }
 function clearDot(){
@@ -1038,6 +1069,73 @@ function recRow(x, i){
   '</div>';
 }
 
+function clearRecPins(){
+  for(var i=0;i<recPins.length;i++) recPins[i].setMap(null);
+  recPins = [];
+}
+
+/* 把推薦的場在地圖上「點燈」：一個持續擴散的圓環 + 名次數字。
+   數字要跟清單上的名次一致 —— 不然使用者沒辦法把「清單第 2 名」
+   對到「地圖上哪一個圈」，高亮就白做了。
+   只做前 5 名（跟清單一樣），再多就變成滿地都是圈，反而看不出重點。 */
+function buildRecPins(list){
+  clearRecPins();
+  if(!list || !list.length) return;
+  for(var i=0;i<list.length;i++){
+    var mk = new AMap.Marker({
+      position: ll(pt(list[i].p)),
+      zIndex: 190,        // 在圓點（120）之上、起點標記（200）之下
+      content: '<div class="recpin"><i></i><b>' + (i+1) + '</b></div>'
+    });
+    mk.setMap(map);
+    recPins.push(mk);
+  }
+}
+
+/* 目前推薦的前 5 名。清單與地圖高亮共用同一份計算結果，
+   免得兩邊各算一次、還可能因為排序不穩而對不起來。 */
+function recTop(){
+  if(!ORIGIN) return [];
+  var res = recommend();
+  if(!res || !res.list.length) return [];
+  return res.list.slice().sort(function(a, b){ return b.free - a.free; }).slice(0, 5);
+}
+
+/* 地圖上的高亮要跟著「起點 / 車種 / 時段」走，跟底部面板現在停在哪一個
+   分頁無關 —— 所以由 rebuild() 統一呼叫，而不是綁在 renderRec() 裡
+   （綁在那裡的話，切到「最擠」分頁再換時段就會留下上一組的高亮）。 */
+function refreshRecPins(){
+  REC_TOP = recTop();
+  buildRecPins(REC_TOP);
+}
+
+/* 選了地點之後自動 zoom in —— 而且要把「起點 + 推薦的場」一起框進視野。
+   只對準起點的話（舊行為），推薦的場常常落在畫面外，那清單就失去意義了。
+   刻意不用 map.setFitView()：它是「剛好塞滿」，跨區推薦時會把地圖拉到
+   比原本還遠（＝zoom out），跟「自動 zoom in」正好相反。
+   改成用跨度查表，並把結果夾在 14–17：澳門市區 14 就看得完，17 再近就
+   只剩一兩條街，對「附近有哪些場」沒有幫助。
+   副作用（刻意接受）：若使用者原本已經比 17 更近，會被拉回 17。
+   寧可稍微退一點看到全部推薦，也不要停在 19 只看得到一個圈。 */
+function fitToRecs(){
+  if(!ORIGIN) return;
+  var minLa = ORIGIN.lat, maxLa = ORIGIN.lat;
+  var minLn = ORIGIN.lng, maxLn = ORIGIN.lng;
+  for(var i=0;i<REC_TOP.length;i++){
+    var c = pt(REC_TOP[i].p);
+    if(c[0] < minLa) minLa = c[0];
+    if(c[0] > maxLa) maxLa = c[0];
+    if(c[1] < minLn) minLn = c[1];
+    if(c[1] > maxLn) maxLn = c[1];
+  }
+  /* 對角線長度 ≈ 要把這些點塞進視野所需要的跨度 */
+  var span = hav([minLa, minLn], [maxLa, maxLn]);
+  var z = REC_TOP.length
+        ? (span < 300 ? 17 : span < 700 ? 16 : span < 1500 ? 15 : 14)
+        : 16;                       // 沒有推薦（附近沒資料）→ 至少靠近起點
+  map.setZoomAndCenter(z, new AMap.LngLat((minLn+maxLn)/2, (minLa+maxLa)/2), false, 520);
+}
+
 function renderRec(){
   var body = $("sheetbody");
   if(!ORIGIN){
@@ -1154,6 +1252,7 @@ function rebuild(){
   applyVisibility();
   renderStats();
   renderSheet();
+  refreshRecPins();   // 高亮要跟著新的車種／時段重算，跟面板分頁無關
 }
 
 function setMode(m){
@@ -1299,6 +1398,11 @@ function openSheet(){
 }
 
 function setOrigin(hit){
+  /* 選了新地點就先把原本開著的停車場卡片關掉。
+     那張卡片講的是上一個場，地點都換了還留在畫面上會誤導，
+     而且會蓋住剛點亮的新推薦。 */
+  closeInfo();
+
   ORIGIN = { lat: hit.lat, lng: hit.lng, name: hit.name || "" };
   var np = nearestPark([ORIGIN.lat, ORIGIN.lng]);
   ORIGIN.zone = np ? (np.zone || "") : "";
@@ -1314,13 +1418,14 @@ function setOrigin(hit){
 
   SHEET_TAB = "rec";
   openSheet();
-  renderSheet();
-  map.setZoomAndCenter(Math.max(map.getZoom(), 15),
-                       new AMap.LngLat(ORIGIN.lng, ORIGIN.lat), false, 420);
+  renderSheet();      // 這一步只負責畫清單
+  refreshRecPins();   // 在地圖上把推薦的場點燈（並更新 REC_TOP）
+  fitToRecs();        // 再依「起點 + 推薦的場」把視野拉近
 }
 
 function clearOrigin(){
   ORIGIN = null;
+  refreshRecPins();   // ORIGIN 沒了 → REC_TOP 變空 → 高亮全部撤掉
   if(omark) omark.setMap(null);
   $("qhint").innerHTML = '輸入地點或直接<b>點地圖</b>選位置';
   SHEET_TAB = "busy";
