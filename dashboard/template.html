@@ -96,6 +96,17 @@ h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.3px}
 }
 .tabs button.on{background:var(--accent);color:var(--accent-tx);font-weight:600}
 
+/* 圖卡內的分頁：刻意跟頁面層的 .tabs 用同一組視覺語言（同一個 accent、同樣的
+   圓角膠囊），但縮小一號 —— 它是卡片裡的切換，不是頁面層級的切換。 */
+.ctabs{display:flex;gap:4px;background:var(--card2);border:1px solid var(--line);
+  border-radius:10px;padding:3px;margin-bottom:10px}
+.ctabs button{
+  flex:1;border:0;background:transparent;color:var(--tx2);font:inherit;
+  font-size:11.5px;font-weight:500;padding:6px 2px;border-radius:7px;cursor:pointer;
+  transition:.18s;white-space:nowrap
+}
+.ctabs button.on{background:var(--accent);color:var(--accent-tx);font-weight:600}
+
 /* search + sort */
 .tools{display:flex;gap:8px;margin-bottom:12px}
 input[type=search]{
@@ -182,14 +193,53 @@ select{
 .cline{stroke:var(--accent);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .carea{fill:var(--accent);opacity:.13}
 .cdot{fill:var(--accent)}
+/* 每週高峰格仔圖沿用上面的 .grid / .hc（同一份資料在詳細卡與圖卡就該長得一樣，
+   所以不另開一組 .gcell）。這裡只補兩件那組樣式沒有的東西：
+   1. 最擠那一格要圈出來。單靠顏色在白底或深紅底上都會糊掉，
+      所以用「外白內深」的雙框：box-shadow 在外、outline 在內，
+      不管底下是空白的淺格還是滿載的深紅格，都看得見。
+   2. 圈了之後還是要寫一行字說是哪一格，否則使用者得自己回頭數 168 格。 */
+.hc.pk{outline:2px solid var(--tx);outline-offset:-2px;border-radius:3px;
+  box-shadow:0 0 0 2px #FFFFFF}
+.gcap{margin-top:9px;font-size:11px;color:var(--tx3);text-align:right}
+.gcap b{color:var(--tx);font-weight:600}
 .seg{display:flex;gap:4px;margin-bottom:10px}
 .seg button{flex:1;border:1px solid var(--line);background:transparent;color:var(--tx2);
   font:inherit;font-size:12px;padding:6px 0;border-radius:8px;cursor:pointer}
 .seg button.on{background:var(--card2);color:var(--tx);border-color:#C9DFCF}
-#cpsel{width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
-  color:var(--tx);font:inherit;font-size:14px;padding:11px 10px;outline:none;margin-bottom:10px;
-  -webkit-appearance:none;appearance:none}
-#cpsel:focus{border-color:var(--accent)}
+/* ---- 可搜尋的停車場下拉（取代原本的 <select id="cpsel">）----
+   全澳有 90 幾個停車場，原生 <select> 在手機上只能一路捲，沒辦法打關鍵字。
+   改成 combobox：輸入框 + 自己畫的清單。清單用絕對定位浮在下方，
+   不推擠版面（展開時圖表不會跳動）。 */
+.picker{margin-top:16px}
+.cbox{position:relative;margin-bottom:10px}
+#cpq{
+  width:100%;background:var(--card);border:1px solid var(--line);border-radius:11px;
+  color:var(--tx);font:inherit;font-size:14px;padding:11px 36px 11px 11px;outline:none
+}
+#cpq:focus{border-color:var(--accent)}
+#cpq::placeholder{color:var(--tx3)}
+/* ▾ 只是視覺提示（pointer-events:none 讓點擊穿透到輸入框），
+   鍵盤與點擊的展開都交給輸入框自己處理，a11y 樹上不會多一顆沒有作用的按鈕 */
+.cbox .cv{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  color:var(--tx3);font-size:10px;pointer-events:none;transition:transform .18s}
+.cbox.open .cv{transform:translateY(-50%) rotate(180deg)}
+#cplist{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;
+  max-height:264px;overflow:auto;margin:0;padding:4px;list-style:none;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 10px 28px rgba(31,58,44,.16)
+}
+#cplist[hidden]{display:none}
+#cplist li{
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13.5px
+}
+#cplist li .z{font-size:10.5px;color:var(--tx3);white-space:nowrap}
+#cplist li[aria-selected=true]{background:var(--card2);font-weight:600}
+#cplist li.act{background:var(--card2)}
+#cplist li mark{background:transparent;color:var(--accent);font-weight:700}
+#cplist li.empty{justify-content:center;color:var(--tx3);cursor:default;font-size:12.5px}
 .noData{font-size:11.5px;color:var(--tx3);text-align:center;padding:4px 0 8px}
 .bigbtn{display:block;width:100%;margin-top:16px;background:var(--card2);border:1px solid #C9DFCF;
   color:var(--accent);font:inherit;font-size:13.5px;font-weight:600;padding:12px 0;border-radius:11px;cursor:pointer}
@@ -253,8 +303,9 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
   .wrap{padding:0 12px calc(80px + env(safe-area-inset-bottom))}
   header{padding:calc(env(safe-area-inset-top,0px) + 18px) 0 10px}
   /* 16px 以下 iOS 會自動放大整個頁面，輸入框一定要 16px */
-  input[type=search],select,#cpsel{font-size:16px}
+  input[type=search],select,#cpq{font-size:16px}
   .tabs button{padding:11px 0}
+  .ctabs button{padding:8px 2px}
   .mbtn{padding:12px 10px 11px}
   .grid{grid-template-columns:20px repeat(24,1fr);gap:1.5px}
 }
@@ -304,8 +355,15 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
     </div>
   </div>
 
-  <div style="margin-top:16px">
-    <select id="cpsel" onchange="renderCharts()"></select>
+  <div class="picker">
+    <div class="cbox" id="cpbox">
+      <input id="cpq" type="text" autocomplete="off" spellcheck="false"
+             role="combobox" aria-expanded="false" aria-controls="cplist"
+             aria-autocomplete="list" aria-label="選擇或搜尋停車場"
+             placeholder="搜尋停車場名稱或區份…">
+      <span class="cv" aria-hidden="true">▼</span>
+      <ul id="cplist" role="listbox" aria-label="停車場" hidden></ul>
+    </div>
     <div id="charts"></div>
   </div>
 
@@ -492,42 +550,197 @@ function barChart(vals, labels){
   return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}${bars}</svg>`;
 }
 
+/* 每週高峰：直接重用 heatmapHTML()（見上方）——
+   同一份資料不該在詳細卡與圖卡長得不一樣。差別只在這裡開 opts.peak，
+   把最擠那一格圈出來並寫一行說明。 */
+
+/* ---------- 可搜尋的停車場下拉 ----------
+   原本是 <select id="cpsel">：全澳 90 幾個場，原生清單在手機上只能一路捲，沒得搜。
+   這裡自己畫一個 combobox。狀態分四塊：
+     CP_ID     目前「選中」的 id（圖表跟著它走）
+     CP_OPTS   全部選項
+     CP_SHOWN  清單上目前顯示的（鍵盤上下鍵走訪用）
+     CP_TYPING 輸入框裡的字是「關鍵字」還是「選中的名稱」
+   CP_TYPING 非有不可：否則輸入框會留著打到一半的字，
+   看起來像選了一個不存在的停車場。 */
+let CP_ID = "__all__";
+let CP_OPTS = [];
+let CP_SHOWN = [];
+let CP_ACT = -1;
+let CP_TYPING = false;
+
+const cpEl = id => document.getElementById(id);
+
+/* 保留 initSel 這個名字：setMode() 與啟動流程都在呼叫它，改名要多動三個地方，
+   而它的職責沒變（把選項準備好）。 */
 function initSel(reset){
-  const sel = document.getElementById("cpsel");
-  if(!sel) return;
-  if(!reset && sel.options.length) return;
-  const list = [{id:"__all__", name:`全澳${mLabel()}整體`}].concat(
+  const q = cpEl("cpq");
+  if(!q) return;
+  if(!reset && CP_OPTS.length){ cpSetInput(); return; }
+  CP_OPTS = [{id:"__all__", name:`全澳${mLabel()}整體`, zone:"全澳"}].concat(
     rowsForMode().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh"))
-      .map(c=>({id:c.id, name:c.name}))
+      .map(c=>({id:c.id, name:c.name, zone:c.zone||""}))
   );
-  sel.innerHTML = list.map(o=>`<option value="${esc(o.id)}">${esc(o.name)}</option>`).join("");
-  sel.value = "__all__";
+  /* 換車種之後，原本選的場可能整個不存在（只有私家車位的場，切到電單車就沒了）
+     → 這種情況退回「全澳整體」，不要留著一個選不到的 id。 */
+  if(!CP_OPTS.some(o=>o.id===CP_ID)){ CP_ID = "__all__"; CP_TYPING = false; }
+  cpSetInput();
+  cpDraw();
+}
+
+function cpLabel(id){
+  const o = CP_OPTS.find(x=>x.id===id);
+  return o ? o.name : "";
+}
+function cpSetInput(){
+  const q = cpEl("cpq");
+  if(q) q.value = cpLabel(CP_ID);
+}
+
+/* 名稱與區份都比對 —— 打「氹仔」可以列出那一區的場，不必記得全名 */
+function cpMatches(kw){
+  const k = (kw||"").trim().toLowerCase();
+  if(!k) return CP_OPTS;
+  return CP_OPTS.filter(o =>
+    o.name.toLowerCase().includes(k) || (o.zone||"").toLowerCase().includes(k));
+}
+
+function cpMark(name, k){
+  const i = name.toLowerCase().indexOf(k);
+  if(i < 0) return esc(name);
+  return esc(name.slice(0,i)) + "<mark>" + esc(name.slice(i, i+k.length)) + "</mark>" +
+         esc(name.slice(i + k.length));
+}
+
+function cpDraw(){
+  const list = cpEl("cplist"), q = cpEl("cpq");
+  if(!list || !q) return;
+  const kw = CP_TYPING ? q.value : "";
+  CP_SHOWN = cpMatches(kw);
+  if(CP_ACT >= CP_SHOWN.length) CP_ACT = CP_SHOWN.length - 1;
+  if(!CP_SHOWN.length){
+    list.innerHTML = `<li class="empty" role="presentation">找不到符合的停車場</li>`;
+    return;
+  }
+  const k = kw.trim().toLowerCase();
+  list.innerHTML = CP_SHOWN.map((o,i)=>
+    `<li role="option" id="cpopt-${i}" data-id="${esc(o.id)}"`
+    + ` aria-selected="${o.id===CP_ID}" class="${i===CP_ACT?"act":""}">`
+    + `<span class="n">${k ? cpMark(o.name, k) : esc(o.name)}</span>`
+    + `<span class="z">${esc(o.zone||"")}</span></li>`
+  ).join("");
+}
+
+function cpOpen(open){
+  const box = cpEl("cpbox"), list = cpEl("cplist"), q = cpEl("cpq");
+  if(!box || !list || !q) return;
+  box.classList.toggle("open", open);
+  q.setAttribute("aria-expanded", open ? "true" : "false");
+  list.hidden = !open;
+  if(open) cpDraw();
+}
+
+/* restore=true：關閉時把輸入框還原成「選中的名稱」
+   （使用者打到一半就點到別的地方，不該把半截關鍵字留在框裡） */
+function cpClose(restore){
+  if(restore){ CP_TYPING = false; cpSetInput(); }
+  CP_ACT = -1;
+  cpOpen(false);
+}
+
+function cpPick(id){
+  CP_ID = id;
+  CP_TYPING = false;
+  CP_ACT = -1;
+  cpSetInput();
+  cpOpen(false);
+  renderCharts();
+}
+
+function cpInit(){
+  const q = cpEl("cpq"), list = cpEl("cplist");
+  if(!q || !list) return;
+
+  /* 聚焦就全選：這樣直接打字是「取代」而不是「接在後面」，
+     不必先手動清掉原本的停車場名稱 */
+  q.addEventListener("focus", ()=>{ cpOpen(true); if(q.select) q.select(); });
+  q.addEventListener("input", ()=>{ CP_TYPING = true; CP_ACT = 0; cpOpen(true); });
+
+  q.addEventListener("keydown", e=>{
+    if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+      e.preventDefault();
+      if(list.hidden) cpOpen(true);
+      if(!CP_SHOWN.length) return;
+      CP_ACT = e.key === "ArrowDown"
+        ? (CP_ACT + 1) % CP_SHOWN.length
+        : (CP_ACT - 1 + CP_SHOWN.length) % CP_SHOWN.length;
+      cpDraw();
+      const act = cpEl("cpopt-" + CP_ACT);
+      if(act && act.scrollIntoView) act.scrollIntoView({block:"nearest"});
+    } else if(e.key === "Enter"){
+      if(!list.hidden && CP_ACT >= 0 && CP_SHOWN[CP_ACT]){
+        e.preventDefault();
+        cpPick(CP_SHOWN[CP_ACT].id);
+      }
+    } else if(e.key === "Escape"){
+      cpClose(true);
+    }
+  });
+
+  /* 清單要先 preventDefault 掉 mousedown：不然輸入框會先 blur，
+     清單在 click 之前就被收起來 —— 點了等於沒點。 */
+  list.addEventListener("mousedown", e=>e.preventDefault());
+  list.addEventListener("click", e=>{
+    const li = e.target.closest ? e.target.closest("li[data-id]") : null;
+    if(li) cpPick(li.getAttribute("data-id"));
+  });
+
+  document.addEventListener("click", e=>{
+    const box = cpEl("cpbox");
+    if(box && !box.contains(e.target)) cpClose(true);
+  });
 }
 
 function pickChart(){
-  const sel = document.getElementById("cpsel");
-  const id = sel ? sel.value : "__all__";
-  if(id==="__all__") return allOver();
-  const r = modeRow((D.carparks||[]).find(x=>x.id===id) || {});
-  return Object.keys(r).length ? r : allOver();
+  if(CP_ID === "__all__") return allOver();
+  const r = modeRow((D.carparks||[]).find(x=>x.id===CP_ID) || {});
+  return (r && Object.keys(r).length) ? r : allOver();
 }
+
+/* ---------- 圖卡：三個分頁 ---------- */
+let chartTab = 0;
+const CTABS = ["24 小時使用率", "各星期平均", "每週高峰"];
+function setChartTab(i){ chartTab = i; renderCharts(); }
 
 function renderCharts(){
   const el = document.getElementById("charts");
   if(!el) return;
   const c = pickChart();
-  const prof = c.profile||[], wk = c.weekday_profile||[];
+  const prof = c.profile||[], wk = c.weekday_profile||[], hm = c.heatmap||[];
   const sub = c.id==="__all__" ? "依車位數加權平均" : `${mLabel()}平均使用率`;
+  /* 每個分頁各自判斷有沒有資料：有些場已經有 24 小時曲線，
+     但 7×24 的熱力圖還沒累積到 —— 不該因為其中一個有值就三個都畫。 */
+  const has = chartTab===0 ? prof.some(v=>v!=null)
+            : chartTab===1 ? wk.some(v=>v!=null)
+            : hm.some(r=>r && r.some(v=>v!=null));
+  const body = !has ? ""
+    : chartTab===0 ? lineChart(prof)
+    : chartTab===1 ? barChart(wk, WDS)
+    : heatmapHTML(hm, c.samples, {peak:true});
   el.innerHTML =
-    frame(`${esc(c.name)} · 24 小時使用率`, sub, lineChart(prof)) +
-    frame(`${esc(c.name)} · 各星期平均使用率`, sub, barChart(wk, WDS)) +
-    (!prof.some(v=>v!=null)
-      ? `<div class="noData">這個停車場還沒有時段資料，圖表會在資料累積後自動出現</div>` : "");
+    `<div class="chart">
+       <div class="hd"><b>${esc(c.name)} · ${CTABS[chartTab]}</b><span>${sub}</span></div>
+       <div class="ctabs" role="tablist" aria-label="圖表類型">
+         ${CTABS.map((t,i)=>`<button type="button" role="tab" aria-selected="${i===chartTab}"
+             class="${i===chartTab?"on":""}" onclick="setChartTab(${i})">${t}</button>`).join("")}
+       </div>
+       ${body}
+     </div>` +
+    (has ? "" : `<div class="noData">這個停車場還沒有時段資料，圖表會在資料累積後自動出現</div>`);
 }
 
 function pinChart(id){
-  const sel = document.getElementById("cpsel");
-  if(sel){ sel.value = id; renderCharts(); }
+  cpPick(id);
   closeSheet();
   const el = document.getElementById("charts");
   if(el && el.scrollIntoView) el.scrollIntoView({behavior:"smooth", block:"start"});
@@ -573,7 +786,21 @@ function overview(){
 
 }
 
-function heatmapHTML(hm, samples){
+/* 7×24 的「星期 × 小時」熱力圖。停車場詳細卡與圖卡的「每週高峰」分頁共用這一個
+   renderer —— 同一份資料在兩個地方長得一樣，改一次兩邊都改到。
+
+   opts.peak=true 時額外做兩件事：把最擠那一格圈出來，並在下面寫一行「最擠 …」。
+   這張圖要回答的是「一週裡面什麼時候最擠」，答案不該要使用者自己掃 168 格找。
+   （列表那 24 張小圖不開這個選項 —— 一次 24 個圈圈只會變成雜訊。） */
+function heatmapHTML(hm, samples, opts){
+  opts = opts || {};
+  let best = null;
+  if(opts.peak){
+    for(let wd=0; wd<7; wd++) for(let hr=0; hr<24; hr++){
+      const v = hm && hm[wd] ? hm[wd][hr] : null;
+      if(v != null && (!best || v > best.v)) best = {v, wd, hr};
+    }
+  }
   let h = '<div class="grid"><div class="gl"></div>';
   for(let hr=0; hr<24; hr++) h += `<div class="hl">${hr%3===0?hr:""}</div>`;
   for(let wd=0; wd<7; wd++){
@@ -582,8 +809,9 @@ function heatmapHTML(hm, samples){
       const v = hm && hm[wd] ? hm[wd][hr] : null;
       const n = samples && samples[wd] ? samples[wd][hr] : 0;
       const na = v==null ? " na" : "";
+      const pk = (best && best.wd===wd && best.hr===hr) ? " pk" : "";
       const tip = v==null ? "資料累積中" : `${WD[wd]} ${hr}:00 平均使用率 ${pct(v)}（${n} 筆）`;
-      h += `<div class="hc${na}" style="background:${col(v)}" title="${tip}"></div>`;
+      h += `<div class="hc${na}${pk}" style="background:${col(v)}" title="${tip}"></div>`;
     }
   }
   h += "</div>";
@@ -592,6 +820,11 @@ function heatmapHTML(hm, samples){
     <i style="background:${col(.5)}"></i><i style="background:${col(.75)}"></i>
     <i style="background:${col(1)}"></i><span>滿</span>
     <span style="margin-left:auto">灰格 = 待累積</span></div>`;
+  if(opts.peak){
+    h += best
+      ? `<div class="gcap">最擠 <b>${WD[best.wd]} ${String(best.hr).padStart(2,"0")}:00</b> · ${pct(best.v)}</div>`
+      : `<div class="gcap">還沒有足夠資料找出高峰</div>`;
+  }
   return h;
 }
 
@@ -728,6 +961,7 @@ function closeSheet(){
 
 renderModes();
 overview();
+cpInit();          // 事件只要綁一次，要在 initSel() 之前
 initSel(true);
 renderCharts();
 render();

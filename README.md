@@ -72,10 +72,23 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 - **車種分流**：頂部兩個大按鈕切換「私家車 / 電單車」，兩者資料完全分開統計與顯示
   （只會看到跟自己有關的圖表與排行）
 - **即時車位**：全澳使用率環形圖、停車場排序（可依使用率／剩餘數量／名稱）、搜尋、點開看各車種明細與收費
+- **停車場選擇器（可下拉、可搜尋）**：圖表上方是一個 combobox，不是原生 `<select>` ——
+  全澳有 80 幾個停車場，原生下拉在手機上只能一路捲，沒辦法打關鍵字。
+  可以直接打字過濾，**名稱與區份都會比對**（打「氹仔」找得到「氹仔柯維納馬路停車場」，
+  打「澳門半島」找得到整個區），符合的字用 `<mark>` 標出來。
+  鍵盤可操作（↑↓ 移動、Enter 選取、Esc 還原）、點清單以外會收起。
+  切換車種時若原本選的場在新車種不存在，會自動退回「全澳整體」
 - **每週高峰**：每個停車場的「星期 × 小時」使用率熱力圖（7×24 格），以及使用率最高的 5 個時段
-- **時段圖表**：全澳 24 小時使用率曲線（折線+面積，標出尖峰時刻）、各星期平均使用率長條圖；
-  點開任一個停車場也有它自己的 24 小時曲線與星期長條圖。全澳數據以車位數加權。
-  圖表是手寫 SVG，不依赖任何 CDN，整頁自包含在單一 HTML 檔裡
+- **圖卡三個分頁**：圖卡內用「24 小時使用率 / 各星期平均 / 每週高峰」三個 tab 切換 ——
+  同一個停車場的三種視角收在同一張卡裡，換停車場時 tab 位置會保留（不會跳回第一個）
+  - *24 小時使用率*：折線 + 面積，標出尖峰時刻
+  - *各星期平均*：7 根長條
+  - *每週高峰*：7×24 格仔圖。最擠那一格用「外白內深」雙框圈出來（單一顏色在白底或深紅底上都會糊掉），
+    下面寫一行「最擠 週二 15:00 · 96%」—— 不必自己掃 168 格找答案
+
+  全澳數據以車位數加權。圖表是手寫 SVG / CSS grid，不依赖任何 CDN，整頁自包含在單一 HTML 檔裡。
+  **格仔圖與列表那張熱力圖共用同一個渲染函式**（`heatmapHTML()`，開 `opts.peak` 才加圈與說明），
+  同一份資料在兩處不會長得不一樣
 - **採集健康度**：頁面頂部面板顯示累積快照數、資料涵蓋時數、
   **平均採集間隔**與**最近一次間隔** —— 一眼看出 workflow 有沒有正常在跑
   （門檻：<35 分綠 / <90 分黃 / ≥90 分紅）
@@ -87,6 +100,17 @@ python3 scripts/scrape.py housekeep --root .   # 把過往的每日 CSV 壓成 .
 滿一週後熱力圖就能直接判讀。
 
 本地重新產生：`python3 scripts/build_dashboard.py`
+
+本地跑真人瀏覽器測試（需要本機 Chrome；選擇器與分頁的行為 stub 測不出來）：
+
+```bash
+python3 -m http.server 8902 --bind 127.0.0.1 -d dashboard &   # 起一個靜態 server
+node scripts/test_index_live.js http://127.0.0.1:8902/index.html
+```
+
+> 這支測試刻意走**真的滑鼠點擊**（`page.click` → inline `onclick`）而不是 `page.evaluate()`
+> 直接叫函式 —— 後者叫得到不代表使用者的路徑叫得到。也刻意驗「圈的是不是資料裡真正最擠的那一格」，
+> 而不是只看有沒有圈。細節見 `scripts/test_index_live.js` 檔頭。
 
 ## 使用率地圖（熱力圖）
 
@@ -407,6 +431,7 @@ scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 S
 scripts/test_map_live.js             真人瀏覽器測試：高德搜索服務與 key 白名單（puppeteer-core + 本機 Chrome）
 scripts/test_map_live_features.js    真人瀏覽器測試：推薦點燈 / 自動 zoom in / 卡片自動關閉
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），96 條斷言
+scripts/test_index_live.js           真人瀏覽器測試：搜尋式停車場選擇器 + 圖卡三個分頁，53 條斷言
 scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，59 條斷言
 scripts/test_collection_source.py    採集來源判定（collection_source / dispatch_origin），42 條斷言
 scripts/test_dashboard_sources.py    採集來源分桶 + 「未標記」判準（collection_sources），42 條斷言
