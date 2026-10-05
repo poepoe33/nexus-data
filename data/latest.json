@@ -1,5 +1,5 @@
 {
-  "scraped_at": "2026-10-05 18:05:57",
+  "scraped_at": "2026-10-05 18:35:58",
   "source": "https://www.dsat.gov.mo/dsat/carpark_realtime.aspx",
   "collected_by": "github-dispatch-apps-script",
   "timezone": "Asia/Macau (UTC+8)",
@@ -17,13 +17,13 @@
       "heavy_gt_8m": 31,
       "carpark_id": "7085",
       "name": "蓮花路 (重型)",
-      "updated_at": "2026-10-05 18:05:32",
+      "updated_at": "2026-10-05 18:35:16",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 0,
+      "car": 1,
       "motor": null,
       "ev_car": null,
       "ev_motor": null,
@@ -34,16 +34,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "6045",
       "name": "塔石廣場地下上落客區(重型客車)",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:41",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 21,
-      "motor": 31,
-      "ev_car": 2,
-      "ev_motor": 7,
+      "car": 19,
+      "motor": 35,
+      "ev_car": 3,
+      "ev_motor": 6,
       "disabled": 2,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -51,14 +51,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6033",
       "name": "下環街市",
-      "updated_at": "2026-10-05 18:05:14",
+      "updated_at": "2026-10-05 18:35:24",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
-      "motor": 94,
+      "motor": 109,
       "ev_car": null,
       "ev_motor": null,
       "disabled": null,
@@ -68,15 +68,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7095",
       "name": "山茶街公共停車場",
-      "updated_at": "2026-10-05 18:05:18",
+      "updated_at": "2026-10-05 18:35:18",
       "fee_type": "24小時",
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 2,
-      "motor": 19,
-      "ev_car": 4,
+      "car": 0,
+      "motor": 12,
+      "ev_car": 3,
       "ev_motor": 17,
       "disabled": 1,
       "heavy_lt_7m": null,
@@ -85,16 +85,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "6022",
       "name": "永寧街",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 53,
-      "motor": 114,
-      "ev_car": 6,
-      "ev_motor": 5,
+      "car": 70,
+      "motor": 124,
+      "ev_car": 7,
+      "ev_motor": 6,
       "disabled": 2,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -102,13 +102,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6026",
       "name": "交通事務局大樓",
-      "updated_at": "2026-10-05 18:05:36",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 663,
+      "car": 624,
       "motor": null,
       "ev_car": 106,
       "ev_motor": null,
@@ -119,10 +119,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "6018",
       "name": "氹仔中央公園",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": "日夜間分段",
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 148,
@@ -136,13 +136,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6041",
       "name": "日昇樓",
-      "updated_at": "2026-10-05 18:05:34",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": "日夜間分段",
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 6,
+      "car": 10,
       "motor": null,
       "ev_car": 6,
       "ev_motor": null,
@@ -153,16 +153,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7051",
       "name": "日暉大廈",
-      "updated_at": "2026-10-05 18:05:21",
+      "updated_at": "2026-10-05 18:35:36",
       "fee_type": "日夜間分段",
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 6,
-      "motor": 40,
-      "ev_car": 4,
-      "ev_motor": 19,
+      "car": 5,
+      "motor": 51,
+      "ev_car": 3,
+      "ev_motor": 16,
       "disabled": 2,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -170,14 +170,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7067",
       "name": "台暉樓",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 333,
-      "motor": 79,
+      "car": 353,
+      "motor": 80,
       "ev_car": 75,
       "ev_motor": 15,
       "disabled": 16,
@@ -187,15 +187,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7044",
       "name": "氹仔客運碼頭",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:38",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 120,
-      "motor": 431,
-      "ev_car": 17,
+      "car": 172,
+      "motor": 454,
+      "ev_car": 18,
       "ev_motor": 42,
       "disabled": 4,
       "heavy_lt_7m": null,
@@ -204,15 +204,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6028",
       "name": "何賢公園",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:41",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 3,
-      "motor": 8,
-      "ev_car": 2,
+      "car": 1,
+      "motor": 10,
+      "ev_car": 1,
       "ev_motor": null,
       "disabled": 1,
       "heavy_lt_7m": null,
@@ -221,14 +221,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7090",
       "name": "巴波沙大馬路公共停車場",
-      "updated_at": "2026-10-05 18:05:36",
+      "updated_at": "2026-10-05 18:35:17",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 17,
-      "motor": 23,
+      "motor": 19,
       "ev_car": 0,
       "ev_motor": null,
       "disabled": 0,
@@ -238,15 +238,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7097",
       "name": "田畔街公共停車場",
-      "updated_at": "2026-10-05 18:05:29",
+      "updated_at": "2026-10-05 18:35:29",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 21,
-      "motor": 25,
-      "ev_car": 4,
+      "car": 16,
+      "motor": 17,
+      "ev_car": 2,
       "ev_motor": null,
       "disabled": 2,
       "heavy_lt_7m": null,
@@ -255,14 +255,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7093",
       "name": "沙維斯街公共停車場",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:40",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 281,
-      "motor": 108,
+      "car": 271,
+      "motor": 107,
       "ev_car": 16,
       "ev_motor": 13,
       "disabled": 4,
@@ -272,10 +272,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7082",
       "name": "長者公寓",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -292,11 +292,11 @@
       "updated_at": "暫停發佈訊息",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 179,
-      "motor": 212,
+      "car": 155,
+      "motor": 202,
       "ev_car": 10,
       "ev_motor": 9,
       "disabled": 3,
@@ -306,13 +306,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6030",
       "name": "居雅大廈",
-      "updated_at": "2026-10-05 18:05:35",
+      "updated_at": "2026-10-05 18:35:35",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 113,
+      "car": 112,
       "motor": null,
       "ev_car": 19,
       "ev_motor": null,
@@ -323,14 +323,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7072",
       "name": "快富樓A入口",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:34:36",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 5,
-      "motor": 108,
+      "car": 0,
+      "motor": 98,
       "ev_car": null,
       "ev_motor": 7,
       "disabled": null,
@@ -340,16 +340,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7073",
       "name": "快富樓B入口",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:34",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 9,
-      "motor": 7,
+      "car": 6,
+      "motor": 12,
       "ev_car": 3,
-      "ev_motor": 9,
+      "ev_motor": 10,
       "disabled": 1,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -357,14 +357,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7063",
       "name": "李加祿街",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:42",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 169,
-      "motor": 115,
+      "car": 174,
+      "motor": 118,
       "ev_car": 19,
       "ev_motor": 14,
       "disabled": 7,
@@ -374,16 +374,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7050",
       "name": "和諧廣場",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:42",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 67,
-      "motor": 72,
+      "car": 69,
+      "motor": 74,
       "ev_car": 9,
-      "ev_motor": 5,
+      "ev_motor": 4,
       "disabled": 1,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -391,16 +391,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7055",
       "name": "沙梨頭街市市政綜合大樓",
-      "updated_at": "2026-10-05 18:05:28",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 58,
+      "car": 42,
       "motor": 49,
-      "ev_car": 5,
-      "ev_motor": 11,
+      "ev_car": 6,
+      "ev_motor": 9,
       "disabled": 2,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -408,14 +408,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7057",
       "name": "快盈大廈",
-      "updated_at": "2026-10-05 18:05:21",
+      "updated_at": "2026-10-05 18:35:21",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 142,
-      "motor": 45,
+      "car": 141,
+      "motor": 46,
       "ev_car": 4,
       "ev_motor": 6,
       "disabled": 4,
@@ -425,10 +425,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "6038",
       "name": "快達樓",
-      "updated_at": "2026-10-05 18:05:28",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -442,16 +442,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "6009",
       "name": "亞馬喇前地",
-      "updated_at": "2026-10-05 18:05:36",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": "夜間",
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 49,
-      "motor": 70,
+      "car": 42,
+      "motor": 68,
       "ev_car": 5,
-      "ev_motor": 13,
+      "ev_motor": 14,
       "disabled": 2,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -459,14 +459,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6020",
       "name": "河邊新街",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 114,
-      "motor": 512,
+      "motor": 515,
       "ev_car": 16,
       "ev_motor": 0,
       "disabled": 4,
@@ -476,10 +476,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "6034",
       "name": "馬六甲街",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 102,
@@ -487,16 +487,16 @@
       "ev_car": 12,
       "ev_motor": null,
       "disabled": null,
-      "heavy_lt_7m": 137,
+      "heavy_lt_7m": 135,
       "heavy_lt_8m": null,
-      "heavy_gt_7m": 110,
+      "heavy_gt_7m": 108,
       "heavy_gt_8m": null,
       "carpark_id": "7065",
       "name": "污水處理站",
-      "updated_at": "2026-10-05 18:05:20",
+      "updated_at": "2026-10-05 18:35:28",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 87,
@@ -510,14 +510,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7076",
       "name": "氹仔柯維納馬路停車場",
-      "updated_at": "2026-10-05 18:05:29",
+      "updated_at": "2026-10-05 18:35:15",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 50,
-      "motor": 38,
+      "car": 42,
+      "motor": 37,
       "ev_car": null,
       "ev_motor": null,
       "disabled": 0,
@@ -527,13 +527,13 @@
       "heavy_gt_8m": 5,
       "carpark_id": "7077",
       "name": "柯維納馬路戶外",
-      "updated_at": "2026-10-05 18:05:26",
+      "updated_at": "2026-10-05 18:35:35",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 238,
+      "car": 240,
       "motor": 442,
       "ev_car": 28,
       "ev_motor": 14,
@@ -544,14 +544,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6019",
       "name": "青翠樓",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:16",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 29,
-      "motor": 42,
+      "car": 32,
+      "motor": 45,
       "ev_car": 2,
       "ev_motor": 2,
       "disabled": 2,
@@ -561,13 +561,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "7081",
       "name": "專科大樓",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:22",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 45,
+      "car": 47,
       "motor": 44,
       "ev_car": 7,
       "ev_motor": null,
@@ -578,14 +578,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7089",
       "name": "路環打纜街公共停車場",
-      "updated_at": "2026-10-05 18:05:21",
+      "updated_at": "2026-10-05 18:35:35",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
-      "motor": 23,
+      "motor": 41,
       "ev_car": null,
       "ev_motor": null,
       "disabled": null,
@@ -595,14 +595,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7098",
       "name": "南灣大馬路公共停車場",
-      "updated_at": "2026-10-05 18:05:37",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 116,
-      "motor": 32,
+      "car": 184,
+      "motor": 60,
       "ev_car": 4,
       "ev_motor": 3,
       "disabled": 2,
@@ -612,16 +612,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "6001",
       "name": "南灣(栢湖)",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 47,
-      "motor": 35,
+      "car": 46,
+      "motor": 6,
       "ev_car": 12,
-      "ev_motor": 16,
+      "ev_motor": 5,
       "disabled": 3,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -629,14 +629,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6035",
       "name": "青葱大廈",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 10,
-      "motor": 11,
+      "car": 13,
+      "motor": 6,
       "ev_car": 3,
       "ev_motor": 2,
       "disabled": 1,
@@ -646,14 +646,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6039",
       "name": "青泉樓",
-      "updated_at": "2026-10-05 18:05:18",
+      "updated_at": "2026-10-05 18:35:22",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 109,
-      "motor": 145,
+      "motor": 160,
       "ev_car": 10,
       "ev_motor": 5,
       "disabled": 3,
@@ -663,15 +663,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6040",
       "name": "青怡大廈",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 54,
-      "motor": 54,
-      "ev_car": 8,
+      "car": 44,
+      "motor": 45,
+      "ev_car": 7,
       "ev_motor": 27,
       "disabled": 5,
       "heavy_lt_7m": null,
@@ -680,14 +680,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7064",
       "name": "青茂口岸",
-      "updated_at": "2026-10-05 18:05:39",
+      "updated_at": "2026-10-05 18:35:40",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 31,
-      "motor": 50,
+      "car": 35,
+      "motor": 49,
       "ev_car": 8,
       "ev_motor": 6,
       "disabled": 1,
@@ -697,16 +697,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7058",
       "name": "青濤大廈",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 788,
-      "motor": 811,
+      "car": 792,
+      "motor": 785,
       "ev_car": 106,
-      "ev_motor": 4,
+      "ev_motor": 5,
       "disabled": 15,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -714,10 +714,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7059",
       "name": "青洲坊大廈",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:41",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 361,
@@ -731,10 +731,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7100",
       "name": "東民大廈公共停車場",
-      "updated_at": "2026-10-05 18:05:30",
+      "updated_at": "2026-10-05 18:35:30",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 451,
@@ -748,14 +748,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7101",
       "name": "東業大廈公共停車場",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:41",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 19,
-      "motor": 18,
+      "car": 25,
+      "motor": 19,
       "ev_car": null,
       "ev_motor": null,
       "disabled": 1,
@@ -765,14 +765,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7091",
       "name": "東亞運大馬路公共停車場",
-      "updated_at": "2026-10-05 18:05:34",
+      "updated_at": "2026-10-05 18:35:34",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 131,
-      "motor": 79,
+      "car": 132,
+      "motor": 84,
       "ev_car": 31,
       "ev_motor": 31,
       "disabled": 5,
@@ -782,14 +782,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7083",
       "name": "東創大廈",
-      "updated_at": "2026-10-05 18:05:16",
+      "updated_at": "2026-10-05 18:35:30",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 281,
-      "motor": 258,
+      "car": 279,
+      "motor": 255,
       "ev_car": 24,
       "ev_motor": 30,
       "disabled": 4,
@@ -799,15 +799,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7084",
       "name": "東啟大廈",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:22",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 403,
-      "motor": 438,
-      "ev_car": 50,
+      "car": 412,
+      "motor": 434,
+      "ev_car": 49,
       "ev_motor": 61,
       "disabled": 6,
       "heavy_lt_7m": null,
@@ -816,14 +816,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7087",
       "name": "東城大廈",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 39,
-      "motor": 33,
+      "car": 36,
+      "motor": 32,
       "ev_car": 10,
       "ev_motor": null,
       "disabled": 2,
@@ -833,10 +833,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7088",
       "name": "航海學校公共停車場",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -850,15 +850,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7092",
       "name": "新城B區公共停車場",
-      "updated_at": "2026-10-05 18:05:37",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": "24小時",
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 0,
-      "motor": 71,
-      "ev_car": 3,
+      "car": 1,
+      "motor": 75,
+      "ev_car": 2,
       "ev_motor": null,
       "disabled": 1,
       "heavy_lt_7m": null,
@@ -867,14 +867,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7096",
       "name": "高美士街公共停車場",
-      "updated_at": "2026-10-05 18:05:37",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
-      "motor": 37,
+      "motor": 39,
       "ev_car": null,
       "ev_motor": null,
       "disabled": null,
@@ -884,14 +884,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7099",
       "name": "徐日昇寅公馬路公共停車場",
-      "updated_at": "2026-10-05 18:05:25",
+      "updated_at": "2026-10-05 18:35:25",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 60,
-      "motor": 128,
+      "car": 71,
+      "motor": 134,
       "ev_car": 5,
       "ev_motor": 10,
       "disabled": 3,
@@ -901,13 +901,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6043",
       "name": "松樹尾",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:35",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 196,
+      "car": 200,
       "motor": null,
       "ev_car": 30,
       "ev_motor": null,
@@ -918,10 +918,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7062",
       "name": "栢力",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -935,15 +935,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6010",
       "name": "科學館",
-      "updated_at": "2026-10-05 18:05:28",
+      "updated_at": "2026-10-05 18:35:34",
       "fee_type": "24小時",
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 23,
+      "car": 63,
       "motor": null,
-      "ev_car": 6,
+      "ev_car": 5,
       "ev_motor": null,
       "disabled": 2,
       "heavy_lt_7m": null,
@@ -952,13 +952,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6008",
       "name": "栢佳",
-      "updated_at": "2026-10-05 18:05:38",
+      "updated_at": "2026-10-05 18:35:32",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 136,
+      "car": 144,
       "motor": null,
       "ev_car": 4,
       "ev_motor": null,
@@ -969,14 +969,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7078",
       "name": "協和醫院 - 東入口",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 363,
-      "motor": 403,
+      "car": 360,
+      "motor": 418,
       "ev_car": null,
       "ev_motor": 7,
       "disabled": 5,
@@ -986,13 +986,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "7079",
       "name": "協和醫院 - 北入口",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 70,
+      "car": 67,
       "motor": 74,
       "ev_car": null,
       "ev_motor": null,
@@ -1003,15 +1003,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7074",
       "name": "旅遊塔",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:38",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 24,
+      "car": 32,
       "motor": null,
-      "ev_car": 4,
+      "ev_car": 3,
       "ev_motor": null,
       "disabled": 2,
       "heavy_lt_7m": null,
@@ -1020,13 +1020,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6042",
       "name": "栢景",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:23",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 387,
+      "car": 390,
       "motor": 260,
       "ev_car": 22,
       "ev_motor": 15,
@@ -1037,15 +1037,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6011",
       "name": "栢樂停車場",
-      "updated_at": "2026-10-05 18:05:37",
+      "updated_at": "2026-10-05 18:35:35",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 133,
+      "car": 135,
       "motor": null,
-      "ev_car": 11,
+      "ev_car": 10,
       "ev_motor": null,
       "disabled": 3,
       "heavy_lt_7m": null,
@@ -1054,13 +1054,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6012",
       "name": "栢蕙",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:26",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 75,
+      "car": 107,
       "motor": null,
       "ev_car": 3,
       "ev_motor": null,
@@ -1071,13 +1071,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6002",
       "name": "栢寧",
-      "updated_at": "2026-10-05 18:05:33",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 69,
+      "car": 92,
       "motor": null,
       "ev_car": 11,
       "ev_motor": null,
@@ -1088,13 +1088,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "6003",
       "name": "栢濤",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:18",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 87,
+      "car": 85,
       "motor": null,
       "ev_car": 9,
       "ev_motor": null,
@@ -1105,15 +1105,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6024",
       "name": "栢港",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:23",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 102,
+      "car": 108,
       "motor": null,
-      "ev_car": 9,
+      "ev_car": 8,
       "ev_motor": null,
       "disabled": 2,
       "heavy_lt_7m": null,
@@ -1122,16 +1122,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "6023",
       "name": "栢麗",
-      "updated_at": "2026-10-05 18:05:35",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 28,
-      "motor": 13,
+      "car": 41,
+      "motor": 14,
       "ev_car": 6,
-      "ev_motor": 2,
+      "ev_motor": 1,
       "disabled": 3,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -1139,14 +1139,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6027",
       "name": "栢威",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 35,
-      "motor": 29,
+      "car": 33,
+      "motor": 26,
       "ev_car": 9,
       "ev_motor": 10,
       "disabled": null,
@@ -1156,14 +1156,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6037",
       "name": "黑橋街",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:38",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 29,
-      "motor": 56,
+      "car": 40,
+      "motor": 72,
       "ev_car": 3,
       "ev_motor": 11,
       "disabled": 3,
@@ -1173,10 +1173,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "6006",
       "name": "華士古達嘉馬花園",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:41",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -1193,12 +1193,12 @@
       "updated_at": "暫停發佈訊息",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 2703,
+      "car": 2716,
       "motor": null,
-      "ev_car": 39,
+      "ev_car": 25,
       "ev_motor": null,
       "disabled": 31,
       "heavy_lt_7m": null,
@@ -1207,14 +1207,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7052",
       "name": "港珠澳大橋邊檢大樓東公共停車場",
-      "updated_at": "2026-10-05 18:05:42",
+      "updated_at": "2026-10-05 18:35:37",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 2896,
-      "motor": 1988,
+      "car": 2903,
+      "motor": 1991,
       "ev_car": 10,
       "ev_motor": null,
       "disabled": 34,
@@ -1224,10 +1224,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7053",
       "name": "港珠澳大橋邊檢大樓西停車場",
-      "updated_at": "2026-10-05 18:05:28",
+      "updated_at": "2026-10-05 18:35:22",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -1241,15 +1241,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "7075",
       "name": "媽閣交通樞紐停車場",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": "24小時",
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 62,
-      "motor": 101,
-      "ev_car": 1,
+      "car": 55,
+      "motor": 93,
+      "ev_car": 3,
       "ev_motor": 6,
       "disabled": 4,
       "heavy_lt_7m": null,
@@ -1258,10 +1258,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7061",
       "name": "海灣南街",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:32",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -1275,13 +1275,13 @@
       "heavy_gt_8m": 24,
       "carpark_id": "7094",
       "name": "媽閣交通樞紐重型客車停車場",
-      "updated_at": "2026-10-05 18:05:33",
+      "updated_at": "2026-10-05 18:35:33",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 16,
+      "car": 21,
       "motor": null,
       "ev_car": null,
       "ev_motor": null,
@@ -1292,10 +1292,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7071",
       "name": "華士古達嘉馬花園- 東區",
-      "updated_at": "2026-10-05 18:05:38",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": null,
@@ -1309,14 +1309,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7086",
       "name": "望信樓",
-      "updated_at": "2026-10-05 18:05:22",
+      "updated_at": "2026-10-05 18:35:41",
       "fee_type": "夜間",
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 330,
-      "motor": 228,
+      "car": 329,
+      "motor": 233,
       "ev_car": 22,
       "ev_motor": 8,
       "disabled": 6,
@@ -1326,14 +1326,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7066",
       "name": "望德樓",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 111,
-      "motor": 119,
+      "car": 100,
+      "motor": 111,
       "ev_car": 8,
       "ev_motor": 9,
       "disabled": 4,
@@ -1343,16 +1343,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7068",
       "name": "望廈體育中心",
-      "updated_at": "2026-10-05 18:05:37",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 20,
-      "motor": 92,
+      "car": 28,
+      "motor": 88,
       "ev_car": 6,
-      "ev_motor": 17,
+      "ev_motor": 15,
       "disabled": 4,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -1360,15 +1360,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6007",
       "name": "望善樓",
-      "updated_at": "2026-10-05 18:05:43",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 34,
-      "motor": 79,
-      "ev_car": 10,
+      "car": 26,
+      "motor": 83,
+      "ev_car": 11,
       "ev_motor": 2,
       "disabled": 2,
       "heavy_lt_7m": null,
@@ -1377,15 +1377,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6025",
       "name": "望賢樓",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:39",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 382,
-      "motor": 779,
-      "ev_car": 7,
+      "car": 348,
+      "motor": 762,
+      "ev_car": 6,
       "ev_motor": 2,
       "disabled": 8,
       "heavy_lt_7m": null,
@@ -1394,14 +1394,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6029",
       "name": "湖畔大廈",
-      "updated_at": "2026-10-05 18:05:39",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 177,
-      "motor": 212,
+      "car": 173,
+      "motor": 215,
       "ev_car": 34,
       "ev_motor": 11,
       "disabled": 4,
@@ -1411,15 +1411,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6032",
       "name": "業興大廈",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:40",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 308,
-      "motor": 159,
-      "ev_car": 38,
+      "car": 307,
+      "motor": 158,
+      "ev_car": 39,
       "ev_motor": 10,
       "disabled": 6,
       "heavy_lt_7m": null,
@@ -1428,16 +1428,16 @@
       "heavy_gt_8m": null,
       "carpark_id": "7056",
       "name": "蝴蝶谷",
-      "updated_at": "2026-10-05 18:05:25",
+      "updated_at": "2026-10-05 18:35:38",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 79,
-      "motor": 59,
+      "car": 93,
+      "motor": 64,
       "ev_car": 9,
-      "ev_motor": 8,
+      "ev_motor": 10,
       "disabled": 1,
       "heavy_lt_7m": null,
       "heavy_lt_8m": null,
@@ -1445,14 +1445,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7054",
       "name": "澳門新批發市場",
-      "updated_at": "2026-10-05 18:05:41",
+      "updated_at": "2026-10-05 18:35:21",
       "fee_type": null,
       "special_flag": "yellow",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 268,
-      "motor": 399,
+      "car": 273,
+      "motor": 405,
       "ev_car": 39,
       "ev_motor": 10,
       "disabled": 7,
@@ -1462,14 +1462,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6015",
       "name": "蓮花路",
-      "updated_at": "2026-10-05 18:05:35",
+      "updated_at": "2026-10-05 18:35:43",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 66,
-      "motor": 19,
+      "car": 89,
+      "motor": 23,
       "ev_car": null,
       "ev_motor": 4,
       "disabled": 2,
@@ -1479,14 +1479,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "7070",
       "name": "澳門文化中心",
-      "updated_at": "2026-10-05 18:05:28",
+      "updated_at": "2026-10-05 18:35:44",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 37,
-      "motor": 181,
+      "car": 61,
+      "motor": 205,
       "ev_car": 10,
       "ev_motor": 6,
       "disabled": 4,
@@ -1496,14 +1496,14 @@
       "heavy_gt_8m": null,
       "carpark_id": "6004",
       "name": "藝園",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:40",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 206,
-      "motor": 328,
+      "car": 199,
+      "motor": 334,
       "ev_car": 36,
       "ev_motor": 6,
       "disabled": 5,
@@ -1513,15 +1513,15 @@
       "heavy_gt_8m": null,
       "carpark_id": "6031",
       "name": "樂群樓",
-      "updated_at": "2026-10-05 18:05:36",
+      "updated_at": "2026-10-05 18:35:38",
       "fee_type": null,
       "special_flag": null,
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 11,
-      "motor": 5,
-      "ev_car": 3,
+      "car": 12,
+      "motor": 6,
+      "ev_car": 4,
       "ev_motor": 4,
       "disabled": 1,
       "heavy_lt_7m": null,
@@ -1530,10 +1530,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "6013",
       "name": "麗都",
-      "updated_at": "2026-10-05 18:05:40",
+      "updated_at": "2026-10-05 18:35:34",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
       "car": 493,
@@ -1547,13 +1547,13 @@
       "heavy_gt_8m": null,
       "carpark_id": "7060",
       "name": "關閘綜合體育場館",
-      "updated_at": "2026-10-05 18:05:36",
+      "updated_at": "2026-10-05 18:35:21",
       "fee_type": null,
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     },
     {
-      "car": 80,
+      "car": 93,
       "motor": null,
       "ev_car": 16,
       "ev_motor": null,
@@ -1564,10 +1564,10 @@
       "heavy_gt_8m": null,
       "carpark_id": "7069",
       "name": "聯生圓形地",
-      "updated_at": "2026-10-05 18:05:44",
+      "updated_at": "2026-10-05 18:35:29",
       "fee_type": "夜間",
       "special_flag": "orange",
-      "scraped_at": "2026-10-05 18:05:57"
+      "scraped_at": "2026-10-05 18:35:58"
     }
   ]
 }
