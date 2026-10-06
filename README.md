@@ -591,6 +591,58 @@ jobs:
    （若哪天改回 private，免費帳號是 2,000 分鐘/月；每 30 分鐘一次、每次約 20 秒，
    一個月約 25 分鐘，也遠遠夠用。）
 
+## 🚨 事故：一個卡住的 run 鎖死整條 pipeline（2026-10-05）
+
+**症狀**：admin 頁的「採集狀態」顯示**已停擺**，而且停了整整 **29 小時**。
+
+### 時間線（全部有 API 佐證）
+
+| 時間（UTC） | 事件 |
+|---|---|
+| `2026-10-05T13:35:47Z` | run **37318031444** 被觸發 |
+| `13:35:54Z → 13:36:09Z` | 它的 `scrape` job **成功**（15 秒），commit `dd4e13c` |
+| `13:36:10Z` 起 | 它的 `deploy` job 卡在 **`queued`**，`runner_name: null`，**卡了 29 小時** |
+| `13:36:03Z` | **這是最後一筆採集資料** |
+| 之後 60+ 班 | 全部 `cancelled`，時長剛好 `30m0s`–`30m6s` |
+
+### 根因鏈
+
+1. `deploy` job 拿不到 runner（`runner_name: null`），永遠停在 `queued`。
+2. 這個 run 因此**永遠不 `completed`**。
+3. workflow 層級的 `concurrency: group: carpark-snapshot` 是被
+   **「還沒完成的 run」** 握著的 —— 它就一直握著。
+4. 之後每一班進入同一個 group → `pending` → 下一班來的時候
+   **把前一班取消**（GitHub 的 concurrency 只保留一個 pending）。
+   → 這正是「每一班都剛好 30 分鐘後被取消」的原因。
+5. 全 repo 當時只有 **2 個**未完成的 run：卡住的那個 + 它的 pending 接班者。
+
+### 為什麼「看起來像壞掉」但頁面還是活的
+
+admin 頁的 `minsAgo()` 用 **`Date.now()`** 在**瀏覽器**算「距離上次採集」，
+不是用 build 當下的時間。所以就算頁面是 29 小時前產生的靜態檔，
+打開來還是會誠實顯示「29.0 小時前」→ 超過 90 分鐘門檻 → **已停擺**。
+（這是對的設計：靜態頁也能反映「現在」有多舊。）
+
+### 修法
+
+1. **取消卡住的那個 run** —— 這是唯一能立刻解鎖的動作。
+2. **`cancel-in-progress: false` → `true`**（workflow 層級）。
+   原本的 `false` 意思是「排隊等」，但**排隊等一個永遠不結束的 run 就是永久死鎖**，
+   而且不會自己好。改成 `true`：新的一班直接取消舊的，**最壞 30 分鐘內自我恢復**。
+3. **`deploy` job 補上 `timeout-minutes: 10`**（原本只有 `scrape` 有）。
+   ⚠️ 但要誠實知道它的極限：`timeout-minutes` **只在 job 開始跑之後才計時**。
+   這次是根本沒拿到 runner，所以這道防線**不會生效** ——
+   真正兜底的是第 2 點的 `cancel-in-progress: true`。
+
+### 教訓
+
+- **「排隊」策略遇到「永遠不完成的任務」＝ 永久死鎖。** 任何 `cancel-in-progress: false`
+  的設計，都必須先回答「如果有一個 run 永遠不結束，誰來救？」
+- **一個沒有 `timeout-minutes` 的 job，可以拖垮整條 pipeline。**
+- **這次沒有任何告警。** 唯一的訊號是一個要自己打開來看的頁面 ——
+  和之前 provenance 那次一樣：**沒人看的告警不是告警**。
+  值得補的是「超過 N 小時沒有新 commit 就開 issue / 發通知」。
+
 ## 資料量估算
 
 91 個停車場 × 48 次/天 ≈ 4,400 列/天 ≈ 250 KB/天，gzip 後約 40 KB。
@@ -1074,9 +1126,11 @@ Info  [OK] HTTP 204 —— 已排入佇列 poepoe33/nexus-data/scrape.yml@main  
 > **推論：不要想用「錯開到 :15 / :45」來避開 Mac watchdog 的 :00 / :30** ——
 > 精度根本做不到，那只是幻覺（這個念頭很自然，但查了文件才知道行不通）。
 > 兩者本來就可能在同一分鐘觸發。同時觸發不會壞：`scrape.yml` 有
-> `concurrency: group: carpark-snapshot` / `cancel-in-progress: false`，
-> 多個來源只會**排隊**，不會平行跑、不會互撞；代價只是同一個 tick 可能產生
-> 兩筆相隔約一分鐘的快照。真正的採集工作仍然在 GitHub Actions 上執行。
+> `concurrency: group: carpark-snapshot` / `cancel-in-progress: true`，
+> 多個來源只會**排隊**，不會平行跑、不會互撞。真正的採集工作仍然在 GitHub Actions 上執行。
+>
+> ⚠️ `cancel-in-progress` 本來是 `false`，2026-10-05 的停擺事故後改成 `true`。
+> 原因見下方〈一個卡住的 run 鎖死整條 pipeline〉。
 
 **本機就能測（不需要 Google 帳號、不需要網路）：**
 

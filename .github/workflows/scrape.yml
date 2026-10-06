@@ -48,7 +48,20 @@ permissions:
 
 concurrency:
   group: carpark-snapshot
-  cancel-in-progress: false
+  # ⚠️ 這裡是 true，不是 false —— 2026-10-05 的停擺事故換來的。
+  #
+  # 事發：某一班的 deploy job 卡在 queued 拿不到 runner（卡了 29 小時），
+  # 整個 run 因此永遠不 completed。而 workflow 層級的 concurrency group
+  # 是被「還沒完成的 run」握著的 —— 於是之後每一班都只能 pending，
+  # 再被下一班取消。採集整整停擺 29 小時，而且**不會自己好**。
+  #
+  # cancel-in-progress: false 的意思是「排隊等」。但「排隊等一個永遠不結束的 run」
+  # 就是永久死鎖。改成 true：新的一班直接取消舊的，最壞 30 分鐘內自己恢復。
+  #
+  # 代價：萬一某一班真的還在跑，會被下一班取消。但正常一班約 1~2 分鐘，
+  # 觸發間隔 30 分鐘，撞上的機率極低 —— 而且「偶爾少一筆快照」
+  # 遠好過「整條 pipeline 永久停擺且無人察覺」。
+  cancel-in-progress: true
 
 jobs:
   scrape:
@@ -183,6 +196,13 @@ jobs:
   deploy:
     needs: scrape
     runs-on: ubuntu-latest
+    # deploy-pages 若卡住又沒有 timeout，就會永遠掛著、把整個 run 拖住不 completed，
+    # 進而鎖死 workflow 的 concurrency group（2026-10-05 那次卡了 29 小時）。
+    # 跟 scrape 一樣給 10 分鐘。
+    # ⚠️ 但要知道這道防線的極限：timeout-minutes 只在 job **開始跑之後**才計時。
+    #    那次是根本沒拿到 runner（runner_name: null），所以這個 timeout 不會生效。
+    #    真正兜底的是上面 workflow 層級的 cancel-in-progress: true。
+    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
