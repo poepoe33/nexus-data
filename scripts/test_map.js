@@ -317,7 +317,11 @@ ok(ds.data.every((d) => Number.isInteger(d.count) && d.count >= 0 && d.count <= 
 
 // --- dot layer ---
 ok(log.dots.length === NPARKS, "每個停車場都有一個圓點（含無讀數的灰點）", log.dots.length + " vs " + NPARKS);
-const greys = log.dots.filter((d) => d.opts.fillColor === "#39465A");
+/* ⚠️ 這裡本來寫死 "#39465A"（舊調色盤的灰）。頁面改用 NEUTRAL = #9AA79C 之後，
+   這條斷言在 NO_READ = 0 時**假性通過**（0 === 0 永遠成立），
+   一直到資料出現第 1 個「無讀數」的場才露出來。
+   用常數而不是字面值 —— 這正是上面那兩個常數存在的理由。 */
+const greys = log.dots.filter((d) => d.opts.fillColor === NEUTRAL);
 ok(greys.length === NO_READ, "無讀數的場畫成中性灰（不假裝成 0%）", greys.length + " vs " + NO_READ);
 const d0 = log.dots[0];
 ok(d0.opts.center instanceof Object && "lng" in d0.opts.center,
@@ -631,38 +635,83 @@ ok(recs.every((r) => r.badge != null), "每一列都有信心標示", JSON.strin
 
 // 換到一個「該時段沒有資料」的格子 → 必須走退路並標明。
 //
-// 這裡原本寫死「週日 3 時」，因為資料一開始只涵蓋週五～週日，那個格子必然是空的。
-// 但資料每天在長，格子遲早會被填滿 —— 2026-10-04 的資料就真的把它填滿了
-// （81/81 個場在週日 3 時都有樣本），這個斷言於是開始失敗。
-// 改成自己從「目前的推薦名單」裡挑一個真的有缺口的時段，並優先挑缺口最多的，
-// 這樣換過去之後，缺資料的場不會因為預估值改變而被擠出前 5 名。
-const recIds = recs.map((r) => r.id);
-const smOf = (id) => {
-  const q = MODE0.parks.find((z) => z.id === id);
-  return (q && q.sm) || "";
+// 這裡走過三次冤枉路，全部記下來 —— 前兩次同一個病，第三次是另一個：
+//   1. 原本寫死「週日 3 時」（資料一開始只涵蓋週五～週日，那格必然是空的）。
+//      資料長大後 81/81 個場都有樣本，斷言開始失敗。
+//   2. 改成「自己找一個真的有缺口的時段」。覆蓋率還沒滿時可行，
+//      但 days_covered 一旦到 7 以上，**缺口就完全不存在** —— 又開始失敗。
+//      1、2 是同一個錯誤：**把「資料剛好長什麼樣」寫進斷言**。
+//   3. 改成「自己製造缺口」之後**還是紅**。原因更隱蔽：我改的是影子副本。
+//      上面的 DATA 是從 HTML 文字 parse 出來的，而頁面內部是
+//      `var D = window.__MAPDATA__` —— 兩份內容一樣、但**不是同一個物件**。
+//      改 DATA 等於改給自己看，頁面根本不知道。
+//
+// 所以現在是：**自己製造缺口，而且改在頁面真正的那份資料上**。
+// 挑一個「最多場有資料」的時段，把那格整個清空，強迫 predict() 走
+// 「該星期平均」的退路。不管資料多完整都驗得到，而且能確定退路是我們
+// 造成的，不是本來就沒資料。
+const wdBtns = $("seg-when").children.filter((c) => /^[一二三四五六日]$/.test(c.textContent));
+
+/* ⚠️ 必須改在 win.__MAPDATA__（＝頁面的 D）上，不是上面 parse 出來的 DATA。
+   兩者內容一樣、但**不是同一個物件**；寫在 DATA 上等於寫給自己看。
+   （這裡只確認頁面真的有讀到 window.__MAPDATA__ 而且結構一致。真正會抓出
+   「改錯份」的是下面那幾條退路斷言 —— 2026-10-07 實測：把 PAGE_MODE0 換回
+   MODE0，退路斷言立刻變紅。刻意不寫 `PAGE_MODE0 !== MODE0`：那條抓不到
+   真正的迴歸，卻會在有人把 DATA 改成直接引用 __MAPDATA__ 時誤報。） */
+const PAGE_MODE0 = win.__MAPDATA__.modes[DATA.mode_order[0]];
+ok(PAGE_MODE0 != null && PAGE_MODE0.parks.length === NPARKS &&
+   Object.keys(win.__MAPDATA__.modes).join() === Object.keys(DATA.modes).join(),
+   "頁面的資料來自 window.__MAPDATA__，且與測試 parse 出來的一致",
+   PAGE_MODE0.parks.length + " 場");
+
+/* _h 是頁面解碼後的快取。還沒解碼過就自己解（用上面的獨立解碼器）並**寫回 p._h** ——
+   這樣我們的修改才會被頁面的 heatOf() 看到（它只認 p._h）。 */
+const heatOf = (p) => {
+  if (!Array.isArray(p._h)) p._h = p.hm ? decHeat(p.hm) : [];
+  return p._h;
 };
-let gapSlot = null;
+
+let gapSlot = null, bestN = -1;
 for (let wd = 0; wd < 7; wd++) {
   for (let hr = 0; hr < 24; hr++) {
     const idx = wd * 24 + hr;
-    const gaps = recIds.filter((id) => {
-      const sm = smOf(id);
-      return idx >= sm.length || sm[idx] === ".";
-    }).length;
-    if (gaps && (!gapSlot || gaps > gapSlot.gaps)) gapSlot = { wd, hr, gaps };
+    const n = PAGE_MODE0.parks.filter((q) => heatOf(q)[idx] != null).length;
+    if (n > bestN) { bestN = n; gapSlot = { wd, hr }; }
   }
 }
-const wdBtns = $("seg-when").children.filter((c) => /^[一二三四五六日]$/.test(c.textContent));
-ok(!!gapSlot, "推薦名單裡找得到『該時段無資料』的時段（資料覆蓋率還沒滿時）");
+ok(bestN > 0, "找得到一個有資料的時段（用來清空、製造缺口）", bestN + " 場");
+
 if (gapSlot) {
+  const idx = gapSlot.wd * 24 + gapSlot.hr;
+  PAGE_MODE0.parks.forEach((q) => {
+    heatOf(q)[idx] = null;                        // 強制這格沒有資料
+    if (Array.isArray(q._s)) q._s[idx] = 0;       // 樣本數也歸零
+  });
+
   wdBtns[gapSlot.wd].onclick();
   $("sel-hour").value = String(gapSlot.hr);
   $("sel-hour").onchange();
   const recs2 = recRows();
   ok(recs2.length >= 1, "換時段後仍有推薦", recs2.length);
-  const anyFallback = recs2.some((r) => /該時段無資料/.test(r.html) || /推算/.test(r.html));
+  const anyFallback = recs2.some((r) => /該時段無資料/.test(r.html));
   ok(anyFallback, "該時段沒有資料時，明確標示是用平均推算而非實測",
-     `週${wdBtns[gapSlot.wd].textContent} ${gapSlot.hr}:00（${gapSlot.gaps}/${recIds.length} 個推薦場缺資料）`);
+     `週${wdBtns[gapSlot.wd].textContent} ${gapSlot.hr}:00（已清空 ${PAGE_MODE0.parks.length} 個場在該時段的資料）`);
+
+  /* 上面那條只要「有標示」就過；這條更嚴格：**必須是「用該星期平均」那一路**，
+     而不是掉到「全週平均」。兩者的退路深度不一樣，混在一起會讓前者變成
+     一條誰都能過的斷言。 */
+  const wkRow = recs2.find((r) => /該時段無資料 → 用該星期平均/.test(r.html));
+  ok(wkRow != null, "退路走的是『該星期平均』（同一天其他小時還有資料），不是全週平均",
+     wkRow ? wkRow.id : JSON.stringify(recs2.map((r) => r.id)));
+
+  /* 退路的信心標示必須是「推算」而不是一個信心等級。
+     這一條踩過的坑值得記：confOf(n) 在 n>=1 時回「低信心」、n===0 才回 null，
+     而 recRow 只有在 null 時才顯示「推算」。所以**只要那格還有樣本**，
+     列上就不會出現「推算」—— 這正是我一開始把 /推算/ 當成退路證據時
+     誤判失敗原因的地方。分開驗，才不會互相掩蓋。 */
+  ok(wkRow != null && /推算<\/span>/.test(wkRow.html),
+     "退路的列標成『推算』，不會在沒有樣本時報一個信心等級",
+     wkRow ? (wkRow.badge || "(無 badge)") : "(沒有退路列)");
 }
 
 // 搜尋流程：打字 → 高德 → 起點

@@ -49,9 +49,10 @@
  *
  *   → 所以**不要**嘗試用「錯開到 :15 / :45」來避開 Mac watchdog 的 :00 / :30：
  *     精度根本做不到，錯開只是幻覺。兩者本來就可能在同一分鐘觸發。
- *     同時觸發不會壞 —— scrape.yml 有 concurrency group（cancel-in-progress:
- *     false），只會排隊，不會平行跑、不會互撞；代價是同一個 tick 可能產生
- *     兩筆相隔約一分鐘的快照。真正的採集工作仍然在 GitHub Actions 上執行。
+ *     同時觸發不會壞 —— scrape.yml 有 concurrency group，只會排隊，
+ *     不會平行跑、不會互撞。真正的採集工作仍然在 GitHub Actions 上執行。
+ *     （2026-10-05 之後 cancel-in-progress 改成 true。原本是 false，
+ *     但「排隊等一個永遠不結束的 run」會變成永久死鎖 —— 詳見 scrape.yml 的註解。）
  *
  * 為什麼失敗**一定要丟例外**（不能只印 log 然後 return false）：
  *   Google 的「Summary of failures」通知信只在執行**丟出未捕捉例外**時才寄。
@@ -142,6 +143,9 @@ function dispatch() {
   if (code === 204 || code === 200) {
     Logger.log('[OK] HTTP %s —— 已排入佇列 %s/%s@%s（origin=%s）',
                String(code), REPO, WORKFLOW, REF, ORIGIN);
+    // 球丟進去了，但「丟進去」不等於「資料會進來」——
+    // 順手確認上一筆成功的採集有多舊（太舊會丟例外，見下方的 checkFreshness）。
+    checkFreshness(token);
     return true;
   }
 
@@ -176,6 +180,79 @@ function diagnose(code, body) {
 /** 手動測試用：等同 dispatch()，只是名字更好按。 */
 function testRun() {
   return dispatch();
+}
+
+// ---------------------------------------------------------------- 新鮮度告警
+/**
+ * 「排程有跑」不等於「資料有進來」。
+ *
+ * 2026-10-05 的停擺就是這樣：Apps Script 每 30 分鐘都成功拿到 HTTP 204
+ * （球確實丟進去了），但 GitHub 那一側每一班都被取消 —— 整整 29 小時
+ * 沒有任何新資料，而 dispatch() 完全看不出來，它只知道「我送出請求了」。
+ *
+ * 所以丟完球之後再回頭問一句：「上一筆**成功**的採集是多久以前？」
+ * 超過門檻就丟例外 → Google 寄失敗通知信。
+ * 這是整個系統裡唯一會在「沒人打開頁面」時主動叫的告警。
+ *
+ * 門檻刻意跟 admin 頁面的「已停擺」一致（都是 90 分鐘）：
+ * 同一個現象在兩個地方不該有兩個標準。
+ */
+const MAX_STALE_MIN = 90;
+
+/** 查最近幾班 run，看「最後一次成功」離現在多久。太舊就丟例外。 */
+function checkFreshness(token) {
+  const url = 'https://api.github.com/repos/' + REPO +
+              '/actions/workflows/' + WORKFLOW + '/runs?per_page=20';
+
+  const res = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      // 同 dispatch()：UrlFetchApp 會覆寫成自己的 UA，這行是意圖聲明。
+      'User-Agent': UA,
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  });
+
+  const code = res.getResponseCode();
+  if (code !== 200) {
+    // 查不到就**不要**告警：可能是 token 缺 Actions: read，或 GitHub 在抖。
+    // 寧可漏一次告警，也不要把「查不到」變成「每 30 分鐘寄一次假警報」——
+    // 假警報會讓人開始忽略通知，那比沒有通知更糟。
+    Logger.log('[WARN] 查不到 run 清單（HTTP %s），本次跳過新鮮度檢查', String(code));
+    return;
+  }
+
+  let runs = [];
+  try {
+    runs = JSON.parse(res.getContentText()).workflow_runs || [];
+  } catch (e) {
+    Logger.log('[WARN] run 清單不是合法 JSON，本次跳過新鮮度檢查');
+    return;
+  }
+  if (!runs.length) {
+    Logger.log('[WARN] run 清單是空的，本次跳過新鮮度檢查');
+    return;
+  }
+
+  // runs 是新的在前。找第一筆成功的。
+  const okRuns = runs.filter(function (r) { return r.conclusion === 'success'; });
+  if (!okRuns.length) {
+    // 有 run 但沒有一班成功 —— 這正是 2026-10-05 的狀況（全部 cancelled）。
+    throw new Error('最近 ' + runs.length + ' 班全部沒有成功 —— ' +
+                    '採集已經停擺，請檢查 GitHub Actions');
+  }
+
+  const newest = okRuns[0].updated_at || okRuns[0].created_at || '';
+  const ageMin = (Date.now() - new Date(newest).getTime()) / 60000;
+  if (ageMin > MAX_STALE_MIN) {
+    throw new Error('已經 ' + Math.round(ageMin) + ' 分鐘沒有成功的採集' +
+                    '（門檻 ' + MAX_STALE_MIN + ' 分鐘）—— 採集可能停擺了');
+  }
+
+  Logger.log('[OK] 最後一次成功採集在 %s 分鐘前', String(Math.round(ageMin)));
 }
 
 // ---------------------------------------------------------------- 診斷

@@ -169,7 +169,7 @@ function boot(opts) {
 /* --- 0. 先確認函式真的有載入，否則後面每個斷言都會變成 TypeError，
        整個測試檔會炸掉、其他斷言的結果全部遺失。 --- */
 const FNS = ["dispatch", "testRun", "diagnose", "saveToken",
-             "installTrigger", "removeTrigger", "showStatus"];
+             "installTrigger", "removeTrigger", "showStatus", "checkFreshness"];
 {
   const { sandbox } = boot();
   const missing = FNS.filter((f) => typeof sandbox[f] !== "function");
@@ -216,7 +216,10 @@ section("請求內容", function () {
   const c = t.fetch.calls[0];
   const h = (c && c.params && c.params.headers) || {};
 
-  ok(t.fetch.calls.length === 1, "只送一次請求", "calls=" + t.fetch.calls.length);
+  /* 兩次：第一次 dispatch，第二次是丟完之後的新鮮度檢查（見 8b）。
+     這裡只驗第一次的內容，所以固定看 calls[0]。 */
+  ok(t.fetch.calls.length === 2,
+     "送兩次請求：dispatch + 新鮮度檢查", "calls=" + t.fetch.calls.length);
   ok(c.url === "https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/dispatches",
      "URL 正確", c.url);
   ok(c.params.method === "post", "用 POST", c.params.method);
@@ -430,6 +433,90 @@ section("Logger 數字格式：showStatus", function () {
   ok(!/\d\.0\s*個/.test(j), "showStatus 的觸發器數量不會印成「1.0 個」",
      j.replace(/\n/g, " | "));
   ok(/1 個/.test(j), "showStatus 印的是「1 個」");
+});
+
+/* --- 8b. 新鮮度告警：dispatch 成功 ≠ 資料有進來 ---
+   2026-10-05 實際發生的事：Apps Script 每 30 分鐘都回報成功（HTTP 204），
+   但 GitHub 那一側每一班都被取消，整整 29 小時沒有新資料。
+   沒有這個檢查，這件事永遠不會有人知道 —— 因為 dispatch() 只知道「球丟進去了」。
+   這是整個系統唯一會在「沒人打開頁面」時主動叫的告警。 */
+section("新鮮度告警（dispatch 成功 ≠ 資料有進來）", function () {
+  const runsJson = (runs) => JSON.stringify({ workflow_runs: runs });
+  const runAgo = (min, conclusion) => ({
+    conclusion: conclusion || "success",
+    created_at: new Date(Date.now() - min * 60000).toISOString(),
+    updated_at: new Date(Date.now() - min * 60000).toISOString(),
+  });
+
+  // dispatch 一律 204；run 清單則依情境給不同內容。
+  const bootWith = (runs) => boot({
+    props: { GH_TOKEN: "github_pat_abc" },
+    responder: (url) => url.indexOf("dispatches") !== -1
+      ? { code: 204, text: "" }
+      : { code: 200, text: runsJson(runs) },
+  });
+
+  // 1) 正常：最後一次成功在 10 分鐘前 → 不告警
+  const fresh = bootWith([runAgo(10)]);
+  ok(fresh.sandbox.dispatch() === true, "新鮮（10 分鐘前成功）→ 不告警");
+  ok(fresh.logs.some((l) => /最後一次成功採集在 10 分鐘前/.test(l)),
+     "新鮮時會印出「最後一次成功採集在 N 分鐘前」", fresh.logs.join(" | "));
+
+  // 2) 停擺：最後一次成功在 200 分鐘前 → 丟例外（＝Google 寄通知信）
+  const stale = bootWith([runAgo(200)]);
+  const errS = expectThrow(() => stale.sandbox.dispatch());
+  ok(errS !== null, "超過 90 分鐘沒有成功 → 丟例外（否則不會有通知信）",
+     errS ? errS.message : "沒有丟例外");
+  ok(errS !== null && /200 分鐘/.test(errS.message),
+     "例外訊息帶著實際的停擺時間（通知信只顯示例外訊息）",
+     errS ? errS.message : "");
+
+  // 3) 有 run 但每一班都被取消 —— 這就是 2026-10-05 的實際狀況
+  const allBad = bootWith([runAgo(30, "cancelled"), runAgo(60, "cancelled")]);
+  const errB = expectThrow(() => allBad.sandbox.dispatch());
+  ok(errB !== null, "有 run 但全部沒成功 → 丟例外", errB ? errB.message : "沒有丟例外");
+  ok(errB !== null && /2 班/.test(errB.message), "例外訊息說明是幾班都失敗",
+     errB ? errB.message : "");
+
+  // 4) 查不到（權限不足 / GitHub 在抖）→ 只警告，**不**丟例外。
+  //    假警報會讓人開始忽略通知，那比沒有通知更糟。
+  const cannot = boot({ props: { GH_TOKEN: "x" },
+                        responder: (url) => url.indexOf("dispatches") !== -1
+                          ? { code: 204, text: "" }
+                          : { code: 403, text: '{"message":"Resource not accessible"}' } });
+  ok(cannot.sandbox.dispatch() === true, "查不到 run 清單 → 不告警（避免假警報）");
+  ok(cannot.logs.some((l) => /\[WARN\]/.test(l)), "但會印出 [WARN] 讓人查得到");
+
+  // 5) 空清單 → 跳過，不告警
+  const empty = bootWith([]);
+  ok(empty.sandbox.dispatch() === true, "run 清單是空的 → 跳過（不亂告警）");
+
+  // 6) 回傳不是合法 JSON → 跳過，不告警（也不要讓 JSON.parse 炸掉整個排程）
+  const badJson = boot({ props: { GH_TOKEN: "x" },
+                         responder: (url) => url.indexOf("dispatches") !== -1
+                           ? { code: 204, text: "" }
+                           : { code: 200, text: "<html>not json</html>" } });
+  ok(badJson.sandbox.dispatch() === true, "回傳不是 JSON → 跳過（不讓它炸掉排程）");
+
+  // 7) 新鮮度查詢本身要正確
+  const hdr = bootWith([runAgo(5)]);
+  hdr.sandbox.dispatch();
+  const q = hdr.fetch.calls[1];
+  ok(q && q.url === "https://api.github.com/repos/poepoe33/nexus-data/actions/workflows/scrape.yml/runs?per_page=20",
+     "查的是這個 workflow 的 run 清單", q ? q.url : "(沒有第二次請求)");
+  ok(q && q.params.method === "get", "用 GET", q ? q.params.method : "");
+  ok(q && q.params.headers["Authorization"] === "Bearer github_pat_abc",
+     "新鮮度查詢有帶 Bearer token");
+  ok(q && typeof q.params.headers["User-Agent"] === "string"
+       && q.params.headers["User-Agent"].length > 0,
+     "新鮮度查詢也有帶 User-Agent（GitHub 強制要求）");
+
+  // 8) 門檻要跟 admin 頁面的「已停擺」一致，否則同一個現象會有兩個標準
+  const gs = SRC;
+  ok(/MAX_STALE_MIN\s*=\s*90/.test(gs), "門檻是 90 分鐘");
+  const admin = fs.readFileSync(path.join(ROOT, "dashboard", "admin_template.html"), "utf8");
+  ok(/m\s*>=\s*35\s*&&\s*m\s*<\s*90/.test(admin),
+     "admin 頁面的「已停擺」門檻也是 90 分鐘（兩邊一致）");
 });
 
 /* --- 9c. 跨檔一致性：origin 必須「宣告過」才送得進去 ---

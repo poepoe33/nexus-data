@@ -242,6 +242,28 @@ node scripts/test_index_live.js http://127.0.0.1:8902/index.html
 | `該時段無資料 → 用全週平均` | 整個星期都空 → 用全部有資料格的平均 |
 | `推算` | 上面全部落空，只剩粗略值（無信心標籤） |
 
+> **這條退路怎麼驗的（改了三次，值得記下來）。** 要驗「該時段無資料時會退路並標明」，
+> 就得先有一個「無資料的時段」。三次都踩到同一個形狀的坑：
+>
+> 1. 寫死「週日 3 時」—— 資料一開始只涵蓋週五～週日，那格必然是空的。等資料長大、
+>    每個場每個時段都有樣本之後，斷言就開始紅。
+> 2. 改成「自己去找一個真的有缺口的時段」。覆蓋率還沒滿時可行，但 `days_covered`
+>    一到 7 以上，**缺口就完全不存在** —— 又開始紅。
+> 3. 改成「**自己製造缺口**」：挑一個最多場有資料的時段，把那格整批清空，強迫
+>    `predict()` 走退路。這樣不管資料多完整都驗得到。**但第一版還是紅** ——
+>    因為我清的是**影子副本**：測試裡的 `DATA` 是從 HTML 文字 parse 出來的，
+>    而頁面內部是 `var D = window.__MAPDATA__`，兩份內容一樣、卻不是同一個物件。
+>    改 `DATA` 等於改給自己看。現在改成改在 `win.__MAPDATA__` 上，
+>    而「改錯份」會讓下面那幾條退路斷言直接變紅（實測過）。
+>
+> 前兩次的教訓是：**不要把「資料剛好長什麼樣」寫進斷言**。第三次是：
+> **改資料要改在頁面真正的那一份上**。另外，「退路列的信心標示」是**分開**驗的 ——
+> 因為 `confOf(n)` 在 `n ≥ 1` 時會回「低信心」，只有 `n === 0` 才顯示「推算」，
+> 所以只要那格還有樣本，列上就不會出現「推算」。混在一起驗會互相掩蓋。
+>
+> 控制組：把 `recRow()` 改成「沒樣本也報一個信心等級」→ **只有那一條斷言變紅**
+> （211 → 210 通過），證明它驗的是自己的主張，不是靠別的斷言順便過。
+
 #### 5. 信心標籤（依 `sm` 的樣本數）
 
 | 樣本數 | 標籤 |
@@ -427,10 +449,10 @@ scripts/scrape.py                    採集器（三種模式）
 scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
 scripts/bench_dashboard.py           合成歷史，量測 build_dashboard.py 的時間/記憶體
 scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦）
-scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，208 條斷言
+scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，211 條斷言
 scripts/test_map_live.js             真人瀏覽器測試：高德搜索服務與 key 白名單（puppeteer-core + 本機 Chrome）
 scripts/test_map_live_features.js    真人瀏覽器測試：推薦點燈 / 自動 zoom in / 卡片自動關閉
-scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），96 條斷言
+scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），112 條斷言
 scripts/test_index_live.js           真人瀏覽器測試：搜尋式停車場選擇器 + 圖卡三個分頁，53 條斷言
 scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，59 條斷言
 scripts/test_collection_source.py    採集來源判定（collection_source / dispatch_origin），42 條斷言
@@ -607,14 +629,33 @@ jobs:
 
 ### 根因鏈
 
-1. `deploy` job 拿不到 runner（`runner_name: null`），永遠停在 `queued`。
-2. 這個 run 因此**永遠不 `completed`**。
-3. workflow 層級的 `concurrency: group: carpark-snapshot` 是被
+1. `deploy` job **從來沒有開始跑**。API 物件裡的三個欄位同時指著這件事：
+   `status: queued`、`runner_id: null`、而且 **`steps: []`** ——
+   連步驟都還沒展開，代表它根本沒被派到任何 runner 上。
+2. 對應的 Pages deployment 記錄（`6860431117`）**狀態筆數是 0**。
+   健康的部署會依序拿到 `waiting → queued → in_progress → success`（4 筆，11 秒內完成）；
+   這個一筆都沒有 —— GitHub 的部署服務從頭到尾沒接手它。
+3. 這個 run 因此**永遠不 `completed`**。
+4. workflow 層級的 `concurrency: group: carpark-snapshot` 是被
    **「還沒完成的 run」** 握著的 —— 它就一直握著。
-4. 之後每一班進入同一個 group → `pending` → 下一班來的時候
+5. 之後每一班進入同一個 group → `pending` → 下一班來的時候
    **把前一班取消**（GitHub 的 concurrency 只保留一個 pending）。
    → 這正是「每一班都剛好 30 分鐘後被取消」的原因。
-5. 全 repo 當時只有 **2 個**未完成的 run：卡住的那個 + 它的 pending 接班者。
+6. 全 repo 當時只有 **2 個**未完成的 run：卡住的那個 + 它的 pending 接班者。
+
+### 排除了哪些原因（逐一查過，不是猜的）
+
+| 懷疑 | 怎麼排除 |
+|---|---|
+| Pages 部署次數超限 | 官方文件：每小時 10 次是**軟性**上限，而且**用 GitHub Actions 自建自發不適用**；我們實際也只有 2–3 次/小時 |
+| 被 `pages` concurrency group 卡住 | `pages.yml` 最後一次執行是 10-04，早已完成；全 repo 未完成的 run 只有 2 個 |
+| 前一個部署沒收尾 | 前一個（`13:06:05Z`）在 `13:06:17Z` 就 `success` 了 |
+| Actions 額度用完 | repo 是 public，Actions 分鐘數免費無限 |
+| 我們的 workflow 寫錯 | `scrape` job 完全正常（15 秒成功、資料也 commit 了）；卡住的是 GitHub 自己派的 runner 與部署服務 |
+
+**結論：這是 GitHub 那一側的暫時性故障 —— job 沒被派到 runner，而 GitHub 沒有重試。
+我們沒辦法修它，只能讓它無法再造成 29 小時的傷害。** 搜尋也顯示這是一類已知問題
+（「run 永久卡在 queued／corrupted run」），通常的處理就是取消後重跑。
 
 ### 為什麼「看起來像壞掉」但頁面還是活的
 
@@ -626,22 +667,81 @@ admin 頁的 `minsAgo()` 用 **`Date.now()`** 在**瀏覽器**算「距離上次
 ### 修法
 
 1. **取消卡住的那個 run** —— 這是唯一能立刻解鎖的動作。
+   ⚠️ 需要 PAT 有 `Actions: Read and write`。本機那顆 fine-grained PAT **沒有**這個權限
+   （`gh run cancel` 與 `gh workflow run` 都回 403），所以只能去 GitHub UI 按 Cancel，
+   或靠第 2 點的自我恢復。
 2. **`cancel-in-progress: false` → `true`**（workflow 層級）。
    原本的 `false` 意思是「排隊等」，但**排隊等一個永遠不結束的 run 就是永久死鎖**，
    而且不會自己好。改成 `true`：新的一班直接取消舊的，**最壞 30 分鐘內自我恢復**。
 3. **`deploy` job 補上 `timeout-minutes: 10`**（原本只有 `scrape` 有）。
    ⚠️ 但要誠實知道它的極限：`timeout-minutes` **只在 job 開始跑之後才計時**。
-   這次是根本沒拿到 runner，所以這道防線**不會生效** ——
-   真正兜底的是第 2 點的 `cancel-in-progress: true`。
+   這次是根本沒拿到 runner（`steps: []`、`runner_id: null`），所以這道防線
+   **不會生效** —— 真正兜底的是第 2 點的 `cancel-in-progress: true`。
+4. **加一盞會自己熄滅的告警燈**：`dispatch-cron.gs` 的 `checkFreshness()`。
+   Apps Script 成功丟出觸發之後，**再回頭問一句**「上一筆成功的採集是多久以前」，
+   超過 90 分鐘就丟例外 → Google 寄失敗通知信（細節見上方 Apps Script 一節）。
+   這是整個系統唯一會在「**沒人打開頁面**」時主動叫的機制。
+
+### 結果
+
+卡住的那個 run 在 `18:42:48Z` 被**取消**（`completed / cancelled`），原本 pending
+的那班立刻接手並**完整成功**（`scrape` 與 `deploy` 都拿到 runner），
+**新資料在 `18:43:00Z` 進來** —— 停擺結束。
+
+> ⚠️ 說清楚因果：**結束這次停擺的是「取消卡住的那個 run」，不是 `cancel-in-progress`
+> 那個修法。** 修法是在 `18:38:51Z` 推的，而接手的那班 run 在 `18:35:47Z` 就建立了
+> （用的是改之前的 workflow 檔），它從 `18:35:47Z` 一直 `pending` 到
+> `18:42:48Z` 才開始跑 —— 整個 run 記到的 `452s` 幾乎都是「等」的時間。
+> 所以修法的作用是**防止下一次**，不是治好這一次。
+>
+> 這也再次說明「本機診斷前先 `git fetch`」：本機當時落後 1 筆，
+> 差一點就看不到那筆救命的 `f91aad0`。
 
 ### 教訓
 
 - **「排隊」策略遇到「永遠不完成的任務」＝ 永久死鎖。** 任何 `cancel-in-progress: false`
   的設計，都必須先回答「如果有一個 run 永遠不結束，誰來救？」
 - **一個沒有 `timeout-minutes` 的 job，可以拖垮整條 pipeline。**
+- **`timeout-minutes` 救不了「從來沒開始」的 job。** 它只在 job 開始跑之後才計時；
+  這次 job 連 runner 都沒拿到（`steps: []`），所以任何 timeout 都不會觸發。
+  要救這種情況只能靠外部 —— `cancel-in-progress` 或 watchdog。
 - **這次沒有任何告警。** 唯一的訊號是一個要自己打開來看的頁面 ——
-  和之前 provenance 那次一樣：**沒人看的告警不是告警**。
-  值得補的是「超過 N 小時沒有新 commit 就開 issue / 發通知」。
+  和之前 provenance 那次一樣：**沒人看的告警不是告警**。現在補上了 `checkFreshness()`。
+- **告警要「會自己熄滅」。** 新鮮度門檻一旦有一班成功就會掉回正常、不再寄信 ——
+  「只會亮不會滅的燈不是告警」。
+
+### 還留著一條同類的路：`pages` group
+
+查根因時順手發現的 —— **這次不是它造成的，但同樣的死鎖可以從這裡再來一次。**
+
+`scrape.yml` 的 `deploy` job 有 **job 層級**的 concurrency：
+
+```yaml
+deploy:
+  concurrency:
+    group: pages            # ← 跟 pages.yml 的 workflow 層級 group 同名
+    cancel-in-progress: false
+```
+
+concurrency group 是 **repo 級**的，所以 job 層級的 `pages` 與 `pages.yml`
+workflow 層級的 `pages` **是同一個 group**（`scrape.yml` 自己註解也寫了
+「跟 pages.yml 用同一個 concurrency group，避免兩邊同時部署打架」）。
+
+- 如果 `pages` 被別的 run 握著，我們的 `deploy` job 就會一直 `queued`、
+  拿不到 runner、`steps: []` —— **症狀跟這次一模一樣**，而 `timeout-minutes`
+  一樣救不了（它只在 job 開始跑之後才計時）。
+- 而且 workflow 層級的 `cancel-in-progress: true` **救不了這一種**：
+  它只取消同一個 group（`carpark-snapshot`）的舊 run，取消不了
+  **另一個 workflow** 握著的 `pages`。
+
+**為什麼實務風險低**：`pages.yml` 幾乎不會被觸發 —— `scrape.yml` 用
+`GITHUB_TOKEN` 推的 commit 不會觸發其他 workflow。它只在**有人改到
+`dashboard/*.html`**（含本機推的）時跑一次，一次約 22–25 秒。
+最後一次是 `2026-10-04T14:48:52Z`，成功，之後沒再跑過 —— 所以這次不是它。
+
+**要把這條路封掉的選項**（還沒做，需要決定）：讓 `pages.yml` 不再自己部署、
+只留 `workflow_dispatch`，改由 `scrape.yml` 統一部署 —— 代價是人工改
+dashboard 要等最多 30 分鐘才上線。
 
 ## 資料量估算
 
@@ -1118,6 +1218,30 @@ Info  [OK] HTTP 204 —— 已排入佇列 poepoe33/nexus-data/scrape.yml@main  
 > `HTTP 401 —— token 無效／過期／沒帶。重新跑 saveToken()`），
 > 所以通知信裡直接就看得出要改什麼，不必再去翻執行紀錄。
 
+> 🚨 **但「有寄信」不等於「有告警」—— 所以還有第二層：新鮮度檢查。**
+>
+> 2026-10-05 的停擺就是這句話的反例：Apps Script 每 30 分鐘都**成功**拿到
+> HTTP 204（球確實丟進去了），但 GitHub 那一側每一班都被取消，
+> 整整 **29 小時**沒有新資料。`dispatch()` 完全看不出來 —— 它只知道「我送出請求了」。
+>
+> 所以 `dispatch()` 成功之後會**再問一句**：「上一筆**成功**的採集是多久以前？」
+> （`checkFreshness()`，打 `/actions/workflows/scrape.yml/runs`）
+>
+> | 情況 | 行為 |
+> |---|---|
+> | 最後一次成功在 90 分鐘內 | 印 `[OK] 最後一次成功採集在 N 分鐘前` |
+> | 超過 90 分鐘 | **丟例外** → Google 寄失敗通知信 |
+> | 有 run 但**全部**沒成功（＝2026-10-05 的狀況） | **丟例外** |
+> | 查不到（權限不足／GitHub 在抖）／回傳不是 JSON／清單是空的 | 只印 `[WARN]`，**不告警** |
+>
+> 最後一列是刻意的：**假警報會讓人開始忽略通知，那比沒有通知更糟。**
+> 寧可漏一次，也不要把「查不到」變成「每 30 分鐘寄一次假警報」。
+>
+> 門檻 **90 分鐘**刻意跟 admin 頁面的「已停擺」一致 ——
+> 同一個現象在兩個地方不該有兩個標準。
+> 這個門檻會**自己熄滅**：一旦有一班成功，age 就掉回 30 分鐘左右，不再寄信。
+> （「只會亮不會滅的燈不是告警」—— 同一個原則在 provenance 那盞燈上已經驗證過。）
+
 > ⚠️ Apps Script 的時間觸發器**本來就不準**。官方 `ClockTriggerBuilder` 文件對
 > `nearMinute()` 明講 *"the minute at which the trigger runs (plus or minus 15 minutes)"*，
 > 而且 *"If `nearMinute()` is not called, a random minute value is used"*；
@@ -1140,9 +1264,14 @@ node scripts/test_gas_dispatch.js
 
 它用 Node 的 `vm` 把 `dispatch-cron.gs` 跑在沙箱裡，注入假的 `UrlFetchApp` /
 `ScriptApp` / `PropertiesService`，驗證 204/200 的判定、六種失敗狀態碼的診斷文字、
-**兩種 403 是否給出不同的建議**、**失敗是否真的丟例外（＝告警是否真的會寄出）**，
+**兩種 403 是否給出不同的建議**、**失敗是否真的丟例外（＝告警是否真的會寄出）**、
+**新鮮度告警的八種情境、16 條斷言**（新鮮／太舊／**全部被取消**／查不到→只 WARN／
+空清單／非 JSON／查詢本身的 URL 與標頭／門檻與 admin 頁面一致），
 以及觸發器只增不減等行為。
 （`dispatch-cron.gs` 只有在出錯時才會被執行到，而那正是最需要它正確的時候。）
+
+> 控制組：把 `dispatch()` 裡的 `checkFreshness(token)` 那一行拿掉 → **11 條斷言變紅**。
+> 證明這些斷言真的在驗東西，而不是剛好通過。
 
 ⚠️ 假物件要**比真環境更不友善**才測得出東西。這裡的假 `Logger` 刻意模擬 Java
 Double（把 `0` 印成 `"0.0"`）—— 第一版直接用 `util.format`，比真環境寬容，
@@ -1180,4 +1309,11 @@ wrangler deploy
 
 想更安全就把 token 存進 Cloudflare Secret（就是上面的 `wrangler secret put`），
 而不要用環境變數明文。
+
+> ⚠️ **這個選項目前少了新鮮度告警。** `checkFreshness()` 只實作在 Apps Script 版
+> （`worker/dispatch-cron.gs`）。用 Worker 的話，你就回到「球丟進去了但沒人知道
+> 資料有沒有進來」的狀態 —— 也就是 2026-10-05 那 29 小時的形狀。
+> 選 Worker 的話，請自己補上等價的檢查（打
+> `/actions/workflows/scrape.yml/runs`，看最後一筆 `conclusion: success` 有多舊），
+> 或改用 Apps Script 版。
 
