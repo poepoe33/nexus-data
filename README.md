@@ -667,9 +667,15 @@ admin 頁的 `minsAgo()` 用 **`Date.now()`** 在**瀏覽器**算「距離上次
 ### 修法
 
 1. **取消卡住的那個 run** —— 這是唯一能立刻解鎖的動作。
-   ⚠️ 需要 PAT 有 `Actions: Read and write`。本機那顆 fine-grained PAT **沒有**這個權限
-   （`gh run cancel` 與 `gh workflow run` 都回 403），所以只能去 GitHub UI 按 Cancel，
-   或靠第 2 點的自我恢復。
+   ⚠️ 需要 PAT 有 `Actions: Read and write`。事故當下本機 `gh` 用的那顆 fine-grained PAT
+   **沒有**這個權限（`gh run cancel` 與 `gh workflow run` 都回 403），所以當時只能去
+   GitHub UI 按 Cancel，或靠第 2 點的自我恢復。
+   **已於 2026-10-07 修好**：`gh` 換成有 `Actions: Read and write` 的 token，
+   `gh run cancel` 現在會通過權限檢查（回 409「已完成，無法取消」而不是 403）。
+   > 順帶更正一筆：`scripts/dispatch.sh` 用的是**另一顆** token
+   > （`~/.config/nexus-data/gh-token`，權限 600），那顆**本來就有** write ——
+   > 所以本機備援一直沒壞。當初「同一顆 PAT，dispatch.sh 也會 403」是**推論不是實測**，
+   > 實際不成立。**教訓：推論要標明是推論，否則它會被後來的自己當成事實。**
 2. **`cancel-in-progress: false` → `true`**（workflow 層級）。
    原本的 `false` 意思是「排隊等」，但**排隊等一個永遠不結束的 run 就是永久死鎖**，
    而且不會自己好。改成 `true`：新的一班直接取消舊的，**最壞 30 分鐘內自我恢復**。
@@ -681,6 +687,20 @@ admin 頁的 `minsAgo()` 用 **`Date.now()`** 在**瀏覽器**算「距離上次
    Apps Script 成功丟出觸發之後，**再回頭問一句**「上一筆成功的採集是多久以前」，
    超過 90 分鐘就丟例外 → Google 寄失敗通知信（細節見上方 Apps Script 一節）。
    這是整個系統唯一會在「**沒人打開頁面**」時主動叫的機制。
+5. **先驗權限，別等事故發生才發現不能用。** 用**零副作用探針**驗細粒度 PAT：
+
+   ```bash
+   # 對一個「早就完成」的 run 嘗試取消 —— 不可能真的取消，只讀錯誤碼
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+     -H "Authorization: Bearer $TOK" -H "User-Agent: probe" \
+     "https://api.github.com/repos/poepoe33/nexus-data/actions/runs/37318031444/cancel"
+   # 403 = 沒有 Actions:write      409（已完成，無法取消）= 有
+   ```
+
+   原理：**權限檢查發生在資源狀態檢查之前**，所以對「不可能成功的目標」發請求，
+   就能把「沒權限」和「有權限但目標無效」分開，全程不改動任何狀態。
+   另外，細粒度 PAT **沒有** `x-oauth-scopes` 標頭（那是 classic 專屬），
+   所以**不能靠讀標頭得知權限，只能實測**。
 
 ### 結果
 
