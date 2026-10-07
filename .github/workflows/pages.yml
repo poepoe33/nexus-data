@@ -1,18 +1,34 @@
 name: pages
 
-# 把 dashboard/ 部署到 GitHub Pages
+# 把 dashboard/ 部署到 GitHub Pages（手動）
 # 網址：https://poepoe33.github.io/nexus-data/
 #
-# 觸發時機：每次資料更新（dashboard/index.html 被 commit）就重新部署一次。
-# 約每 30 分鐘一次，遠低於 GitHub Pages 的建置頻率上限。
+# ⚠️ 這支 workflow 現在**只能手動觸發**（`workflow_dispatch`），
+#    自動部署統一由 scrape.yml 負責。拿掉 push 觸發有三個理由，三個都是實測出來的：
+#
+#   1. 它原本的用途從來沒有成立過。舊註解寫「每次資料更新就重新部署一次」，
+#      但 scrape.yml 是用 GITHUB_TOKEN 推 commit，而 GitHub 刻意不讓
+#      GITHUB_TOKEN 推的 commit 觸發其他 workflow（防止遞迴）——
+#      所以它從來沒有被「資料更新」叫醒過。scrape.yml 因此自己部署。
+#
+#   2. 它列的路徑全是**建置產物**（index.html / map.html / admin.html），
+#      三個原始模板（template.html / map_template.html / admin_template.html）反而沒列。
+#      而 scrape.yml 每 30 分鐘就重建並覆蓋那三個產物 ——
+#      所以手改產物只活到下一個 30 分鐘，「立刻上線」只是製造了
+#      「這個改動是永久的」的錯覺。
+#      → 要改版請改**模板**，下一個 scrape 班次（≤30 分鐘）就會重建並部署。
+#
+#   3. **最關鍵：它跟 scrape.yml 的 deploy job 共用 `pages` 這個 concurrency group。**
+#      concurrency group 是 **repo 級**的，所以「A 的 workflow 層級 pages」
+#      與「B 的 job 層級 pages」其實是**同一個 group**。
+#      它只要有一個 run 卡住（例如 deploy job 拿不到 runner），那個 group 就永遠不放，
+#      而 scrape.yml 的 deploy job 會一直 `queued`、`steps: []` ——
+#      跟 2026-10-05 停擺 29 小時的形狀一模一樣。
+#      而且 workflow 層級的 `cancel-in-progress: true` **救不了這一種**：
+#      它只取消同一個 group 的舊 run，取消不了**別的 workflow** 握著的 group。
+#
+# 留著它的理由：手動的逃生門 —— 例如管線壞了、但你想先把手改的頁面推上線。
 on:
-  push:
-    branches: [main]
-    paths:
-      - "dashboard/index.html"
-      - "dashboard/map.html"
-      - "dashboard/admin.html"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -20,13 +36,26 @@ permissions:
   pages: write
   id-token: write
 
+# ⚠️ 刻意**不叫** `pages`：那個 group 是 scrape.yml 的 deploy job 在用的，
+#    共用就會重新製造上面第 3 點的耦合 —— 那正是這次要封掉的東西。
+#
+#    代價：萬一手動跑這支時剛好撞上 scrape 的部署，其中一個會失敗
+#    （deploy-pages 不允許同時部署）。但「偶爾一個部署失敗、30 分鐘後自動補上」
+#    遠好過「一個卡住的 run 讓整條 pipeline 停擺 29 小時」。
+#
+#    cancel-in-progress: true 讓它自己也能被下一次手動觸發取代，
+#    不會累積卡住的 run。
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-manual
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 跟 scrape.yml 一樣：沒有 timeout 的 job 可以拖垮整條 pipeline。
+    # ⚠️ 但要知道極限：timeout-minutes 只在 job **開始跑之後**才計時，
+    #    救不了「從來沒拿到 runner」那一種（那要靠上面的 cancel-in-progress）。
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
@@ -48,6 +77,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

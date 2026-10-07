@@ -450,6 +450,7 @@ scripts/build_dashboard.py           把歷史快照聚合成儀表板資料
 scripts/bench_dashboard.py           合成歷史，量測 build_dashboard.py 的時間/記憶體
 scripts/build_map.py                 產生使用率地圖（熱力圖 + 推薦）
 scripts/test_map.js                  地圖的前端測試：stub DOM + 高德 SDK，211 條斷言
+scripts/test_workflows.js            workflow 結構不變式：group 不跨檔共用 / job 都要 timeout，19 條斷言
 scripts/test_map_live.js             真人瀏覽器測試：高德搜索服務與 key 白名單（puppeteer-core + 本機 Chrome）
 scripts/test_map_live_features.js    真人瀏覽器測試：推薦點燈 / 自動 zoom in / 卡片自動關閉
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），112 條斷言
@@ -477,7 +478,7 @@ dashboard/map.html                   產出：使用率地圖（單檔自包含�
 dashboard/data.json                  聚合結果（每次 snapshot 自動重建）
 data/carpark_coords.csv              91 場的官方座標（WGS84）+ 對應的政府 POI 名
 .github/workflows/scrape.yml         每 30 分鐘：快照 + 重建 dashboard + 部署 Pages
-.github/workflows/pages.yml          手動推送儀表板時的備援部署
+.github/workflows/pages.yml          手動部署儀表板（逃生門；自動部署由 scrape.yml 負責）
 .github/workflows/reference.yml      每天：總車位等主資料
 data/latest.csv                      最新一次快照
 data/latest.json                     最新一次快照（JSON，含 metadata）
@@ -558,9 +559,11 @@ jobs:
   scrape:
     steps:
       # ... 採集、重建、commit ...
+      # 先挑檔到 _site/ 再上傳 —— 不要直接指 ./dashboard，
+      # 那會把 template.html 那三個原始模板一起公開（見下一節）。
       - uses: actions/upload-pages-artifact@v3   # 一定要在 commit 之後
         with:
-          path: ./dashboard
+          path: ./_site
 
   deploy:                # environment 只能設在 job 層級，所以要獨立一個 job
     needs: scrape
@@ -568,12 +571,15 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     concurrency:
-      group: pages       # 與 pages.yml 共用，避免兩邊同時部署打架
+      group: pages       # 現在只有這裡在用（pages.yml 已換到 pages-manual）
     steps:
       - uses: actions/deploy-pages@v4
 ```
 
-`pages.yml` 保留，用於「只改儀表板、沒跑採集」的手動推送。
+`pages.yml` 保留成**手動**的逃生門（`workflow_dispatch`）：例如管線壞了、
+但你想先把手改的頁面推上線。它**不再有 `push` 觸發**，
+而且用的是另一個 group（`pages-manual`）——
+理由見下方〈同類的路：`pages` group 跨 workflow 耦合〉。
 
 ### 只發布建置產物，不要發布模板
 
@@ -701,6 +707,10 @@ admin 頁的 `minsAgo()` 用 **`Date.now()`** 在**瀏覽器**算「距離上次
    就能把「沒權限」和「有權限但目標無效」分開，全程不改動任何狀態。
    另外，細粒度 PAT **沒有** `x-oauth-scopes` 標頭（那是 classic 專屬），
    所以**不能靠讀標頭得知權限，只能實測**。
+6. **封掉跨 workflow 的 group 耦合**（2026-10-07）：`pages.yml` 改成只留
+   `workflow_dispatch` 並換到 `pages-manual` group，`reference.yml` 的
+   `cancel-in-progress` 也改成 `true`。細節與理由見下方
+   〈同類的路：`pages` group 跨 workflow 耦合〉。
 
 ### 結果
 
@@ -730,21 +740,15 @@ admin 頁的 `minsAgo()` 用 **`Date.now()`** 在**瀏覽器**算「距離上次
 - **告警要「會自己熄滅」。** 新鮮度門檻一旦有一班成功就會掉回正常、不再寄信 ——
   「只會亮不會滅的燈不是告警」。
 
-### 還留著一條同類的路：`pages` group
+### 同類的路：`pages` group 跨 workflow 耦合（2026-10-07 已封）
 
 查根因時順手發現的 —— **這次不是它造成的，但同樣的死鎖可以從這裡再來一次。**
 
-`scrape.yml` 的 `deploy` job 有 **job 層級**的 concurrency：
-
-```yaml
-deploy:
-  concurrency:
-    group: pages            # ← 跟 pages.yml 的 workflow 層級 group 同名
-    cancel-in-progress: false
-```
+`scrape.yml` 的 `deploy` job 有 **job 層級**的 concurrency，
+而 `pages.yml` 有 **workflow 層級**的 concurrency，兩邊都叫 `pages`：
 
 concurrency group 是 **repo 級**的，所以 job 層級的 `pages` 與 `pages.yml`
-workflow 層級的 `pages` **是同一個 group**（`scrape.yml` 自己註解也寫了
+workflow 層級的 `pages` **是同一個 group**（`scrape.yml` 原本的註解也寫了
 「跟 pages.yml 用同一個 concurrency group，避免兩邊同時部署打架」）。
 
 - 如果 `pages` 被別的 run 握著，我們的 `deploy` job 就會一直 `queued`、
@@ -754,14 +758,39 @@ workflow 層級的 `pages` **是同一個 group**（`scrape.yml` 自己註解也
   它只取消同一個 group（`carpark-snapshot`）的舊 run，取消不了
   **另一個 workflow** 握著的 `pages`。
 
-**為什麼實務風險低**：`pages.yml` 幾乎不會被觸發 —— `scrape.yml` 用
-`GITHUB_TOKEN` 推的 commit 不會觸發其他 workflow。它只在**有人改到
-`dashboard/*.html`**（含本機推的）時跑一次，一次約 22–25 秒。
-最後一次是 `2026-10-04T14:48:52Z`，成功，之後沒再跑過 —— 所以這次不是它。
+**怎麼封的**（三處改動）：
 
-**要把這條路封掉的選項**（還沒做，需要決定）：讓 `pages.yml` 不再自己部署、
-只留 `workflow_dispatch`，改由 `scrape.yml` 統一部署 —— 代價是人工改
-dashboard 要等最多 30 分鐘才上線。
+1. **`pages.yml` 拿掉 `push` 觸發，只留 `workflow_dispatch`。**
+   順便發現它原本的用途**從來沒有成立過**：它註解寫「每次資料更新就重新部署」，
+   但 `scrape.yml` 是用 `GITHUB_TOKEN` 推 commit，而 GitHub 刻意不讓
+   `GITHUB_TOKEN` 的 commit 觸發其他 workflow —— 所以它一次都沒被資料更新叫醒過。
+   它列的三個路徑還都是**建置產物**（`index.html` / `map.html` / `admin.html`），
+   而原始模板反而沒列；`scrape.yml` 每 30 分鐘就重建並覆蓋那些產物，
+   所以「手改產物立刻上線」只活到下一個 30 分鐘。
+   → 要改版請改**模板**，下一個 scrape 班次（≤30 分鐘）就會重建並部署。
+2. **`pages.yml` 換成 `group: pages-manual`** —— 這才是真正斷開耦合的一步。
+   現在 `pages` 只有 `scrape.yml` 的 `deploy` job 在用，所以
+   workflow 層級的 `cancel-in-progress: true` 就是完整兜底
+   （卡住的那班被下一班取消 → group 跟著釋放 → 下一班拿得到）。
+3. **`reference.yml` 的 `cancel-in-progress` 也從 `false` 改成 `true`。**
+   它的 group（`carpark-reference`）雖然沒跟別人共用，但**同樣的形狀**：
+   每天一次、`false` ＝ 只要有一班卡住，之後每天的排程都只會 pending、
+   再被下一班取消，而且不會自己好。它是每天一次的靜態資料更新、一班幾十秒，
+   所以「新的一班取消舊的一班」機率幾乎是零 —— `true` 沒有實際代價。
+
+**代價**：萬一手動跑 `pages.yml` 時剛好撞上 `scrape.yml` 的部署，其中一個會失敗
+（`deploy-pages` 不允許同時部署）。但「偶爾一個部署失敗、30 分鐘後自動補上」
+遠好過「一個卡住的 run 讓整條 pipeline 停擺 29 小時」。
+
+**有測試釘住**：`scripts/test_workflows.js`（19 條斷言）驗三個結構性不變式 ——
+① 沒有 concurrency group 被兩個以上的 workflow 共用；
+② 每個 job 都有 `timeout-minutes`；
+③ 有 `schedule` 的 workflow，其 workflow 層級 `cancel-in-progress` 必須是 `true`。
+這種「每個檔案單看都正常、問題只在檔案之間的關係」的錯，只有測試抓得到。
+
+> 控制組：把 `pages.yml` 的 `group: pages-manual` 改回 `group: pages` →
+> **3 條斷言變紅**，而且第一條直接指出兩個持有者：
+> `pages ← pages.yml(workflow 層級) / scrape.yml(job deploy)`。
 
 ## 資料量估算
 

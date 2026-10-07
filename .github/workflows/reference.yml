@@ -11,9 +11,19 @@ on:
 permissions:
   contents: write
 
+# ⚠️ 這裡是 true，不是 false —— 跟 scrape.yml 同一個理由。
+#
+# `cancel-in-progress: false` 的意思是「排隊等」，但**排隊等一個永遠不結束的 run
+# 就是永久死鎖**：只要有一班卡住（例如 job 拿不到 runner、`steps: []`），
+# 這個 group 就永遠不放，之後每天的排程都只會 pending、再被下一班取消，
+# 而且**不會自己好**（timeout-minutes 也救不了「從沒開始」的 job）。
+# 2026-10-05 的 29 小時停擺就是這個形狀。
+#
+# 這支是**每天一次**的靜態資料更新，一班正常幾十秒 ——
+# 新的一班取消舊的一班的機率幾乎是零，所以 true 沒有實際代價。
 concurrency:
   group: carpark-reference
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   reference:

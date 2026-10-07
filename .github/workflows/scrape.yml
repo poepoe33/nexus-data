@@ -206,7 +206,19 @@ jobs:
     permissions:
       pages: write
       id-token: write
-    # 跟 pages.yml 用同一個 concurrency group，避免兩邊同時部署打架。
+    # 這個 `pages` group 現在**只有這裡在用**（自動部署的唯一出口）。
+    #
+    # ⚠️ 2026-10-07 之前它跟 pages.yml 共用 —— concurrency group 是 **repo 級**的，
+    #    所以「這裡的 job 層級 pages」與「pages.yml 的 workflow 層級 pages」
+    #    其實是**同一個 group**。pages.yml 只要有一個 run 卡住，那個 group 就永遠不放，
+    #    這個 job 就會一直 `queued`、拿不到 runner、`steps: []` ——
+    #    跟 2026-10-05 那次停擺的形狀一模一樣，而且**沒有任何 timeout 救得了它**。
+    #    已經把 pages.yml 改成手動觸發並換成 `pages-manual` group，把這條路封掉。
+    #
+    #    現在的唯一持有者是自己，所以 workflow 層級的 `cancel-in-progress: true`
+    #    就是完整兜底：卡住的那班會被下一班取消 → 這個 group 跟著釋放 → 下一班的
+    #    deploy 拿得到。**所以這裡維持 false 是安全的**（別改成 true：
+    #    部署被中途取消會留下一個半完成的 deployment）。
     concurrency:
       group: pages
       cancel-in-progress: false
