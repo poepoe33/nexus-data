@@ -1421,3 +1421,36 @@ parse 出 0 筆幾乎一定是 DSAT 改版 —— 寧可讓呼叫方看到 502�
 > ⚠️ `/` 與 `/dispatch` 是**有副作用**的端點（會真的觸發一次 workflow），
 > 而 workers.dev 是公開網址。要鎖的話用 Cloudflare Access 最省事。
 
+### 部署到 Vercel：Root Directory 一定要設成 `dashboard`
+
+> **⚠️ 沒設的話會得到 `404 NOT_FOUND / This page doesn't exist`** ——
+> 而且 Vercel 那邊看起來是「部署成功」，因為它真的部署成功了，
+> 只是部署的是 repo 根目錄（那裡沒有 `index.html`）。
+
+在 Vercel 後台：
+
+| 欄位 | 要填什麼 |
+|---|---|
+| **Root Directory** | **`dashboard`** ← 沒設就是 404 的那一個 |
+| Framework Preset | `Other` |
+| Build Command | 留空（資料已經內嵌在 HTML，不需要 build） |
+| Output Directory | 留預設 |
+
+設定完成後，`/`、`/map.html`、`/admin.html`、`/data.json` 才會對應到
+`dashboard/` 底下那幾個產物。
+
+**為什麼 `vercel.json` 放了兩份**（repo 根目錄與 `dashboard/` 各一份）：
+`vercel.json` 是從 **Root Directory** 讀的，不是從 repo 根目錄讀的。
+在 Root Directory 改過去之前，Vercel 讀的是 repo 根那份 ——
+所以兩份都放，`git.deploymentEnabled: false` 才會在**任何一種設定下都生效**
+（少了它，每次 push 都會觸發部署 = 48 次/天）。
+
+> ⚠️ 關自動部署要用 `git.deploymentEnabled: false`，**不能用**網路上常見的
+> `github.enabled: false` —— 後者會連 Deploy Hook 一起停掉。
+
+**怎麼判斷現在是哪一種觸發**（不用猜）：
+Deploy Hook 是每小時 `:23`（UTC）發一次。如果部署出現的時間不是 `:23` 附近，
+那就是 **push 觸發的** → `vercel.json` 沒被讀到 → Root Directory 還是 repo 根目錄。
+（2026-10-09 就是這樣抓出來的：commit 10:58:50Z 推上去，馬上就出現部署，
+而那時段的 hook 要 11:23Z 才發。）
+
