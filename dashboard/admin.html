@@ -177,12 +177,16 @@ footer{margin-top:22px;text-align:center;font-size:11px;color:var(--tx3);line-he
       </div>
       <div id="originHint" class="hint hidden">
         <b>這個網域還沒被 OAuth client 授權。</b><br>
-        Google 的登入按鈕在未授權的網域上不會報錯，只是按了沒反應。
-        這個 OAuth client 目前只授權 <code>cashflow.ebeesnet.com</code>。
+        Google 的登入按鈕在未授權的網域上不會報錯，只是按了沒反應 ——
+        ⚠️ 實測連 console 都攔不到（那行錯誤是 Google 的跨來源 iframe 印的），
+        所以這段提示只能靠你自己點開，沒有自動偵測。
         請到 Google Cloud Console → API 和服務 → 憑證 → 這個 OAuth 2.0 用戶端 ID →
-        <b>已授權的 JavaScript 來源</b>，加入：<br>
+        <b>已授權的 JavaScript 來源</b>，加入下面這一串
+        （只到網域：<b>不含路徑、不含尾斜線</b>）：<br>
         <code id="originNeeded"></code><br>
-        存檔後等 1–2 分鐘再重新整理本頁。
+        存檔後等 1–2 分鐘再重新整理本頁。<br>
+        <b>每一個網域都要各加一條，不會繼承</b> —— 換成自訂網域要再加一次；
+        Vercel 的 preview 網址每次都不同、也無法用萬用字元，請只在正式網址上登入。
       </div>
     </div>
   </div>

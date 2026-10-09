@@ -1454,3 +1454,57 @@ Deploy Hook 是每小時 `:23`（UTC）發一次。如果部署出現的時間�
 （2026-10-09 就是這樣抓出來的：commit 10:58:50Z 推上去，馬上就出現部署，
 而那時段的 hook 要 11:23Z 才發。）
 
+### Google 登入：換網域就要加 origin（每一個網域各一條）
+
+`/admin.html` 用 Google Identity Services 做管理員閘門。GIS 在**未授權的網域上不報錯**，
+只是按了沒反應 —— 所以只要換網域（搬 Vercel、加自訂網域），就要把新 origin 加進
+OAuth client 的**已授權的 JavaScript 來源**。
+
+**用戶端 ID（Web application）**：
+
+```
+415316527661-s7o9j6o8kh4ffbhjs1lhevp7shcfu4hv.apps.googleusercontent.com
+```
+
+（位於 `dashboard/admin_template.html` 的 `CLIENT_ID`。`client_id` 是設計上公開的；
+`client_secret` 不在前端，也不該出現在任何前端檔案裡。）
+
+**路徑**：Google Cloud Console → API 和服務 → 憑證 → 這個 OAuth 2.0 用戶端 ID →
+**已授權的 JavaScript 來源** → 加入。
+
+| origin | 2026-10-09 實測 |
+|---|---|
+| `https://poepoe33.github.io` | ✅ 已授權（0 次 GSI 錯誤） |
+| `https://nexus-data-poepoe33s-projects.vercel.app` | ❌ 未授權 → **要加** |
+| `https://mocarpark.nexuslinktech.com` | ❌ 未授權 → **要加**（自訂網域） |
+| `https://nexus-data-git-main-poepoe33s-projects.vercel.app` | 選用（branch alias，網址固定） |
+
+**格式規則**（Google 官方）：只含 scheme + 完整 hostname，**不含路徑、不含尾斜線**；
+本機測試要同時加 `http://localhost` 與 `http://localhost:<port>`。存檔後等 1–2 分鐘生效。
+
+**四個要注意的地方**：
+
+1. **每一個網域都要各加一條，不會繼承。** 加了 Vercel 網址**不等於**授權自訂網域 ——
+   origin 是整串精確比對。所以 `mocarpark.nexuslinktech.com` 一定要再加一次。
+2. **不要用萬用字元去蓋 Vercel 的 preview 網址。** preview 每次部署都是新的隨機子網域
+   （`nexus-data-<hash>-poepoe33s-projects.vercel.app`），加不完；而且就算 Google 放行
+   `https://*.vercel.app`，那等於**全世界的 Vercel 站都能用這組 client ID**。
+   → 只在正式網址（或自訂網域）登入；preview 上登入失敗是預期的。
+3. **不需要「已授權的重新導向 URI」。** 這一頁走 JS callback
+   （`google.accounts.id.initialize({ callback })`），沒有 `ux_mode: 'redirect'`、
+   也沒有 `login_uri`。只有改成 redirect 模式之後才需要那一欄。
+4. **若 Google 說網域不在「授權網域」裡**：那是 OAuth 同意畫面（Branding）裡的
+   **另一個清單**，跟「已授權的 JavaScript 來源」不同 —— 去
+   Branding → 授權網域 加上 `nexuslinktech.com`（以及 `vercel.app`）。
+
+**怎麼知道現在授權了哪些（不要猜）**：`/admin.html` 的「登入按鈕沒反應？」連結會印出
+`location.origin`，那就是要加的那一串。要更硬的證據，用真瀏覽器開 `/admin.html` 看
+console —— 未授權時 Google 會印
+`[GSI_LOGGER]: The given origin is not allowed for the given client ID.`
+
+> ⚠️ 實測（2026-10-09，puppeteer）：那行錯誤是 **accounts.google.com 的跨來源 iframe**
+> 印的，**父頁面的 console 攔截拿不到** —— 所以在未授權的網域上
+> `window.__GSI_ORIGIN_BLOCKED__` 仍然是 `false`。**自動偵測這條路是死的**，
+> 只能靠使用者自己點開那個連結。（也因此：這段提示文字裡不該寫死「目前只授權
+> 某某網域」—— 它會腐壞，而且腐壞時沒有人會發現。）
+
