@@ -456,6 +456,7 @@ scripts/test_map_live_features.js    真人瀏覽器測試：推薦點燈 / 自�
 scripts/test_gas_dispatch.js         Apps Script 版外部觸發器的測試（vm 沙箱 + 假服務），112 條斷言
 scripts/test_index_live.js           真人瀏覽器測試：搜尋式停車場選擇器 + 圖卡三個分頁，53 條斷言
 scripts/test_admin.js                管理員頁面測試：payload 只帶需要的鍵 + 前端行為，59 條斷言
+scripts/test_worker_realtime.mjs     Worker /realtime 測試：真實 HTML fixture + 快取行為，56 條斷言
 scripts/test_collection_source.py    採集來源判定（collection_source / dispatch_origin），42 條斷言
 scripts/test_dashboard_sources.py    採集來源分桶 + 「未標記」判準（collection_sources），42 條斷言
 scripts/fetch_carpark_coords.py      抓政府 GIS 停車場座標並 join 到 DSAT id
@@ -466,9 +467,13 @@ scripts/data_guard.py                資料守門員：偵測/修復 git 衝突�
 scripts/check_runs.py                診斷工具：數 schedule 觸發次數、列出每個 step
 scripts/watchdog.py                  本機補採（launchd / WorkBuddy 自動化用）
 scripts/dispatch.sh                  呼叫 workflow_dispatch（外部 cron 用）
-worker/dispatch-cron.js              Cloudflare Worker：每 30 分觸發（可自訂 User-Agent）
+worker/dispatch-cron.js              Cloudflare Worker：每 30 分觸發（可自訂 User-Agent）＋ HTTP 路由
+worker/realtime.js                   Worker 的 /realtime：DSAT HTML → JSON，加 CORS + 60 秒快取
+worker/package.json                  只為了讓 Node 把 worker/*.js 當 ESM（wrangler 本來就是）
 worker/dispatch-cron.gs              Google Apps Script：同一件事，免部署、不用 Cloudflare
-worker/wrangler.toml                 Worker 設定（crons / vars）
+worker/wrangler.toml                 Worker 設定（crons / vars，含 REALTIME_TTL_S）
+.github/workflows/vercel-deploy.yml  每小時打一次 Vercel Deploy Hook（24 次/天）
+dashboard/vercel.json                關掉 git push 的自動部署（用 git.deploymentEnabled，不是 github.enabled）
 dashboard/template.html              儀表板版型（含 <!--DATA--> 標記）
 dashboard/index.html                 產出：版型 + 內嵌資料（單檔自包含）
 dashboard/admin_template.html        管理員版型（含 <!--DATA--> 標記 + 登入 gate）
@@ -1365,4 +1370,54 @@ wrangler deploy
 > 選 Worker 的話，請自己補上等價的檢查（打
 > `/actions/workflows/scrape.yml/runs`，看最後一筆 `conclusion: success` 有多舊），
 > 或改用 Apps Script 版。
+
+### Worker 的 `/realtime`：讓前端直接讀即時資料
+
+同一支 Worker 還提供一個公開的 JSON API：
+
+```
+GET https://<你的-worker>.workers.dev/realtime
+```
+
+```json
+{
+  "scraped_at": "2026-10-09 18:53:56",
+  "source": "https://www.dsat.gov.mo/dsat/carpark_realtime.aspx",
+  "timezone": "Asia/Macau (UTC+8)",
+  "count": 92,
+  "carparks": [
+    { "carpark_id": "7085", "name": "蓮花路 (重型)", "updated_at": "2026-10-09 18:53:56",
+      "car": null, "motor": null, "heavy_lt_8m": 149, "heavy_gt_8m": 68, "fee_type": null, "special_flag": null }
+  ],
+  "cache": { "hit": false, "max_age_s": 60 }
+}
+```
+
+**為什麼需要這一層（前端不能直接打 DSAT）** —— 實測兩個硬理由：
+
+1. `carpark_realtime_core.aspx` 回的是 **`text/html`**（是一個網頁，不是 API）。
+2. 它**完全沒有 `Access-Control-Allow-Origin`** 標頭 → 瀏覽器 `fetch()` 會被 CORS 擋下。
+
+所以 Worker 做三件事：抓 HTML → parse 成 JSON → 加 CORS + 快取。
+
+**快取不是優化，是保護。** 沒有快取的話，每個訪客開一次頁面就打一次澳門政府的網站，
+流量放大 N 倍而且會被當成攻擊。預設 60 秒（`REALTIME_TTL_S`），
+同資料中心的所有訪客共用一次上游請求 —— **最糟情況落後 1 分鐘**，
+對「現在哪裡有位」這種問題完全夠用。
+
+除錯：`?fresh=1` 會繞過快取真的打一次上游（正常流量別用）。
+
+**⚠️ 解析邏輯必須跟 `scripts/scrape.py` 的 `parse_list()` 保持一致。**
+兩邊一旦分歧，前端看到的數字就會跟寫進 CSV 的對不起來 ——
+而且這種 bug **沒有錯誤訊息**，只是「數字不太對」。
+所以 `scripts/test_worker_realtime.mjs` 的 fixture 是**從真的 DSAT 頁面抓下來的兩列**，
+不是編的假資料；另外也實測過：同一份真實整頁（92 筆）丟給 JS 版與 Python 版，
+**逐欄完全一致**。
+
+失敗時的行為：上游非 200、或 parse 出 0 筆，都回 **502** 並帶 `no-store`。
+parse 出 0 筆幾乎一定是 DSAT 改版 —— 寧可讓呼叫方看到 502，
+也不要回一個 `count: 0` 的「成功」回應（那是靜默拿到空資料）。
+
+> ⚠️ `/` 與 `/dispatch` 是**有副作用**的端點（會真的觸發一次 workflow），
+> 而 workers.dev 是公開網址。要鎖的話用 Cloudflare Access 最省事。
 

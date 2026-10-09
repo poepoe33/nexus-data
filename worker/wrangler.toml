@@ -23,4 +23,8 @@ REF = "main"
 # 想自訂對 GitHub 送的 User-Agent 就改這裡（cron-job.org 做不到這件事）
 USER_AGENT = "nexus-data-cron/1.0 (+https://github.com/poepoe33/nexus-data)"
 
+# /realtime 的快取秒數。這不是單純的優化 —— 沒快取的話每個訪客都會打一次
+# 澳門政府的網站，會被當成攻擊。60 秒 = 最糟情況落後 1 分鐘。
+REALTIME_TTL_S = "60"
+
 # GH_TOKEN 不要寫在這裡！用 `wrangler secret put GH_TOKEN` 設成 Secret。

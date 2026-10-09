@@ -1,5 +1,15 @@
 /**
- * Cloudflare Worker：定時觸發 GitHub Actions 的 carpark-snapshot workflow。
+ * Cloudflare Worker：定時觸發 GitHub Actions 的 carpark-snapshot workflow
+ * ＋ 對外提供 `/realtime` 即時車位 JSON API（見同目錄的 realtime.js）。
+ *
+ * HTTP 路由：
+ *   GET /realtime   → 即時車位 JSON（有 CORS、有快取；給前端直接讀）
+ *   GET /           → 手動觸發一次 GitHub Actions（下面第 3 點）
+ *   GET /dispatch   → 同上，別名
+ *
+ * ⚠️ `/` 與 `/dispatch` 是**有副作用**的端點，而 workers.dev 是公開網址 ——
+ *    任何人連到它都會觸發一次 workflow。目前沒上鎖（沿用原本的行為），
+ *    要鎖的話最省事是開 Cloudflare Access，或在這裡加一個 key 檢查。
  *
  * 為什麼需要這個（而不是只用 cron-job.org）：
  *   1. cron-job.org 的官方 FAQ 明講 **不支援自訂 `User-Agent` 與 `Connection` 標頭，
@@ -23,6 +33,8 @@
  *   curl -sS "https://<你的-worker>.workers.dev/?key=<GH_TOKEN>" | head
  *   或直接用瀏覽器開 https://<你的-worker>.workers.dev/ 看 JSON 結果
  */
+
+import { handleRealtime, preflight } from "./realtime.js";
 
 const DEFAULT_UA = "nexus-data-cron/1.0 (+https://github.com/poepoe33/nexus-data)";
 
@@ -89,8 +101,27 @@ export default {
     );
   },
 
-  /** HTTP handler：手動測試用。加 ?key=<token> 可驗證 token 是否有效。 */
-  async fetch(request, env) {
+  /** HTTP handler。 */
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    if (request.method === "OPTIONS") return preflight();
+
+    if (url.pathname === "/realtime" || url.pathname === "/realtime/") {
+      return handleRealtime(request, env, ctx);
+    }
+
+    if (url.pathname !== "/" && url.pathname !== "/dispatch") {
+      return new Response(
+        JSON.stringify({ routes: ["/realtime", "/", "/dispatch"] }, null, 2) + "\n",
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
+      );
+    }
+
+    // 舊行為：手動觸發一次 GitHub Actions。加 ?key=<token> 可驗證 token 是否有效。
     const r = await dispatch(env);
     return new Response(JSON.stringify(r, null, 2) + "\n", {
       status: r.ok ? 200 : 502,

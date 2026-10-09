@@ -1,0 +1,5 @@
+{
+  "name": "nexus-data-worker",
+  "private": true,
+  "type": "module"
+}

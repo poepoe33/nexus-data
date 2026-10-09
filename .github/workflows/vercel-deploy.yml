@@ -1,0 +1,77 @@
+name: vercel-deploy
+
+# 每小時叫一次 Vercel 的 Deploy Hook，把最新的 dashboard/ 重新部署。
+#
+# ── 為什麼獨立一支 workflow（而不是塞進 scrape.yml）────────────────────
+#   1. scrape 每 30 分鐘一班，但一小時發一次就夠 → 24 次/天，
+#      遠低於 Hobby 的「100 次部署/天」上限；若跟著每次 push 發就是 48 次/天起跳。
+#   2. 部署與採集解耦：採集失敗不會連帶不部署（舊資料照樣上線），
+#      部署失敗也不會影響採集。
+#
+# ── 要在 Vercel 後台做一次的事 ────────────────────────────────────────
+#   a) 建專案時 Root Directory 設成 `dashboard`（資料已內嵌在 HTML，不需要 build）。
+#   b) Settings → Git → Deploy Hooks → 新增（branch 選 main）→ 複製那串 URL。
+#   c) 把 URL 存進 repo 的 Secrets，名字叫 VERCEL_DEPLOY_HOOK。
+#   d) 關掉 git 自動部署 —— 靠 dashboard/vercel.json 的 `git.deploymentEnabled: false`。
+#
+#      ⚠️ 這裡有個很容易踩錯的點：網路上很多教學寫 `github.enabled: false`，
+#      **那個寫法會連 Deploy Hook 一起停掉**（官方 Deploy Hooks 文件明講）。
+#      新的 `git.deploymentEnabled: false` 只關「push 觸發的自動部署」，
+#      Deploy Hook 照樣能發。兩者名字很像，效果完全不同。
+#
+# ── 時間 ─────────────────────────────────────────────────────────────
+#   UTC 的 :23，刻意選非整點：整點是 GitHub Actions 的負載高峰，
+#   而 schedule 本來就是 best-effort，卡在整點更容易被延後。
+#   （cron 是 UTC；澳門 UTC+8，所以 :23 對應澳門早上 8:23、9:23…）
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch: # 想不等下一班、立刻發一次就用這個
+
+permissions: {}
+
+# 跟其它 workflow 同一套規矩：有 schedule 就要 cancel-in-progress: true。
+# 理由見 README 的〈2026-10-05 停擺 29 小時〉—— `false` 是「排隊等」，
+# 排隊等一個永遠不結束的 run 就是永久死鎖。
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # timeout-minutes 只在 job 開始跑之後才計時，救不了「從沒拿到 runner」；
+    # 那一種靠上面的 cancel-in-progress。
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Vercel Deploy Hook
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          set -e
+          if [ -z "$HOOK" ]; then
+            echo "::error::secret VERCEL_DEPLOY_HOOK 沒設 —— 去 Vercel 後台 Settings → Git → Deploy Hooks 建一個，再把 URL 存進 repo Secrets"
+            echo "  （在設好之前，這支 workflow 每小時都會紅一次。設好就不紅了。）"
+            exit 1
+          fi
+
+          echo "[hook] POST $HOOK" | sed -E 's#(https://api\.vercel\.com/v1/integrations/deploy/[^/]+/).{#\1…{#'
+          code=$(curl -sS -X POST "$HOOK" \
+                   -o /tmp/hook.json -w '%{http_code}' \
+                   --max-time 30)
+          echo "[hook] HTTP $code"
+          head -c 400 /tmp/hook.json; echo
+
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "::error::Deploy Hook 回非 2xx（HTTP $code）—— 部署沒有被觸發"
+            exit 1
+          fi
+
+          # 成功時 Vercel 回 {"job":{"id":"...","state":"PENDING"}}
+          if ! grep -q '"job"' /tmp/hook.json; then
+            echo "::error::HTTP $code 但 body 裡沒有 job —— 不像成功的 Deploy Hook 回應"
+            exit 1
+          fi
+
+          echo "[hook] OK：部署已排程（Vercel 那邊會自己跑完，這裡不等它）"
