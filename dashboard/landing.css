@@ -1,0 +1,216 @@
+/* landing.css — 落地頁 / 專案介紹頁 共用樣式
+ *
+ * 刻意沿用 dashboard/index.html 的「澳門色調」設計變數（--bg / --accent / --tx …），
+ * 讓落地頁與原本的即時查詢頁觀感一致。這兩頁是靜態檔，不經 build_*.py 重建，
+ * 所以不會被每 30 分鐘的採集管線覆寫。
+ */
+:root{
+  --bg:#EAF2E6;          /* 頁面底色：淺綠白 */
+  --card:#FFFFFF;        /* 卡片：純白 */
+  --card2:#EDF3E8;       /* 次要區塊／hover */
+  --line:#DCE6D4;        /* 邊線：淺綠灰 */
+  --tx:#1F3A2C;          /* 主文字：深墨綠 */
+  --tx2:#4B6A55;         /* 次文字 */
+  --tx3:#7C937F;         /* 弱文字 */
+  --accent:#2E8B62;      /* 澳門綠 */
+  --accent-tx:#FFFFFF;
+  --gold:#B07D0E;        /* 澳門黃（電單車） */
+  --bad:#C0392B;
+  --shadow:0 4px 16px rgba(31,58,44,.10);
+  --shadow-lg:0 10px 30px rgba(31,58,44,.14);
+  --radius:16px;
+  --radius-lg:22px;
+  color-scheme:light;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--tx);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"PingFang TC","Helvetica Neue",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- 頂部導覽 ---------- */
+.lp-nav{
+  position:sticky;top:0;z-index:30;
+  background:rgba(234,242,230,.86);
+  backdrop-filter:saturate(140%) blur(10px);
+  -webkit-backdrop-filter:saturate(140%) blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.lp-nav .row{max-width:1040px;margin:0 auto;padding:11px 18px;
+  display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;
+  color:var(--tx);letter-spacing:.2px}
+.brand .logo{width:30px;height:30px;border-radius:9px;flex:0 0 auto;
+  background:linear-gradient(160deg,#3AA173,#25684A);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  box-shadow:0 3px 10px rgba(46,139,98,.35)}
+.nav-links{display:flex;align-items:center;gap:4px;margin-left:auto}
+.nav-links a{color:var(--tx2);font-size:14.5px;font-weight:500;
+  padding:8px 12px;border-radius:10px;transition:.15s}
+.nav-links a:hover{background:var(--card2);color:var(--accent)}
+.lang{
+  cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:10px;
+  color:var(--tx2);font:inherit;font-size:14px;font-weight:500;padding:8px 10px;outline:none;
+  transition:.15s}
+.lang:focus{border-color:var(--accent)}
+.nav-cta{margin-left:6px}
+
+/* ---------- 按鈕 ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);
+  color:var(--accent-tx);font-weight:600;font-size:15px;padding:11px 20px;border-radius:12px;
+  border:0;cursor:pointer;transition:.18s;box-shadow:0 6px 18px rgba(46,139,98,.28)}
+.btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.btn.ghost{background:var(--card);color:var(--accent);border:1px solid #C9DFCF;box-shadow:none}
+.btn.ghost:hover{border-color:var(--accent);background:#DFEBD9}
+.btn.lg{padding:14px 26px;font-size:16px}
+
+/* ---------- Hero ---------- */
+.lp-hero{padding:48px 0 30px}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:34px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;background:var(--card);
+  border:1px solid var(--line);color:var(--tx2);font-size:13px;font-weight:600;
+  padding:6px 14px;border-radius:999px;margin-bottom:18px}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 4px rgba(46,139,98,.18)}
+.lp-hero h1{font-size:clamp(28px,4.6vw,44px);line-height:1.18;margin:0 0 16px;
+  font-weight:750;letter-spacing:.2px}
+.lp-hero h1 .hl{color:var(--accent)}
+.lp-hero p.lead{font-size:clamp(15px,2.1vw,18px);color:var(--tx2);max-width:540px;
+  margin:0 0 26px;line-height:1.65}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.trust{margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;color:var(--tx3);font-size:13px}
+.trust span{display:inline-flex;align-items:center;gap:6px}
+.trust svg{flex:0 0 auto;color:var(--accent)}
+
+/* Hero 預覽卡（裝飾用，模擬即時查詢畫面） */
+.preview{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);padding:18px;max-width:420px;margin-left:auto;width:100%}
+.preview .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.preview .ph b{font-size:14px;font-weight:650}
+.preview .ph .tag{font-size:11px;color:var(--tx3);background:var(--card2);
+  border:1px solid var(--line);padding:3px 9px;border-radius:999px}
+.prow{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.prow:first-of-type{border-top:0}
+.prow .pn{font-size:13px;font-weight:500;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .pbar{width:84px;height:7px;border-radius:4px;background:var(--card2);overflow:hidden;flex:0 0 auto}
+.prow .pbar i{display:block;height:100%;border-radius:4px}
+.prow .pnum{font-size:13px;font-weight:600;flex:0 0 auto;width:62px;text-align:right}
+.prow .pnum small{color:var(--tx3);font-weight:500}
+
+/* ---------- 通用區塊 ---------- */
+section{padding:44px 0}
+.sec-head{text-align:center;max-width:660px;margin:0 auto 30px}
+.sec-head .kicker{color:var(--accent);font-weight:700;font-size:12.5px;
+  letter-spacing:1.6px;text-transform:uppercase}
+.sec-head h2{font-size:clamp(23px,3.4vw,31px);margin:8px 0 10px;font-weight:720}
+.sec-head p{color:var(--tx2);font-size:15.5px;margin:0;line-height:1.6}
+
+/* 卡片網格 */
+.grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr;gap:16px}
+.grid-2{display:grid;grid-template-columns:1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;box-shadow:var(--shadow);transition:.18s}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+
+/* 功能卡 */
+.feat .ico{width:46px;height:46px;border-radius:12px;background:var(--card2);
+  display:flex;align-items:center;justify-content:center;color:var(--accent);margin-bottom:14px}
+.feat h3{margin:0 0 8px;font-size:17px;font-weight:650}
+.feat p{margin:0;color:var(--tx2);font-size:14.5px;line-height:1.62}
+
+/* 數據帶 */
+.stats{background:linear-gradient(160deg,#3AA173,#25684A);border-radius:var(--radius-lg);
+  padding:32px 24px;color:#fff;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;text-align:center;
+  box-shadow:var(--shadow-lg)}
+.stats .num{font-size:clamp(26px,4vw,38px);font-weight:750;letter-spacing:-.5px}
+.stats .lbl{font-size:14px;opacity:.92;margin-top:4px}
+.stats .sep{width:1px;background:rgba(255,255,255,.22)}
+
+/* 使用情境卡 */
+.uc .badge{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+  border-radius:11px;background:var(--card2);color:var(--accent);margin-bottom:12px}
+.uc h3{margin:0 0 7px;font-size:17px;font-weight:650}
+.uc p{margin:0;color:var(--tx2);font-size:14.5px;line-height:1.62}
+
+/* 步驟 */
+.step{display:flex;gap:14px;align-items:flex-start}
+.step .n{flex:0 0 auto;width:34px;height:34px;border-radius:50%;
+  background:var(--accent);color:#fff;font-weight:700;font-size:15px;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(46,139,98,.3)}
+.step h3{margin:4px 0 6px;font-size:16.5px;font-weight:650}
+.step p{margin:0;color:var(--tx2);font-size:14.5px;line-height:1.6}
+
+/* FAQ */
+.faq{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:2px 18px;box-shadow:var(--shadow);transition:.15s}
+.faq details[open]{border-color:#C9DFCF}
+.faq summary{list-style:none;cursor:pointer;padding:16px 0;font-weight:600;font-size:16px;
+  display:flex;justify-content:space-between;align-items:center;gap:12px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .chev{transition:.2s;color:var(--tx3);flex:0 0 auto}
+.faq details[open] summary .chev{transform:rotate(180deg)}
+.faq .ans{color:var(--tx2);font-size:14.5px;line-height:1.72;padding:0 0 16px}
+
+/* 專案介紹頁 */
+.about-intro{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);padding:28px;font-size:16px;line-height:1.75;color:var(--tx2)}
+.about-intro b{color:var(--tx)}
+.about-block{display:flex;gap:14px;align-items:flex-start;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.about-block .ico{flex:0 0 auto;width:42px;height:42px;border-radius:11px;background:var(--card2);
+  color:var(--accent);display:flex;align-items:center;justify-content:center}
+.about-block h3{margin:2px 0 7px;font-size:16.5px;font-weight:650}
+.about-block p{margin:0;color:var(--tx2);font-size:14.5px;line-height:1.66}
+.about-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+
+/* ---------- 頁尾 ---------- */
+footer.lp-foot{margin-top:34px;border-top:1px solid var(--line);background:var(--card2);
+  padding:34px 0 42px}
+.lp-foot .cols{display:flex;flex-wrap:wrap;gap:30px;justify-content:space-between}
+.lp-foot .lead-col{max-width:300px}
+.lp-foot .tag{color:var(--tx2);font-size:14px;line-height:1.65;margin-top:12px}
+.lp-foot h4{margin:0 0 13px;font-size:13.5px;color:var(--tx);letter-spacing:.5px;
+  text-transform:uppercase}
+.lp-foot ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.lp-foot ul a{color:var(--tx2);font-size:14px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+.lp-foot ul a:hover{color:var(--accent)}
+.disclaim{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);
+  color:var(--tx3);font-size:12.5px;line-height:1.7}
+.disclaim b{color:var(--tx2)}
+.copy{margin-top:8px;color:var(--tx3);font-size:12.5px}
+
+/* ---------- 響應式 ---------- */
+@media(min-width:680px){
+  .grid-3{grid-template-columns:repeat(3,1fr)}
+  .grid-2{grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:900px){
+  .grid-4{grid-template-columns:repeat(4,1fr)}
+}
+@media(min-width:1000px){
+  .hero-grid{gap:48px}
+}
+@media(max-width:860px){
+  .hero-grid{grid-template-columns:1fr;gap:26px}
+  .preview{margin:0 auto}
+  .stats{grid-template-columns:1fr;gap:22px;padding:28px 22px}
+  .stats .sep{display:none}
+}
+@media(max-width:640px){
+  body{font-size:15px}
+  .lp-nav .row{padding:10px 14px;gap:10px}
+  .nav-anchor{display:none!important}     /* 手機只留 CTA 與語言切換，其餘靠頁內錨點/頁尾 */
+  .lp-hero{padding:34px 0 22px}
+  .wrap{padding:0 14px}
+  .btn.lg{padding:13px 22px}
+}

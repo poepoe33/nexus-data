@@ -3,6 +3,6 @@
   "git": {
     "deploymentEnabled": false
   },
-  "buildCommand": "mkdir -p dist && for f in index.html map.html admin.html data.json; do if [ -f \"dashboard/$f\" ]; then cp \"dashboard/$f\" dist/; fi; done && echo '--- dist ---' && ls -1 dist",
+  "buildCommand": "mkdir -p dist && for f in index.html map.html admin.html data.json landing.html about.html landing.css landing.js; do if [ -f \"dashboard/$f\" ]; then cp \"dashboard/$f\" dist/; fi; done && echo '--- dist ---' && ls -1 dist",
   "outputDirectory": "dist"
 }
