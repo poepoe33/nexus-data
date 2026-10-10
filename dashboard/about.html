@@ -9,18 +9,20 @@
 <link rel="stylesheet" href="landing.css">
 </head>
 <body data-page="about">
+<a class="visually-hidden" href="#main">跳到主要內容</a>
 
 <!-- 頂部導覽 -->
-<nav class="lp-nav">
+<nav class="lp-nav" id="nav">
   <div class="row">
     <a class="brand" href="landing.html" aria-label="澳門車位">
       <span class="logo" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h5.5a3.5 3.5 0 010 7H9V4zM9 11v9M6 20h6"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h5.5a3.5 3.5 0 010 7H9V4zM9 11v9M6 20h6"/></svg>
       </span>
       <span data-i18n="brand">澳門車位</span>
     </a>
     <div class="nav-links">
       <a class="nav-anchor" href="landing.html#features" data-i18n="nav.features">功能</a>
+      <a class="nav-anchor" href="landing.html#proof" data-i18n="nav.proof">評價</a>
       <a class="nav-anchor" href="landing.html#faq" data-i18n="nav.faq">常見問題</a>
       <a href="about.html" data-i18n="nav.about">專案介紹</a>
       <select id="lang" class="lang" aria-label="選擇語言 / Language / Idioma"></select>
@@ -29,21 +31,21 @@
   </div>
 </nav>
 
-<!-- 專案介紹 -->
-<header class="lp-hero" style="padding-bottom:8px">
+<main id="main">
+
+<header class="lp-hero" style="padding-bottom:6px">
   <div class="wrap">
-    <div class="sec-head" style="margin-bottom:22px">
+    <div class="sec-head center" style="margin-bottom:24px">
       <div class="kicker" data-i18n="about.kicker">專案介紹</div>
-      <h2 data-i18n="about.title" style="font-size:clamp(26px,4vw,36px)">關於「澳門車位」</h2>
+      <h2 data-i18n="about.title" style="font-size:clamp(27px,4vw,40px)">關於「澳門車位」</h2>
     </div>
     <div class="about-intro" data-i18n="about.bg">在澳門找車位，常常得靠運氣。這個專案把交通事務局公開的即時停車場數據，整理成一個人人都能一眼看懂的網頁，讓「找車位」這件小事變得更輕鬆。</div>
   </div>
 </header>
 
-<section style="padding-top:26px">
+<section id="data" style="padding-top:30px">
   <div class="wrap">
     <div class="grid-2" id="about-blocks"></div>
-
     <div class="about-actions">
       <a class="btn lg" href="landing.html" data-i18n="about.back1">回到首頁</a>
       <a class="btn ghost lg" href="index.html" data-i18n="about.back2">前往即時查詢</a>
@@ -51,14 +53,16 @@
   </div>
 </section>
 
+</main>
+
 <!-- 頁尾 -->
 <footer class="lp-foot">
   <div class="wrap">
     <div class="cols">
-      <div class="lead-col">
+      <div>
         <a class="brand" href="landing.html">
           <span class="logo" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h5.5a3.5 3.5 0 010 7H9V4zM9 11v9M6 20h6"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h5.5a3.5 3.5 0 010 7H9V4zM9 11v9M6 20h6"/></svg>
           </span>
           <span data-i18n="brand">澳門車位</span>
         </a>
@@ -68,7 +72,35 @@
         <h4 data-i18n="foot.col1">網站</h4>
         <ul>
           <li><a href="index.html" data-i18n="cta">查看即時車位</a></li>
-          <li><a href="about.html" data-i18n="nav.about">專案介紹</a></li>
+          <li><a href="landing.html" data-i18n="about.back1">回到首頁</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 data-i18n="foot.col2">資料</h4>
+        <ul>
+          <li><a href="index.html" data-i18n="foot.srcLink">數據來源與更新</a></li>
+          <li><a href="about.html#data" data-i18n="foot.howLink">運作方式</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 data-i18n="foot.col3">聯絡我們</h4>
+        <ul class="contact">
+          <li>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-11a7 7 0 1114 0c0 5.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+            <span data-i18n="foot.loc">澳門 Macau</span>
+          </li>
+          <li>
+            <a href="https://github.com/poepoe33/nexus-data" target="_blank" rel="noopener">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49l-.01-1.7c-2.78.62-3.37-1.37-3.37-1.37-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.4 9.4 0 015 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.93-2.35 4.8-4.58 5.05.36.32.68.94.68 1.9l-.01 2.82c0 .27.18.6.69.49A10.02 10.02 0 0022 12.25C22 6.58 17.52 2 12 2z"/></svg>
+              <span>GitHub</span>
+            </a>
+          </li>
+          <li>
+            <a href="https://github.com/poepoe33/nexus-data/issues" target="_blank" rel="noopener">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9 9 0 01-3.3-.6L3 21l1.7-5A8.4 8.4 0 013 11.5 8.5 8.5 0 0112 3a8.5 8.5 0 019 8.5z"/></svg>
+              <span data-i18n="foot.feedback">回報問題 · 建議</span>
+            </a>
+          </li>
         </ul>
       </div>
     </div>
