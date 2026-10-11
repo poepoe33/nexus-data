@@ -12,7 +12,7 @@
  *   一個檔案看起來完全正常，問題只在它跟另一個檔案的關係。
  *   這種東西只有測試能釘住。
  *
- * 三個不變式（都直接對應一次真實事故或一次差點發生的同類事故）：
+ * 四個不變式（都直接對應一次真實事故或一次差點發生的同類事故）：
  *   1. 同一個 concurrency group 名稱**不能**被兩個以上的 workflow 使用。
  *      concurrency group 是 **repo 級**的，所以「A 的 workflow 層級 pages」
  *      與「B 的 job 層級 pages」其實是**同一個 group** ——
@@ -24,6 +24,12 @@
  *   3. 有 `schedule` 觸發的 workflow，其 workflow 層級 `cancel-in-progress`
  *      必須是 `true`。排程型 pipeline 用 `false` 就是「排隊等一個永遠不結束的 run」
  *      ＝永久死鎖，而且不會自己好。
+ *   4. workflow 裡的 `run:` 區塊要通過 `bash -n` 語法檢查。
+ *      2026-10-11 一次 regression：vercel-deploy.yml 第一版的 log 遮罩 sed
+ *      是合法 bash、合法 sed 呼叫，但 `.{` 在 ERE 是未閉合 quantifier，
+ *      執行時才爆 → 9 班 schedule 全部死在 curl **之前**，hook 一次都沒打到。
+ *      → `bash -n` 抓不到那一類 regex 語意錯，但能擋大部份同類問題。
+ *      完整防線見 `extractRunBlocks` 的註解。
  *
  * 用法：node scripts/test_workflows.js
  * 結束碼：0 = 全過，1 = 有失敗（並列出失敗清單）。
@@ -38,6 +44,8 @@
 
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+const { spawnSync } = require("child_process");
 
 const ROOT = path.join(__dirname, "..");
 const WF_DIR = path.join(ROOT, ".github", "workflows");
@@ -147,6 +155,52 @@ function cancelOf(block) {
 /** 這個 job 有沒有 timeout-minutes。 */
 function hasTimeout(job) {
   return job.lines.some((l) => /^\s*timeout-minutes:\s*\d+/.test(l));
+}
+
+/**
+ * 抽出所有 `run:` 區塊（含 `run: |` / `run: |-` 等 literal block scalar）。
+ * 回傳 [{ startLine, content }]，startLine 是 YAML 檔的行號（0-based）。
+ *
+ * ⚠️ 限制（2026-10-11 記下的）：這條只能抓「語法錯」—— 未閉合引號、缺 `fi` 、
+ * 多寫的 `fi` 之類。**抓不到**「語意錯」的 sed/awk regex —— 比方 vercel-deploy.yml
+ * 第一次寫的 `sed -E 's#(https://...).\.{...\2.?)…)…)..{#\1…{#'`
+ * （簡化：`s#…)..{#\1…{#'），那個 `.{` 在 ERE 裡是未閉合的 quantifier，
+ * bash -n 看不出來，執行時才爆。
+ * → 那一類錯誤的防線是：workflow 檔內的註解（寫「不要用 sed 遮 secret」）
+ *   + PR review 的肉眼，不是測試。
+ *   同類陷阱以後再加專屬的 grep 也比通用的 bash -n 可靠。
+ */
+function extractRunBlocks(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(\s*)(-\s+)?run:\s*(?:\|\s*[-+]?)?\s*$/.exec(lines[i]);
+    if (!m) continue;
+    const runIndent = m[1].length + (m[2] ? m[2].length : 0);
+    const content = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j];
+      if (l.trim() === "" || /^\s*#/.test(l)) { content.push(l); continue; }
+      const indent = l.match(/^ */)[0].length;
+      if (indent <= runIndent) break;
+      content.push(l);
+    }
+    out.push({ startLine: i, content: content.join("\n") + "\n" });
+    i += content.length;
+  }
+  return out;
+}
+
+/** 對一段 bash script 跑 `bash -n`，回傳 { ok, stderr }。 */
+function bashSyntaxCheck(script) {
+  const tmp = path.join(os.tmpdir(), "wf-bash-" + process.pid + "-" +
+                                  Math.random().toString(36).slice(2, 8) + ".sh");
+  fs.writeFileSync(tmp, script);
+  try {
+    const r = spawnSync("bash", ["-n", tmp], { encoding: "utf8" });
+    return { ok: r.status === 0, stderr: (r.stderr || "").trim(), stdout: (r.stdout || "").trim() };
+  } finally {
+    try { fs.unlinkSync(tmp); } catch (e) {}
+  }
 }
 
 /* ------------------------------------------------------------------ 收集 */
@@ -275,6 +329,25 @@ section("釘住兩次事故的修法", function () {
   ok(cancelOf(refWf) === "true",
      "reference.yml 的 cancel-in-progress 也是 true（同一類死鎖）",
      String(cancelOf(refWf)));
+});
+
+/* --- 不變式 4：workflow 內的 bash script 要通過 `bash -n` --- */
+section("workflow 內的 bash script 必須通過 bash -n 語法檢查", function () {
+  let total = 0;
+  const bad = [];
+  for (const wf of wfs) {
+    const blocks = extractRunBlocks(wf.lines);
+    for (const b of blocks) {
+      total++;
+      const r = bashSyntaxCheck(b.content);
+      if (!r.ok) bad.push(wf.file + ":" + (b.startLine + 1) + "  " +
+                          (r.stderr.split("\n")[0] || "(stderr 空)"));
+    }
+  }
+  ok(total >= 1, "至少找到一個 run: block", total + " 個");
+  ok(bad.length === 0,
+     "所有 run: block 都通過 bash -n（抓得到「語法錯」，抓不到「語意錯」的 regex — 見註）",
+     bad.length ? "\n  " + bad.join("\n  ") : "(全綠)");
 });
 
 /* ------------------------------------------------------------------ 結果 */

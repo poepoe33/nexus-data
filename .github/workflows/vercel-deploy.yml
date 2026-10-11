@@ -56,7 +56,16 @@ jobs:
             exit 1
           fi
 
-          echo "[hook] POST $HOOK" | sed -E 's#(https://api\.vercel\.com/v1/integrations/deploy/[^/]+/).{#\1…{#'
+          # GitHub Actions 會自動遮罩 secret 的值（log 裡顯示 ***），
+          # 不要自己再加 sed 遮罩 —— 第一版寫了
+          #   echo "[hook] POST $HOOK" | sed -E 's#(...)/…/…/…).{#\1…{#'
+          # 那行的 `.{` 在 ERE 裡是未閉合的 quantifier，sed exit 1 +
+          # set -e → 整個 step 死在 curl 之前，**根本沒打到 Vercel**。
+          # 結果：9 班 schedule 全部「失敗」，但 Vercel 那邊一次都沒被觸發。
+          # （驗證：手動 POST hook 回 HTTP 201、body 正常，只是沒有人會去量
+          # 「這支 workflow 到底有沒有跑到 curl」 —— 自己複現一次 curl
+          # 並不等於驗證了 workflow。）
+          echo "[hook] POST (URL 被 GitHub 自動遮罩)"
           code=$(curl -sS -X POST "$HOOK" \
                    -o /tmp/hook.json -w '%{http_code}' \
                    --max-time 30)
